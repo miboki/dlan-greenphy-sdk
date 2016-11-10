@@ -425,7 +425,7 @@ static void UART_1_IRQHandler (struct UART * uart)
 
 	if(!uxTaskIsSchedulerRunning())
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\r\n",__func__);
 	}
 
 	portEND_SWITCHING_ISR( lHigherPriorityTaskWoken );

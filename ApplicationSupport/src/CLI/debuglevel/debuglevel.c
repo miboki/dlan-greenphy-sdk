@@ -6,7 +6,7 @@
 #include "libCLI.h"
 
 #ifdef DEBUG
-extern uint32_t debug_level;
+// extern uint32_t debug_level;
 
 struct debuglevel {
   int level;
@@ -82,7 +82,7 @@ int setdebuglevel(char * arg)
 		int found = 0;
 		if(strlen(arg))
 		{
-			DEBUG_PRINT(CLI, "examining: '%s'\n\r",arg);
+			DEBUG_PRINT(CLI, "examining: '%s'\r\n",arg);
 			for(i=0;i<(sizeof(debuglevels)/sizeof(struct debuglevel));i+=1)
 			{
 				char * name = debuglevels[i].name;
@@ -93,12 +93,12 @@ int setdebuglevel(char * arg)
 					DEBUG_PRINT(CLI, "  is    : '%s'",debuglevels[i].name);
 					if(noNegation == arg)
 					{
-						DEBUG_PRINT(CLI, "  -> |= 0x%x\n\r",debuglevels[i].level);
+						DEBUG_PRINT(CLI, "  -> |= 0x%x\r\n",debuglevels[i].level);
 						debug_level |= debuglevels[i].level;
 					}
 					else
 					{
-						DEBUG_PRINT(CLI, "  -> &=~ 0x%x\n\r",debuglevels[i].level);
+						DEBUG_PRINT(CLI, "  -> &=~ 0x%x\r\n",debuglevels[i].level);
 						debug_level &= ~debuglevels[i].level;
 					}
 					found = 1;
@@ -107,7 +107,7 @@ int setdebuglevel(char * arg)
 				}
 				else
 				{
-					DEBUG_PRINT(CLI, "  is not: '%s'\n\r",debuglevels[i].name);
+					DEBUG_PRINT(CLI, "  is not: '%s'\r\n",debuglevels[i].name);
 				}
 			}
 			if(!found)
@@ -167,7 +167,7 @@ int getdebuglevel(char * arg)
 	{
 		printDebugLevel(debug_level);
 	}
-	printToUart("\n\r");
+	printToUart("\r\n");
 
 	return rv;
 }
@@ -175,12 +175,12 @@ int getdebuglevel(char * arg)
 void debuglevel_help(void)
 {
 	int i;
-	printToUart("Use '%s set LEVEL' to set the debug level, using as LEVEL:\n\r",debuglevel_commandName());
+	printToUart("Use '%s set LEVEL' to set the debug level, using as LEVEL:\r\n",debuglevel_commandName());
 	for(i=0;i<(sizeof(debuglevels)/sizeof(struct debuglevel));i+=1)
 	{
-		printToUart("  %s\n\r",debuglevels[i].name);
+		printToUart("  %s\r\n",debuglevels[i].name);
 	}
-	printToUart("Use '%s get' to print the current debug level.\n\r",debuglevel_commandName());
+	printToUart("Use '%s get' to print the current debug level.\r\n",debuglevel_commandName());
 }
 
 char * getName()

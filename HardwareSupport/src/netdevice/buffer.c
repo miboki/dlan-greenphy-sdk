@@ -86,7 +86,7 @@ static void checkElement(struct netdeviceQueueElement * element)
 		}
 		if(!found)
 		{
-			DEBUG_PRINT(DEBUG_ERR," element 0x%x not found\n\r",element);
+			DEBUG_PRINT(DEBUG_ERR," element 0x%x not found\r\n",element);
 			for( ;; );
 		}
 	}
@@ -122,7 +122,7 @@ struct netdeviceQueueElement * getQueueElementByBuffer(	data_t pData, length_t l
 				queueElement[ x ].length = length;
 				queueElement[ x ].removedFromFront = 0;
 				rv = &queueElement[ x ];
-				DEBUG_PRINT(DEBUG_BUFFER," put 0x%x to queueElement 0x%x (%d)\n\r",pData,rv,x);
+				DEBUG_PRINT(DEBUG_BUFFER," put 0x%x to queueElement 0x%x (%d)\r\n",pData,rv,x);
 				break;
 			}
 		}
@@ -181,7 +181,7 @@ data_t removeDataFromQueueElement(struct netdeviceQueueElement ** ppelement)
 #endif
 			rv = pelement->pData;
 			pelement->pData = NULL;
-			DEBUG_PRINT(DEBUG_BUFFER,"[#I#]\n\r");
+			DEBUG_PRINT(DEBUG_BUFFER,"[#I#]\r\n");
 			returnQueueElement(ppelement);
 #ifdef BUFFER_CRITICAL
 	portEXIT_CRITICAL();
@@ -223,7 +223,7 @@ void returnQueueElement(struct netdeviceQueueElement ** ppElement)
 	portENTER_CRITICAL();
 #endif
 	        DEBUG_EXECUTE(checkElement(eElement));
-			DEBUG_PRINT(DEBUG_BUFFER," returning queueElement 0x%x %d\n\r",eElement);
+			DEBUG_PRINT(DEBUG_BUFFER," returning queueElement 0x%x %d\r\n",eElement);
 			eElement->inUse = pdFALSE;
 			if(eElement->pData)
 			{
@@ -329,7 +329,7 @@ void prvReturnBuffer( data_t pucBuffer )
 #ifdef BUFFER_CRITICAL
 			portEXIT_CRITICAL();
 #endif
-			DEBUG_PRINT(DEBUG_ERR," buffer 0x%x not found\n\r",pucBuffer);
+			DEBUG_PRINT(DEBUG_ERR," buffer 0x%x not found\r\n",pucBuffer);
 			for( ;; );
 		}
 
@@ -348,7 +348,7 @@ struct netdeviceQueueElement * getQueueElement(void)
 	{
 		rv = getQueueElementByBuffer(pData,0);
 		if (!rv) {
-			DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER,"no queue element, returning 0x%x\n\r",pData);
+			DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER,"no queue element, returning 0x%x\r\n",pData);
 			prvReturnBuffer(pData);
 			pData = NULL;
 		}

@@ -174,12 +174,19 @@
 #define CMD197               (0x01C5)
 #define CMD255               (0x01FF)
 
-// Special commands
-#define INITIALISE           (0xA500) // command for starting initialization mode
-#define RANDOMISE            (0xA700) // command for generating a random address
-#define COMPARE              (0xA900)
-#define VERIFY_SHORT_ADDRESS (0xB901)
-#define QUERY_SHORT_ADDRESS  (0xBB00)
+/*DALI COMMANDS*/
+#define TERMINATE             0xA100 //256
+#define INITIALISE            0xA500 //258 - starting initialization mode
+#define RANDOMISE             0xA700 //259 - generating a random address
+#define COMPARE               0xA900 //260
+#define WITHDRAW              0xAB00 //261
+#define SEARCHADDRH           0xB100 //264
+#define SEARCHADDRM           0xB300 //265
+#define SEARCHADDRL           0xB500 //266
+#define PROGRAM_SHORT_ADDRESS 0xB701 //267
+#define VERIFY_SHORT_ADDRESS  0xB901
+#define QUERY_SHORT_ADDRESS   0xBB00
+#define STOREDTR              0xFF80 //128
 
 typedef enum daliMsgTypeTag {
 	DALI_MSG_UNDETERMINED = 0,
@@ -439,6 +446,20 @@ bool waitFlag) {
 	}
 }
 
+void MQTTtoDALI(const char* value) {
+	uint16_t forwardFrame;
+	char array[5];
+	int temp;
+
+	array[0] = value[0];
+	array[1] = value[1];
+	array[2] = value[2];
+	array[3] = value[3];
+	array[4] = '\0';
+	temp = hexToInt(array);
+	DALI_Send((uint16_t)temp);
+}
+
 void DALI_Send(uint16_t forwardFrame) {
 	uint8_t i = 0;
 	uint8_t n = 1;
@@ -477,15 +498,15 @@ static inline void DALI_Init(void) {
 	NVIC_EnableIRQ(PWM1_IRQn);
 }
 
-static void DALI_SetOutFrame(uint16_t frame) {
-	usbForwardFrame = frame;
-	usbForwardFrameReceived = true;
-
-}
-
-static int DALI_GetAnswer() {
-
-}
+//static void DALI_SetOutFrame(uint16_t frame) {
+//	usbForwardFrame = frame;
+//	usbForwardFrameReceived = true;
+//
+//}
+//
+//static int DALI_GetAnswer() {
+//	return 0;
+//}
 
 /***********************************************************/
 /* Exported Counter/Timer IRQ handler                      */

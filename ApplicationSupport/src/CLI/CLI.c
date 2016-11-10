@@ -27,26 +27,26 @@ void printResult(int result)
 	switch(result)
 	{
 	case cli_ok:
-		 printToUart("OK\n\r");
+		 printToUart("OK\r\n");
 		break;
 	case cli_command_too_long:
 		printToUart("STRING TOO LONG\r\n");
 		break;
 	case cli_command_unknown:
-		 printToUart("Use 'help' to get a list of commands.\n\r");
-		 printToUart("UNKNOWN COMMAND\n\r");
+		 printToUart("Use 'help' to get a list of commands.\r\n");
+		 printToUart("UNKNOWN COMMAND\r\n");
 		break;
 	case cli_arg_unknown:
-		 printToUart("UNKNOWN ARGUMENT\n\r");
+		 printToUart("UNKNOWN ARGUMENT\r\n");
 		break;
 	case cli_arg_required:
-		 printToUart("ARGUMENT REQUIRED\n\r");
+		 printToUart("ARGUMENT REQUIRED\r\n");
 		break;
 	}
 
 	if(result != cli_ok)
 	{
-		 printToUart("ERROR\n\r");
+		 printToUart("ERROR\r\n");
 	}
 }
 
@@ -66,7 +66,7 @@ void removeData(uint8_t * input, uint16_t size, uint16_t pos, uint16_t toSkip)
 
 	s=pos+toSkip;
 
-	DEBUG_PRINT(CLI, "%s source %d destination %d\n\r",__func__,s,d);
+	DEBUG_PRINT(CLI, "%s source %d destination %d\r\n",__func__,s,d);
 	DEBUG_DUMP(CLI, input, size, "before");
 
 	for(;s<size;d+=1,s+=1)
@@ -85,7 +85,7 @@ void removeControlCodes(uint8_t * input, uint16_t size)
 {
 	int16_t i,cursor;
 
-	DEBUG_PRINT(CLI, "%s\n\r",__func__);
+	DEBUG_PRINT(CLI, "%s\r\n",__func__);
 
 	for(i=0,cursor=0;i<size-1;i+=1,cursor+=1)
 	{
@@ -168,7 +168,7 @@ void removeControlCodes(uint8_t * input, uint16_t size)
 				size-=1;
 			}
 		}
-		DEBUG_PRINT(CLI, "\n\r");
+		DEBUG_PRINT(CLI, "\r\n");
 	}
 }
 
@@ -228,12 +228,12 @@ int help(char * args)	// Zeigt an was alles geht an Befehlen - mit kurzer Erläu
 
 	if(!strlen(args))
 	{
-		printToUart("Commands:\n\r");
+		printToUart("Commands:\r\n");
 		for (i =0; i<numberOfCommands; i++)
 		{
-			printToUart("  %s\n\r", befehlsliste[i].command_name());
+			printToUart("  %s\r\n", befehlsliste[i].command_name());
 		}
-		printToUart("To get more help for a COMMAND, type 'help COMMAND'\n\r");
+		printToUart("To get more help for a COMMAND, type 'help COMMAND'\r\n");
 	}
 	else
 	{
@@ -256,7 +256,7 @@ int help(char * args)	// Zeigt an was alles geht an Befehlen - mit kurzer Erläu
 
 void help_help(void)
 {
-	 printToUart("Help explains more in detail what the given command does.\n\r");
+	 printToUart("Help explains more in detail what the given command does.\r\n");
 }
 
 char * help_commandName(void)

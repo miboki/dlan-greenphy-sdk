@@ -102,7 +102,7 @@ void DMA_IRQHandler(void)
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\r\n",__func__);
 		}
 	}
 	if ( regVal & (0x01<<1) )
@@ -115,7 +115,7 @@ void DMA_IRQHandler(void)
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(2)%s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(2)%s\r\n",__func__);
 		}
 	}
 	if ( regVal & (0x01<<2) )
@@ -128,7 +128,7 @@ void DMA_IRQHandler(void)
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(3)%s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(3)%s\r\n",__func__);
 		}
 	}
 	if ( regVal & (0x01<<3) )
@@ -141,7 +141,7 @@ void DMA_IRQHandler(void)
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(4)%s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(4)%s\r\n",__func__);
 		}
 	}
   }
@@ -192,7 +192,7 @@ void DMA_Init( void )
 
 	if(!uxTaskIsSchedulerRunning())
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
 
 	if(SSP0DMADoneSemaphore==NULL)

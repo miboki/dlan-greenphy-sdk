@@ -18,5 +18,7 @@
 //#endif
 
 void init_relay();
+void relay_on(int relay);
+void relay_off(int relay);
 
 #endif /* INC_RELAY_CLICK_H_ */

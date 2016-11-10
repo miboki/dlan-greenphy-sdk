@@ -396,20 +396,20 @@ void HardFault_HandlerAsm(void){
  */
 void HardFault_HandlerC(unsigned long *hardfault_args){
 #ifdef DEBUG
-        volatile unsigned long stacked_r0 ;
-        volatile unsigned long stacked_r1 ;
-        volatile unsigned long stacked_r2 ;
-        volatile unsigned long stacked_r3 ;
-        volatile unsigned long stacked_r12 ;
-        volatile unsigned long stacked_lr ;
-        volatile unsigned long stacked_pc ;
-        volatile unsigned long stacked_psr ;
-        volatile unsigned long _CFSR ;
-        volatile unsigned long _HFSR ;
-        volatile unsigned long _DFSR ;
-        volatile unsigned long _AFSR ;
-        volatile unsigned long _BFAR ;
-        volatile unsigned long _MMAR ;
+        __attribute((unused)) volatile unsigned long stacked_r0 ;
+        __attribute((unused)) volatile unsigned long stacked_r1 ;
+        __attribute((unused)) volatile unsigned long stacked_r2 ;
+        __attribute((unused)) volatile unsigned long stacked_r3 ;
+        __attribute((unused)) volatile unsigned long stacked_r12 ;
+        __attribute((unused)) volatile unsigned long stacked_lr ;
+        __attribute((unused)) volatile unsigned long stacked_pc ;
+        __attribute((unused)) volatile unsigned long stacked_psr ;
+        __attribute((unused)) volatile unsigned long _CFSR ;
+        __attribute((unused)) volatile unsigned long _HFSR ;
+        __attribute((unused)) volatile unsigned long _DFSR ;
+        __attribute((unused)) volatile unsigned long _AFSR ;
+        __attribute((unused)) volatile unsigned long _BFAR ;
+        __attribute((unused)) volatile unsigned long _MMAR ;
 
         stacked_r0 = ((unsigned long)hardfault_args[0]) ;
         stacked_r1 = ((unsigned long)hardfault_args[1]) ;

@@ -124,18 +124,21 @@ static void UV_Sensor_Task(void *pvParameters) {
     struct MQTT_Queue_struct uv_struct;
     float mW_last = 0;
 	printToUart("UV_Sensor_Task running..\r\n");
+
 	strcpy(uv_struct.meaning, "UV");
-	setup_spi();
+    uv_struct.type = JSON_REAL;
+
+    setup_spi();
 
 	for (;;) {
 
 	    taskENTER_CRITICAL();
-		uv_struct.value = getADC();
+		uv_struct.f_val = getADC();
 		taskEXIT_CRITICAL();
-		mW = uv_struct.value;
-		if (uv_struct.value != mW_last) {
+		mW = uv_struct.f_val;
+		if (uv_struct.f_val != mW_last) {
 		    xQueueSend(MQTT_Queue, &uv_struct, 5000);
-		    mW_last = uv_struct.value;
+		    mW_last = uv_struct.f_val;
 		}
 		vTaskDelay(1000);
 	}

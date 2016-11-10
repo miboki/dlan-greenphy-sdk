@@ -657,7 +657,7 @@ static int unpack(scanner_t *s, json_t *root, va_list *ap)
         case 'O':
             if(root && !(s->flags & JSON_VALIDATE_ONLY))
                 json_incref(root);
-            /* Fall through */
+            /*no break*/
 
         case 'o':
             if(!(s->flags & JSON_VALIDATE_ONLY)) {

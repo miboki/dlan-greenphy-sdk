@@ -13,6 +13,7 @@
 #include "uip.h"
 //#include "lpc17xx_libcfg.h"
 
+
 #define FLASH_PROG_AREA_START       0x78000
 #define FLASH_PROG_AREA_SIZE		0x8000
 #define FLASH_BLOCKS 8
@@ -116,15 +117,16 @@ void readflash() {
 
 #if HTTP_SERVER == ON
     //Initialize Clickboard
-    if (gpconfig->M1 >= 0 && gpconfig->M1 < 7 && gpconfig->M2 >= 0
-            && gpconfig->M2 < 7) {
+    if (gpconfig->M1 >= 0 && gpconfig->M1 < 8 && gpconfig->M2 >= 0
+            && gpconfig->M2 < 8) {
+
 
         setupclickboard(1, gpconfig->M1);
         setupclickboard(2, gpconfig->M2);
 
-
         if (gpconfig->active == 1) {
             if (ishostname(gpconfig->hostname)) {
+            	//init_mqtt();
                 resolv_query(gpconfig->hostname);
             } else {
                 stringtoip(gpconfig->hostname, mqtt_addr);

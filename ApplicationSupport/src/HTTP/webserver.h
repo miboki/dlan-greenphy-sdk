@@ -42,6 +42,7 @@
 #if HTTP_SERVER == ON
 
 #include "httpd.h"
+#include "apphandler.h"
 
 /* UIP_APPCALL: the name of the application function. This function
    must return void and take no arguments (i.e., C type "void

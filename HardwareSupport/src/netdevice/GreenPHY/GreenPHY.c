@@ -91,12 +91,12 @@ int greenPhyInterruptAvailable(void)
 	int rv;
 	if (grn0.intSvc != grn0.intReq) {
 		rv = 1;
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' yes!\n\r",__func__);
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' yes!\r\n",__func__);
 	}
 	else
 	{
 		rv = 0;
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' no\n\r",__func__);
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' no\r\n",__func__);
 	}
 	return rv;
 }
@@ -105,7 +105,7 @@ int greenPhyInterruptAvailable(void)
 
 void greenPhyClearInterrupt(void)
 {
-	DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' intSvc  0x%x != intReq 0x%x !\n\r",__func__,grn0.intSvc,grn0.intReq);
+	DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' intSvc  0x%x != intReq 0x%x !\r\n",__func__,grn0.intSvc,grn0.intReq);
 	grn0.intSvc = grn0.intReq;
 }
 
@@ -115,27 +115,27 @@ static void greenPhyInterruptHandlerTask ( void * parameters)
 {
 	struct greenPhyNetdevice * greenPhy = (struct greenPhyNetdevice *) parameters;
 
-	DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' eat up the first event ...\n\r",__func__);
+	DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' eat up the first event ...\r\n",__func__);
 	if(uxTaskIsSchedulerRunning())
 	{
 		xSemaphoreTake( greenPhy->greenPhyInterruptBinarySemaphore, 0 );
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
 
 	for (;;)
 	{
 		if(!uxTaskIsSchedulerRunning())
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler stopped: %s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler stopped: %s\r\n",__func__);
 		}
 
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' taking ...\n\r",__func__);
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' taking ...\r\n",__func__);
 		if( xSemaphoreTake( greenPhy->greenPhyInterruptBinarySemaphore, portMAX_DELAY ) == pdTRUE )
 		{
-			DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' ok!\n\r",__func__);
+			DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' ok!\r\n",__func__);
 			/* To get here the interrupt must have occurred.  Process the interrupt. */
 			greenPhySpiWorker(&greenPhy->spi);
 		}
@@ -158,7 +158,7 @@ void greenPhyIrqHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\r\n",__func__);
 	}
 
 	/* Clear the GreenPHY interrupt bit */
@@ -177,21 +177,21 @@ void greenPhyNetdeviceReset (struct netDeviceInterface * dev)
 	if(qca->reset_count>=QCA7K_MAX_RESET_COUNT)
 	{
 		qca->reset_count = 0;
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy hard reset\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy hard reset\r\n");
 		/* reset is normally active low, so reset ... */
 		GPIO_ClearValue(GREEN_PHY_RESET_PORT,GPIO_MAP_PIN(GREEN_PHY_RESET_PIN));
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset low\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset low\r\n");
 		GPIO_SetValue(GREEN_PHY_RESET_PORT,GPIO_MAP_PIN(GREEN_PHY_RESET_PIN));
 		GPIO_ClearValue(GREEN_PHY_RESET_PORT,GPIO_MAP_PIN(GREEN_PHY_RESET_PIN));
 		/*  ... for 100 ms ... */
 		INIT_DELAY_CALL( 1000 / portTICK_RATE_MS);
 		/* ... and release QCA7k from reset */
 		GPIO_SetValue(GREEN_PHY_RESET_PORT,GPIO_MAP_PIN(GREEN_PHY_RESET_PIN));
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset high\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset high\r\n");
 	}
 	else
 	{
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy soft reset\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy soft reset\r\n");
 		uint16_t spi_config = qcaspi_read_register(qca, SPI_REG_SPI_CONFIG);
 		qcaspi_write_register(qca, SPI_REG_SPI_CONFIG, spi_config | QCASPI_SLAVE_RESET_BIT);
 	}
@@ -206,7 +206,7 @@ static int greenPhyNetdeviceInit (struct netDeviceInterface * dev)
 
 	if(!uxTaskIsSchedulerRunning())
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
 
 	struct greenPhyNetdevice * greenPhy = (struct greenPhyNetdevice *) dev;
@@ -233,12 +233,12 @@ static int greenPhyNetdeviceInit (struct netDeviceInterface * dev)
 				GPIO_IntCmd(GREEN_PHY_INTERRUPT_PORT,GPIO_MAP_PIN(GREEN_PHY_INTERRUPT_PIN),GPIO_INTERRUPT_FALLING_EDGE);
 
 				/* QCA7000 reset pin set up */
-				DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset set to output\n\r");
+				DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset set to output\r\n");
 				GPIO_SetDir(GREEN_PHY_RESET_PORT,GPIO_MAP_PIN(GREEN_PHY_RESET_PIN),GPIO_OUT);
 			}
 			else
 			{
-				DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' deleting sema!\n\r",__func__);
+				DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' deleting sema!\r\n",__func__);
 				vSemaphoreDelete(greenPhy->greenPhyInterruptBinarySemaphore);
 				greenPhy->greenPhyInterruptBinarySemaphore = NULL;
 			}
@@ -270,7 +270,7 @@ static int greenPhyNetdeviceTX(struct netDeviceInterface * dev, struct netdevice
 		qid = QCAGP_DEFAULT_QUEUE;
 	}
 
-	DEBUG_PRINT(GREEN_PHY_TX,"[GreenPHY] QID %d\n\r",qid);
+	DEBUG_PRINT(GREEN_PHY_TX,"[GreenPHY] QID %d\r\n",qid);
 
 	if(xQueueSend(qca->tx_priority_q[qid],&txBuffer,0) == pdTRUE)
 	{
@@ -278,19 +278,19 @@ static int greenPhyNetdeviceTX(struct netDeviceInterface * dev, struct netdevice
 	}
 	else
 	{
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"%s FULL!\n\r",__func__);
-		DEBUG_PRINT(DEBUG_BUFFER,"[#C#]\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"%s FULL!\r\n",__func__);
+		DEBUG_PRINT(DEBUG_BUFFER,"[#C#]\r\n");
 		returnQueueElement(&txBuffer);
 	}
 
 	if(uxTaskIsSchedulerRunning())
 	{
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' giving ...\n\r",__func__);
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' giving ...\r\n",__func__);
 		xSemaphoreGive(greenPhy->greenPhyInterruptBinarySemaphore);
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(a)%s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(a)%s\r\n",__func__);
 	}
 
 	return rv;
@@ -354,7 +354,7 @@ static int greenPhyNetdeviceExit (struct netDeviceInterface ** pdev)
 	if(pdev)
 	{
 		struct greenPhyNetdevice * greenPhy = (struct greenPhyNetdevice *) * pdev;
-		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s'!\n\r",__func__);
+		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s'!\r\n",__func__);
 
 		if(greenPhy->greenPhyInterruptBinarySemaphore)
 		{

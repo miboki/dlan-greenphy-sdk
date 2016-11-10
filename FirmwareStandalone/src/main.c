@@ -19,6 +19,8 @@
 
 #include "MQTTClient.h"
 #include "uip.h"
+#include "jansson.h"
+#include "lcd_click.h"
 
 //Queue
 xQueueHandle MQTT_Queue = 0;
@@ -27,7 +29,7 @@ uint8_t cloudactive;
 /*-----------------------------------------------------------*/
 
 void vApplicationMallocFailedHook(void) {
-	printToUart("Malloc failed!\n\r");
+	printToUart("Malloc failed!\r\n");
 	for (;;)
 		;
 }
@@ -38,7 +40,7 @@ void vApplicationTickHook(void) {
 	/* Called from every tick interrupt */
 
 	DEBUG_EXECUTE(
-			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\n\r",mem,mem); old_mem = mem; } });
+			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
 }
 
 /*-----------------------------------------------------------*/
@@ -114,7 +116,7 @@ int main(void) {
 			printToUart("->BrownOut Detection");
 		if (reset_reason & 0x10)
 			printToUart("->JTAG/restart");
-		printToUart("\n\r");
+		printToUart("\r\n");
 		LPC_SC->RSID = reset_reason;
 	}
 
@@ -162,26 +164,19 @@ int main(void) {
 #endif
 
 	size_t mem = xPortGetFreeHeapSize();
-	printToUart("free heap: %d(0x%x)\n\r", mem, mem);
+	printToUart("free heap: %d(0x%x)\r\n", mem, mem);
 
 #if COMMAND_LINE_INTERFACE == ON
 	cliInit();
 #else
-	printToUart("OK\n\r");
+	printToUart("OK\r\n");
 #endif
 
 	/*Initialize Queue*/
-	MQTT_Queue = xQueueCreate(3, 20);
+	MQTT_Queue = xQueueCreate(3, 24);
+
 	/*Override json malloc functions*/
 	json_set_alloc_funcs(pvPortMalloc, vPortFree);
-
-	/*get DHCP*/
-	//init_dhcp();
-	//eraseflash();
-
-	/*Read Clickboard Config and Initialize*/
-	//readflash();
-
 
 	vTaskStartScheduler();
 

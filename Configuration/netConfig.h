@@ -68,7 +68,7 @@
 #define configIP_ADDR0		192
 #define configIP_ADDR1		168
 #define configIP_ADDR2		1
-#define configIP_ADDR3		201
+#define configIP_ADDR3		200
 
 /* Netmask configuration. */
 #define configNET_MASK0		255

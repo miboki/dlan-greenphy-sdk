@@ -119,14 +119,14 @@ void sendBuffer(struct netDeviceInterface * netDevice)
 		element = getQueueElementByBuffer(uip_buf, uip_len);
 		if (element)
 		{
-			DEBUG_PRINT(DEBUG_BUFFER," sending uip_buf 0x%x\n\r",uip_buf);
+			DEBUG_PRINT(DEBUG_BUFFER," sending uip_buf 0x%x\r\n",uip_buf);
 			netDevice->tx(netDevice,element);
 			uip_buf = NULL;
 			uip_len = 0;
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," not sending uip_buf 0x%x, waiting ....\n\r",uip_buf);
+			DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," not sending uip_buf 0x%x, waiting ....\r\n",uip_buf);
 		}
 	}
 }
@@ -156,13 +156,14 @@ struct timer periodic_timer, arp_timer;
 	uip_ipaddr(xIPAddr, configDRTR_IP_ADDR0, configDRTR_IP_ADDR1, configDRTR_IP_ADDR2, configDRTR_IP_ADDR3);
 	uip_setdraddr(xIPAddr);
 	uip_ipaddr(xIPAddr, configDNS_IP_ADDR0, configDNS_IP_ADDR1, configDNS_IP_ADDR2, configDNS_IP_ADDR3);
-	resolv_conf(xIPAddr);
+	//resolv_conf(xIPAddr);
 	readflash();
 #endif
 
 #if HTTP_SERVER == ON
 	httpd_init();
 #endif
+
 	prvSetMACAddress();
 
 #if TFTP_CLIENT_IAP == ON
@@ -184,7 +185,7 @@ struct timer periodic_timer, arp_timer;
 
 			if(uip_buf == NULL)
 			{
-				DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," %s really no uip_buf 0x%x\n\r",__func__,uip_buf);
+				DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," %s really no uip_buf 0x%x\r\n",__func__,uip_buf);
 				continue;
 			}
 
@@ -210,10 +211,10 @@ struct timer periodic_timer, arp_timer;
 
 			uip_len = getLengthFromQueueElement(element);
 			uip_buf = removeDataFromQueueElement(&element);
-			DEBUG_PRINT(DEBUG_BUFFER," received uip_buf 0x%x\n\r",uip_buf);
+			DEBUG_PRINT(DEBUG_BUFFER," received uip_buf 0x%x\r\n",uip_buf);
 			if(uip_buf == NULL)
 			{
-				DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," %s no uip_buf 0x%x\n\r",__func__,uip_buf);
+				DEBUG_PRINT(DEBUG_ERR|DEBUG_BUFFER," %s no uip_buf 0x%x\r\n",__func__,uip_buf);
 			}
 		}
 
@@ -230,7 +231,7 @@ struct timer periodic_timer, arp_timer;
 				uip_len is set to a value > 0. */
 				if( uip_len > 0 )
 				{
-					uip_arp_out();
+					uip_arp_out(); //ARP_ANSWER
 
 					sendBuffer(netDevice);
 				}
@@ -267,7 +268,7 @@ struct timer periodic_timer, arp_timer;
 					uip_len is set to a value > 0. */
 					if( uip_len > 0 )
 					{
-						uip_arp_out();
+						uip_arp_out();//ARP BEFORE SEND
 
 						sendBuffer(netDevice);
 					}
@@ -280,7 +281,7 @@ struct timer periodic_timer, arp_timer;
 				   should be sent out on the network, the global variable
 				   uip_len is set to a value > 0. */
 				if(uip_len > 0) {
-				  uip_arp_out();
+				  uip_arp_out();//UDP
 
 					sendBuffer(netDevice);
 				}
@@ -306,14 +307,16 @@ static void prvSetMACAddress( void )
 #else
 	struct uip_eth_addr xAddr;
 
-		/* Configure the MAC address in the uIP stack. */
-		xAddr.addr[ 0 ] = configMAC_ADDR0;
-		xAddr.addr[ 1 ] = configMAC_ADDR1;
-		xAddr.addr[ 2 ] = configMAC_ADDR2;
-		xAddr.addr[ 3 ] = configMAC_ADDR3;
-		xAddr.addr[ 4 ] = configMAC_ADDR4;
-		xAddr.addr[ 5 ] = configMAC_ADDR5;
-		uip_setethaddr( xAddr );
+	DEBUG_PRINT(DEBUG_INFO,"%s SET MAC\r\n",__func__);
+
+    /* Configure the MAC address in the uIP stack. */
+    xAddr.addr[ 0 ] = configMAC_ADDR0;
+    xAddr.addr[ 1 ] = configMAC_ADDR1;
+    xAddr.addr[ 2 ] = configMAC_ADDR2;
+    xAddr.addr[ 3 ] = configMAC_ADDR3;
+    xAddr.addr[ 4 ] = configMAC_ADDR4;
+    xAddr.addr[ 5 ] = configMAC_ADDR5;
+    uip_setethaddr( xAddr );
 #endif
 }
 /*-----------------------------------------------------------*/

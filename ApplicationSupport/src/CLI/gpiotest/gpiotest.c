@@ -52,7 +52,7 @@ int isValidGpio(struct GPIO * gpio)
 
 int print_cr_lf(void)
 {
-	printToUart("\n\r");
+	printToUart("\r\n");
 	return 0;
 }
 
@@ -328,13 +328,13 @@ int gpio_command_test(char * unused)
 
 	if(rv)
 	{
-		printToUart("FAIL\n\r" );
+		printToUart("FAIL\r\n" );
 		// don't return an error
 		rv = 0;
 	}
 	else
 	{
-		printToUart("PASS\n\r" );
+		printToUart("PASS\r\n" );
 	}
 
 	return rv;
@@ -367,21 +367,21 @@ char * gpiotest_commandName(void)
 void gpiotest_help(void)
 {
 	 printToUart("'%s' will test the functionality of the GPIOs."
-			 	 	 	 	"\n\rThe test will take tuples of GPIOs."
-			 	 	 	 	"\n\rOne of the them will be set as output, all others as input."
-			 	 	 	 	"\n\rIt is tested if the input receives a signal when something is send out."
-			 	 	 	 	"\n\rAlso all other GPIOs mentioned in the list are tested to prove shorts."
-			 	 	 	 	"\n\rAfter that the test is accomplished vice versa, but not for P0[30] or"
-			 	 	 	 	"\n\rP0[29], because these pins must have the same direction since they"
-	 	 	 				"\n\roperate as a unit for the USB function."
-			 	 	 	 	"\n\rThe tupels of GPIOs are shown in the list below.\n\r\n\r",gpiotest_commandName());
+			 	 	 	 	"\r\nThe test will take tuples of GPIOs."
+			 	 	 	 	"\r\nOne of the them will be set as output, all others as input."
+			 	 	 	 	"\r\nIt is tested if the input receives a signal when something is send out."
+			 	 	 	 	"\r\nAlso all other GPIOs mentioned in the list are tested to prove shorts."
+			 	 	 	 	"\r\nAfter that the test is accomplished vice versa, but not for P0[30] or"
+			 	 	 	 	"\r\nP0[29], because these pins must have the same direction since they"
+	 	 	 				"\r\noperate as a unit for the USB function."
+			 	 	 	 	"\r\nThe tupels of GPIOs are shown in the list below.\r\n\r\n",gpiotest_commandName());
 
 	 print_used_gpio_tuple();
 
-	 printToUart("\n\rOccurring results are displayed in the following form:"
- 	 	 	 	 	 	 "\n\r  Px1[x2]=Py1[y2] : Port x1 Pin x2 is correctly connected to Port y1 Pin y2"
-			 	 	 	 "\n\r  Px1[x2]!Py1[y2] : Port x1 Pin x2 is not connected to Port y1 Pin y2"
-			 	 	 	 "\n\r  Px1[x2]#Py1[y2] : Port #1 Pin #2 and Port #3 Pin #4 are hot-wired\n\r");
+	 printToUart("\r\nOccurring results are displayed in the following form:"
+ 	 	 	 	 	 	 "\r\n  Px1[x2]=Py1[y2] : Port x1 Pin x2 is correctly connected to Port y1 Pin y2"
+			 	 	 	 "\r\n  Px1[x2]!Py1[y2] : Port x1 Pin x2 is not connected to Port y1 Pin y2"
+			 	 	 	 "\r\n  Px1[x2]#Py1[y2] : Port #1 Pin #2 and Port #3 Pin #4 are hot-wired\r\n");
 }
 
 static struct command gpiotest = {gpio_command_test,gpiotest_help, gpiotest_commandName};

@@ -62,7 +62,7 @@ void vApplicationTickHook( void )
 		size_t mem = xPortGetFreeHeapSize();                                              \
 		if(old_mem != mem)                                                                \
 		{                                                                                 \
-			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\n\r",mem,mem);        \
+			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem);        \
 			old_mem = mem;                                                                \
 		}                                                                                 \
 	}                                                                                     \
@@ -155,7 +155,7 @@ int main( void )
 		if(reset_reason & 0x4) printToUart("->Watchdog");
 		if(reset_reason & 0x8) printToUart("->BrownOut Detection");
 		if(reset_reason & 0x10) printToUart("->JTAG/restart");
-		printToUart("\n\r");
+		printToUart("\r\n");
 		LPC_SC->RSID = reset_reason;
 	}
 
@@ -224,12 +224,12 @@ int main( void )
 #endif
 
 	size_t mem = xPortGetFreeHeapSize();
-	printToUart("free heap: %d(0x%x)\n\r",mem,mem);
+	printToUart("free heap: %d(0x%x)\r\n",mem,mem);
 
 #if COMMAND_LINE_INTERFACE == ON
 	cliInit();
 #else
-	 printToUart("OK\n\r");
+	 printToUart("OK\r\n");
 #endif
 
 	vTaskStartScheduler();

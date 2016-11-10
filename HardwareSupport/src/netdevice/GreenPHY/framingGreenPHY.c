@@ -185,7 +185,7 @@ QcaCheckLength(struct read_from_chip_s *rxStatus,struct rx_header_s * header)
 			overhead = 14;
 			break;
 		default:
-			DEBUG_PRINT(DEBUG_ERR,"Unknown protocol_version 0x%x\n\r",protocol_version);
+			DEBUG_PRINT(DEBUG_ERR,"Unknown protocol_version 0x%x\r\n",protocol_version);
 			break;
 		}
 		if(overhead && length == packetLength+overhead)
@@ -227,8 +227,8 @@ QcaCheckHeader(struct read_from_chip_s *rxStatus)
 		DEBUG_EXECUTE( \
 				if(header->reserved != 0) \
 				{ \
-					DEBUG_PRINT(DEBUG_ERR,"Header version 0x%x\n\r",header->reserved); \
-					DEBUG_PRINT(DEBUG_ERR,"Found protocol_version 0x%x\n\r",rxStatus->protocol_version); \
+					DEBUG_PRINT(DEBUG_ERR,"Header version 0x%x\r\n",header->reserved); \
+					DEBUG_PRINT(DEBUG_ERR,"Found protocol_version 0x%x\r\n",rxStatus->protocol_version); \
 				} \
 				);
 
@@ -236,7 +236,7 @@ QcaCheckHeader(struct read_from_chip_s *rxStatus)
 	}
 	else
 	{
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync, header error, consecutivelyReceivedValidFrames 0x%x\n\r",rxStatus->consecutivelyReceivedValidFrames);
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync, header error, consecutivelyReceivedValidFrames 0x%x\r\n",rxStatus->consecutivelyReceivedValidFrames);
 		DEBUG_DUMP(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR,rxStatus->greenPhyRxBuffer,rxStatus->length,"RAW RX header error");
 		rv = -1;
 		QcaSetRxStatus(rxStatus, sync);
@@ -274,7 +274,7 @@ int setProcessResultFunc(struct read_from_chip_s *rxStatus, qcaspi_process_resul
 	rxStatus->process_result = process_result;
 	if(!rxStatus->toRead)
 	{
-		DEBUG_PRINT(DEBUG_ALL," nothing to read, 0x%x() executed at once!\n\r",process_result);
+		DEBUG_PRINT(DEBUG_ALL," nothing to read, 0x%x() executed at once!\r\n",process_result);
 		rv = process_result(rxStatus);
 	}
 	return rv;
@@ -295,7 +295,7 @@ int QcaSetRxStatusReadNumberOfBytes(struct read_from_chip_s *rxStatus, uint32_t 
 {
 	int rv = 0;
 	rxStatus->toRead = toRead;
-	DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," new toRead:0x%x\n\r",rxStatus->toRead);
+	DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," new toRead:0x%x\r\n",rxStatus->toRead);
 	rv = setProcessResultFunc(rxStatus,QcaCheckSyncResult);
 	return rv;
 }
@@ -369,8 +369,8 @@ QcaCheckSyncResult(struct read_from_chip_s *rxStatus)
 		default:
 		{
 			int offset = (rxStatus->greenPhyRxBuffer+rxStatus->length-data);
-			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME foundPatternAAAAAAAA\n\r  i:0x%x data:0x%x offset:0x%x(0x%x)\n\r",i,data,offset,(rxStatus->greenPhyRxBuffer+rxStatus->length-data));
-			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," current_position:0x%x\n\r",rxStatus->current_position);
+			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME foundPatternAAAAAAAA\r\n  i:0x%x data:0x%x offset:0x%x(0x%x)\r\n",i,data,offset,(rxStatus->greenPhyRxBuffer+rxStatus->length-data));
+			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," current_position:0x%x\r\n",rxStatus->current_position);
 			DEBUG_DUMP(DEBUG_ERR,rxStatus->greenPhyRxBuffer,rxStatus->length,"AAAAAAAA");
 			if(offset == 0)
 			{
@@ -382,7 +382,7 @@ QcaCheckSyncResult(struct read_from_chip_s *rxStatus)
 			{
 				// set current position to the end of the header. This will be checked in state 'receiveFrame'.
 				rxStatus->current_position = data + sizeof(struct rx_header_s) - offsetof(struct rx_header_s,startOfFrame) - sizeof(uint32_t) ;
-				DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," new current_position:0x%x\n\r",rxStatus->current_position);
+				DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," new current_position:0x%x\r\n",rxStatus->current_position);
 				// the header is complete, just check it
 				QcaCheckHeader(rxStatus);
 			}
@@ -425,7 +425,7 @@ static int QcaCheckReceivedFrame(struct read_from_chip_s *rxStatus)
 	}
 	else
 	{
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync no EOF consecutivelyReceivedValidFrames 0x%x\n\r",rxStatus->consecutivelyReceivedValidFrames);
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync no EOF consecutivelyReceivedValidFrames 0x%x\r\n",rxStatus->consecutivelyReceivedValidFrames);
 		DEBUG_EXECUTE(rxStatus->consecutivelyReceivedValidFrames = 0);
 		DEBUG_DUMP(DEBUG_ERR,rxStatus->greenPhyRxBuffer,rxStatus->length,"RAW RX no EOF");
 		// recheck the received data to find another start pattern ...
@@ -453,7 +453,7 @@ int QcaSetRxStatus(struct read_from_chip_s *rxStatus, receiveState_t state)
 	switch(rxStatus->state)
 	{
 	case sync:
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME sync\n\r");
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME sync\r\n");
 		rxStatus->toRead = sizeof(struct rx_header_s);
 		if(rxStatus->length > sizeof(struct rx_header_s))
 		{
@@ -464,18 +464,18 @@ int QcaSetRxStatus(struct read_from_chip_s *rxStatus, receiveState_t state)
 		rv = setProcessResultFunc(rxStatus,QcaCheckSyncResult);
 		break;
 	case init:
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME init\n\r");
-		// fallthrough
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME init\r\n");
+		/*no break*/
 	case receiveHeader:
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME receiveHeader\n\r");
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME receiveHeader\r\n");
 		rxStatus->length = 0;
 		rxStatus->toRead = sizeof(struct rx_header_s);
 		rxStatus->current_position = rxStatus->greenPhyRxBuffer;
 		rv = setProcessResultFunc(rxStatus,QcaCheckHeader);
-		DEBUG_EXECUTE(if(rxStatus->consecutivelyReceivedValidFrames == 1) DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR,"\n\r\n\rFRAME sync!\n\r\n\r"));
+		DEBUG_EXECUTE(if(rxStatus->consecutivelyReceivedValidFrames == 1) DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR,"\r\n\r\nFRAME sync!\r\n\r\n"));
 		break;
 	case receiveFrame:
-		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME receiveFrame\n\r");
+		DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS," FRAME receiveFrame\r\n");
 		struct rx_header_s * header = (struct rx_header_s *)(rxStatus->current_position - sizeof(struct rx_header_s));
 		rxStatus->toRead = __be32_to_cpu(header->length) - 8; // the length and the sync pattern is already read
 		// is it a length we could handle?
@@ -488,7 +488,7 @@ int QcaSetRxStatus(struct read_from_chip_s *rxStatus, receiveState_t state)
 			{
 				if(rxStatus->length>rxStatus->toRead)
 				{
-					DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," length reduced\n\r");
+					DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," length reduced\r\n");
 					// unfortunately, this can happen on sync loss, so drop the rest of the data stream
 					rxStatus->length = rxStatus->toRead;
 				}
@@ -507,14 +507,14 @@ int QcaSetRxStatus(struct read_from_chip_s *rxStatus, receiveState_t state)
 		else
 		{
 			// packetLength is not valid -> sync again
-			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync invalid packetLength consecutivelyReceivedValidFrames 0x%x\n\r",rxStatus->consecutivelyReceivedValidFrames);
+			DEBUG_PRINT(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR," FRAME start sync invalid packetLength consecutivelyReceivedValidFrames 0x%x\r\n",rxStatus->consecutivelyReceivedValidFrames);
 			DEBUG_DUMP(GREEN_PHY_FRAME_SYNC_STATUS|DEBUG_ERR,rxStatus->greenPhyRxBuffer,rxStatus->length,"RAW RX invalid packetLength");
 			DEBUG_EXECUTE(rxStatus->consecutivelyReceivedValidFrames = 0);
 			rv = QcaSetRxStatus(rxStatus,sync);
 		}
 	break;
 	default:
-		DEBUG_PRINT(DEBUG_ERR|DEBUG_ALL," %s default\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ERR|DEBUG_ALL," %s default\r\n",__func__);
 		break;
 
 	}

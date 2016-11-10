@@ -156,7 +156,7 @@ void EINT3_IRQHandler (void)
 		DEBUG_PRINT(GPIO_INTERUPT,"W");
 	}
 
-	DEBUG_PRINT(GPIO_INTERUPT,")\n\r");
+	DEBUG_PRINT(GPIO_INTERUPT,")\r\n");
 	portEND_SWITCHING_ISR( xHigherPriorityTaskWoken );
 }
 

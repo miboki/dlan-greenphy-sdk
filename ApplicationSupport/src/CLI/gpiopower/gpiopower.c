@@ -61,9 +61,9 @@ void gpiopower_help(void)
 	 printGpio(&gpioRelayOn);
 	 printToUart(" and port ");
 	 printGpio(&gpioRelayOff);
-	 printToUart(".\n\r");
-	 printToUart("Use '%s ON' to power on the plug.\n\r",gpiopower_commandName());
-	 printToUart("Use '%s OFF' to power off the plug.\n\r",gpiopower_commandName());
+	 printToUart(".\r\n");
+	 printToUart("Use '%s ON' to power on the plug.\r\n",gpiopower_commandName());
+	 printToUart("Use '%s OFF' to power off the plug.\r\n",gpiopower_commandName());
 }
 
 static struct command gpiopower = {gpiopower_command,gpiopower_help, gpiopower_commandName};

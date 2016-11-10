@@ -25,29 +25,13 @@
 //#define BUTTON_PIN 7
 //#endif
 
-/*DALI COMMANDS*/
-#define TERMINATE 0xA100 //256
-#define INITIALISE 0xA500 //258
-#define RANDOMISE 0xA700 //259
-#define COMPARE 0xA900 //260
-#define WITHDRAW 0xab00 //261
-#define SEARCHADDRH 0xB100 //264
-#define SEARCHADDRM 0xB300 //265
-#define SEARCHADDRL 0xB500 //266
-#define PROGRAMSHORTADDRESS 0xB701 //267
-#define VERIFYSHORTADDRESS 0xB901 //268
-#define STOREDTR 0xFF80 //128
-
-
-
-
 static volatile uint8_t usbBackwardFrame;
 static volatile bool earlyAnswer;
 //static volatile capturedFrameType capturedFrame;
 
-extern int getmasterState();
-extern void setmasterState(int s);
-//extern int getBackwardFrame();
-extern int getDALI_slaves();
+int getmasterState();
+void setmasterState(int s);
+//int getBackwardFrame();
+int getDALI_slaves();
 
 #endif /* INC_DALI_CLICK_H_ */

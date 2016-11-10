@@ -335,7 +335,6 @@ unsigned int Color_Read_value(char reg) {
 
 static void Color_Sensor_Task(void *pvParameters) {
 
-	int i;
 	uint8_t deviceID = 0;
 	unsigned int Clear, Red, Green, Blue;
 	float color_value, color_value_sum;

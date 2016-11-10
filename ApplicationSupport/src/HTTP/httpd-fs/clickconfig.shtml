@@ -22,14 +22,7 @@ M1
 M2
 </td>
 </tr>
-<tr>
-<td>
-Temperature/Humidity
-</td>
-<td>
-<input type="radio" name="M1" value="temp"%! clickboard_config
-</td>
-</tr>
+%! clickboard_config
 </table>
 <br><br>
 <input type="submit" value="Save" width="100px">

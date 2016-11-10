@@ -42,7 +42,7 @@ int netdeviceReturnBuffer(struct netDeviceInterface * dev, struct netdeviceQueue
 	int rv=0;
 
 	(void) dev;
-	DEBUG_PRINT(DEBUG_BUFFER,"[#J#]\n\r");
+	DEBUG_PRINT(DEBUG_BUFFER,"[#J#]\r\n");
 	returnQueueElement(&txBuffer);
 
 	return rv;

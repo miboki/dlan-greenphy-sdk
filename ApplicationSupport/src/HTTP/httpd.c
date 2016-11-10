@@ -318,6 +318,7 @@ int temp;
         		command[1] = c[17];
         		command[2] = c[34];
         		command[3] = c[35];
+        		command[4] = '\0';
         		temp = hexToInt(command);
         		DALI_Send(temp);
 

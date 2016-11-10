@@ -13,34 +13,40 @@
 #include "uip.h"
 #include "uipopt.h"
 #include "psock.h"
-#include "timer.h"
 #include "queue.h"
 #include "MQTTClient-C/src/MQTTClient.h"
 #include "types.h"
 #include "lpc17xx_pinsel.h"
 #include "jansson.h"
 
+#include "relay_click.h"
+#include "lcd_click.h"
+
 #define mqtt_TASK_PRIORITY          ( tskIDLE_PRIORITY + 2 )
 
 #define STATE_CONNECTING 0
 #define STATE_CONNECTED_TCP 1
 #define STATE_CONNECTED_MQTT 2
-#define STATE_MQTT_SUBSCRIBED 3
+#define STATE_SUBSCRIBED 3
 #define STATE_CLOSED 4
-#define STATE_AVAILABLE 5
+#define STATE_WAITING 5
 #define STATE_POLLED 6
 #define STATE_HEARTBEAT 7
+#define STATE_CLOSING 8
 
 #define MQTT_HEADER_CON 0x10
 #define MQTT_HEADER_PUB 0x30
 #define MQTT_HEADER_CONACK 0x20
 #define MQTT_HEADER_SUB 0x80
 #define MQTT_HEADER_SUBACK 0x90
+#define MQTT_HEADER_PINGREQ 0xc0
+#define MQTT_HEADER_PINGACK 0xd0
 
 xTaskHandle xHandle_mqtt = NULL;
 char mqtt_buffer[150];
 int mqtt_buffer_len;
-int subscribe;
+//int subscribe;
+//char c;
 static struct mqtt_state mqtt;
 struct MQTT_Queue_struct mqtt_data;
 config_t *gpconfig;
@@ -49,36 +55,35 @@ uip_ipaddr_t mqtt_addr;
 extern xQueueHandle MQTT_Queue;
 
 /********************************************************************//**
- * @brief       Creates the payload for the MQTT Pubslish Packet using
+ * @brief       Creates the payload for the MQTT Publish Packet using
  *              JSON and writes it to payload
  * @param[in]   Pointer to payload
  * @return      None
  *********************************************************************/
-void createPublishString(char *payload) {
+void createPayloadString(char *payload) {
 
-    taskENTER_CRITICAL();
-    float ttemp2, temperature = 0;
-    int d1, d2;
-    char temp[10];
-    char *result;
+    char *result = NULL;
 
     json_t *root = json_object();
     json_object_set_new(root, "meaning", json_string(mqtt_data.meaning));
-    if (strstr(mqtt_data.meaning, "temperature")) {
-        temperature = mqtt_data.value;
-        d1 = temperature;
-        ttemp2 = temperature - d1;
-        d2 = (int)(ttemp2  * 10);
-        sprintf(temp, "%i.%i", d1, d2);
-    } else {
-        sprintf(temp, "%i", (int)mqtt_data.value);
+    printToUart("Send MQTT %s of type %d ", mqtt_data.meaning, mqtt_data.type);
+    if( mqtt_data.type == JSON_TRUE ) {
+        json_object_set_new(root, "value", json_true());
+    } else if( mqtt_data.type == JSON_FALSE ) {
+        json_object_set_new(root, "value", json_false());
+    } else if( mqtt_data.type == JSON_REAL ) {
+        // %f, %g in sprintf not implemented
+        //json_object_set_new(root, "value", json_real(mqtt_data.f_val));
+        json_object_set_new(root, "value", json_integer((int) (mqtt_data.f_val*10)));
+    } else if( mqtt_data.type == JSON_INTEGER ) {
+        json_object_set_new(root, "value", json_integer(mqtt_data.i_val));
+    } else if( mqtt_data.type == JSON_STRING ){
+        json_object_set_new(root, "value", json_string(mqtt_data.s_val));
     }
-    json_object_set_new(root, "value", json_string(temp));
     result = json_dumps(root, 0);
     sprintf(payload, result);
     vPortFree(result);
     json_decref(root);
-    taskEXIT_CRITICAL();
 }
 
 /********************************************************************//**
@@ -101,7 +106,7 @@ void createMQTTConnect() {
 
 /********************************************************************//**
  * @brief       Creates the payload for the MQTT Pubslish Packet using
- *              JSON and writes it to payload
+ *              JSON and writes it to payload. Retain Flag is set!
  * @param[in]   Pointer to payload
  * @return      None
  *********************************************************************/
@@ -111,9 +116,9 @@ void createMQTTPublish() {
     char payload[200];
     int payloadlen;
     topicString.cstring = gpconfig->topic;
-    createPublishString(payload);
+    createPayloadString(payload);
     payloadlen = strlen(payload);
-    mqtt_buffer_len = MQTTSerialize_publish(mqtt_buffer, sizeof(mqtt_buffer), 0, 0, 0, 0, topicString, payload,payloadlen);
+    mqtt_buffer_len = MQTTSerialize_publish(mqtt_buffer, sizeof(mqtt_buffer), 0, 0, 1, 0, topicString, payload,payloadlen);
 }
 
 /********************************************************************//**
@@ -146,8 +151,10 @@ void setup_mqtt(void) {
     //uip_ipaddr(&ipaddr, 52,17,197,41);
     //uip_ipaddr(&ipaddr, 54,154,53,255);
     //uip_ipaddr(&mqtt_addr, 54, 77, 125, 59);
-    //uip_ipaddr(&ipaddr, 192,168,0,12);
+    //uip_ipaddr(&mqtt_addr, 192,168,0,12);
     mqtt.conn = uip_connect(&mqtt_addr, HTONS(1883));
+    if (mqtt.conn == NULL)
+        uip_abort();
 }
 
 /********************************************************************//**
@@ -155,7 +162,7 @@ void setup_mqtt(void) {
  * @param[in]   None
  * @return      None
  *********************************************************************/
-void toogleUSRLED() {
+void toggleUSRLED() {
     taskENTER_CRITICAL();
     PINSEL_CFG_Type PinCfg;
     PinCfg.Pinmode = 0;
@@ -177,40 +184,126 @@ void toogleUSRLED() {
 }
 
 /********************************************************************//**
+ * @brief       Turns the USR LED on Eval Board on
+ * @param[in]   None
+ * @return      None
+ *********************************************************************/
+void USRLED_on() {
+    taskENTER_CRITICAL();
+    PINSEL_CFG_Type PinCfg;
+    PinCfg.Pinmode = 0;
+    PinCfg.Funcnum = 0;
+    PinCfg.Portnum = 0;
+    PINSEL_ConfigPin(&PinCfg);
+    GPIO_SetDir(0, (1 << 6), 1);
+
+    GPIO_ClearValue(0, (1 << 6));
+    USRLEDstate = 1;
+
+    //Reset to Func3 for I2C
+    PinCfg.Funcnum = 3;
+    PINSEL_ConfigPin(&PinCfg);
+    taskEXIT_CRITICAL();
+}
+
+/********************************************************************//**
+ * @brief       Turns the USR LED on Eval Board off
+ * @param[in]   None
+ * @return      None
+ *********************************************************************/
+void USRLED_off() {
+    taskENTER_CRITICAL();
+    PINSEL_CFG_Type PinCfg;
+    PinCfg.Pinmode = 0;
+    PinCfg.Funcnum = 0;
+    PinCfg.Portnum = 0;
+    PINSEL_ConfigPin(&PinCfg);
+    GPIO_SetDir(0, (1 << 6), 1);
+
+    GPIO_SetValue(0, (1 << 6));
+    USRLEDstate = 0;
+
+    //Reset to Func3 for I2C
+    PinCfg.Funcnum = 3;
+    PINSEL_ConfigPin(&PinCfg);
+    taskEXIT_CRITICAL();
+}
+
+/********************************************************************//**
  * @brief       Looks in the received MQTTPublish Packet for the status of
  *              the LED  and checks if correct deviceID is given
  * @param[in]   Pointer to the payload to look in, Length of payload
  * @return      None
  *********************************************************************/
 void checkpayload(unsigned char *payload_in, int payloadlen_in) {
-    taskENTER_CRITICAL();
-    json_t *root, *jsonData;
+    json_t *root;
     json_error_t error;
-    const char *jsonClientID;
-    int jsonValue;
+    json_t *name;
+    json_t *value;
+    const char *name_text;
+    const char *value_text;
 
     payload_in[payloadlen_in] = '\0';
-    root = json_loads(payload_in, 0, &error);
-    if (root) {
-        jsonData = json_object_get(root, "deviceId");
-        if (jsonData)
-            jsonClientID = json_string_value(jsonData);
-        if (!strcmp(jsonClientID, gpconfig->user)) {
-            json_decref(jsonData);
-            jsonData = json_object_get(root, "value");
-            if (jsonData)
-                jsonValue = json_integer_value(jsonData);
-            if (jsonValue)
-                toogleUSRLED();
+    root = json_loads((char *)payload_in, 0, &error); //HardFault
+    if(!root) { return; }
+
+    name = json_object_get(root, "name");
+    name_text = json_string_value(name);
+
+    if( name_text ) {
+        value = json_object_get(root, "value");
+        // value_text = json_string_value(value);
+
+        if(!strcmp(name_text, "led")) {
+            if( json_is_true(value) )
+                USRLED_on();
+            if( json_is_true(value) )
+                USRLED_off();
+        }
+        else if (!strcmp(name_text, "relay1")) {
+            if( json_is_true(value) )
+                relay_on(1);
+            if( json_is_false(value) )
+                relay_off(1);
+        }
+        else if (!strcmp(name_text, "relay2")) {
+            if( json_is_true(value) )
+                relay_on(2);
+            if( json_is_false(value) )
+                relay_off(2);
+        }
+        else if (!strcmp(name_text, "DALI")) {
+            if(getdali_isactive())
+                MQTTtoDALI(value);
+        }
+        else if (!strcmp(name_text, "LCD_1")) {
+            value_text = json_string_value(value);
+            LCD_Print(FIRST_LINE, "                    ");
+            LCD_Print(FIRST_LINE, value_text);
+        }
+        else if (!strcmp(name_text, "LCD_2")) {
+            value_text = json_string_value(value);
+            LCD_Print(SECOND_LINE, "                    ");
+            LCD_Print(SECOND_LINE, value_text);
+        }
+        else if (!strcmp(name_text, "LCD_3")) {
+            value_text = json_string_value(value);
+            LCD_Print(THIRD_LINE, "                    ");
+            LCD_Print(THIRD_LINE, value_text);
+        }
+        else if (!strcmp(name_text, "LCD_4")) {
+            value_text = json_string_value(value);
+            LCD_Print(FOURTH_LINE, "                    ");
+            LCD_Print(FOURTH_LINE, value_text);
+            set_custom_line4();
         }
     }
+
     json_decref(root);
-    json_decref(jsonData);
-    taskEXIT_CRITICAL();
 }
 
 /********************************************************************//**
- * @brief       Checks is incomming packet is a correct MQTTPublish packet
+ * @brief       Checks if incomming packet is a correct MQTTPublish packet
  *              ./cmd topic
  * @param[in]   Pointer to incomming data on current connection
  * @return      None
@@ -223,7 +316,7 @@ void checkMQTTPublish(void *appdata) {
     int qos;
     unsigned short packetid;
     if (MQTTDeserialize_publish(&dup,&qos,&retained,&packetid, &topicString, &payload_in, &payloadlen_in, appdata, uip_len)) {
-        if (payloadlen_in > 1)
+        if (payloadlen_in > 4)
             checkpayload(payload_in, payloadlen_in);
     }
 }
@@ -249,16 +342,13 @@ int checkcredentials() {
 }
 
 /********************************************************************//**
- * @brief       Creates an empty MQTTPubish Packet to keep connection alive
- *              Although the MQTT standard accepts empty Packets, the broker
- *              may disconnect you anyway
+ * @brief       Creates a MQTTPingreq packet to keep connection alive
  * @param[in]   None
  * @return      None
  *********************************************************************/
-void create_Heartbeat() {
-    MQTTString topicString = MQTTString_initializer;
+void createMQTTPingreq() {
     memset(mqtt_buffer, '\0', sizeof(mqtt_buffer));
-    mqtt_buffer_len = MQTTSerialize_publish(mqtt_buffer, sizeof(mqtt_buffer), 0, 0, 0, 0, topicString, NULL,0);
+    mqtt_buffer_len = MQTTSerialize_pingreq(mqtt_buffer, sizeof(mqtt_buffer));
 }
 
 /********************************************************************//**
@@ -267,7 +357,7 @@ void create_Heartbeat() {
  * @param[in]   Pointer to the packet
  * @return      Type of MQTT Header
  *********************************************************************/
-int check_header(unsigned *buf) {
+int check_header(const char *buf) {
 
     char c = *buf;
 
@@ -281,8 +371,80 @@ int check_header(unsigned *buf) {
             return 8;
     if (c == MQTT_HEADER_SUBACK)
             return 9;
+    if (c == MQTT_HEADER_PINGREQ)
+        return 12;
+    if (c == MQTT_HEADER_PINGACK)
+        return 13;
     return 0;
 }
+
+/********************************************************************//**
+ * @brief       sends and receives MQTT Packets depending on its state using
+ *                 Protothreads
+ * @param[in]   Pointer to the current connection
+ * @return      None
+ *********************************************************************/
+static PT_THREAD(handle_mqtt_output(struct httpd_state *s)) {
+
+    PSOCK_BEGIN(&s->sin);
+    s->ticks = CLOCK_SECOND;
+
+    //check for new Data from MQTT Broker
+    if ((s->state == STATE_SUBSCRIBED) && (PSOCK_NEWDATA(&s->sin)) && (check_header(uip_appdata) == 3)) {
+        checkMQTTPublish(uip_appdata);
+        memset(uip_appdata, '\0', sizeof(uip_appdata));
+    }
+
+    //close connection when MQTT Task is deleted
+    if (mqtt.state == STATE_CLOSING) {
+        mqtt.state = STATE_CLOSED;
+        s->state = STATE_CLOSED;
+        PSOCK_CLOSE_EXIT(&s->sin);
+    }
+
+    //CONNECT
+    if (s->state == STATE_CONNECTED_TCP) {
+        createMQTTConnect();
+        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+        PSOCK_READTO(&s->sin, 0x20);
+        if(s->inputbuf[0] != 0x20) {
+            PSOCK_CLOSE_EXIT(&s->sin);
+        }
+        s->state = STATE_CONNECTED_MQTT;
+        mqtt.state = STATE_CONNECTED_MQTT;
+    }
+
+    //SUBSCRIBE
+    if (s->state == STATE_CONNECTED_MQTT) {
+            createMQTTSubscribe();
+            PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+            PSOCK_READTO(&s->sin, 0x90);
+            s->state = STATE_SUBSCRIBED;
+            mqtt.state = STATE_SUBSCRIBED;
+    }
+
+    //PUBLISH
+    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_POLLED) {
+        createMQTTPublish();
+        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+        s->timer = 0;
+        s->state = STATE_SUBSCRIBED;
+        mqtt.state = STATE_SUBSCRIBED;
+    }
+
+    //PINGREQ
+    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_HEARTBEAT) {
+        createMQTTPingreq();
+        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+        PSOCK_READTO(&s->sin, 0xd0);
+        s->timer = 0;
+        s->state = STATE_SUBSCRIBED;
+        mqtt.state = STATE_SUBSCRIBED;
+        }
+
+    PSOCK_END(&s->sin);
+}
+
 
 /********************************************************************//**
  * @brief       Controls MQTT Connection, is called everytime we send
@@ -292,61 +454,101 @@ int check_header(unsigned *buf) {
  *********************************************************************/
 void mqtt_appcall() {
 
-    if (uip_aborted()) {
-        mqtt.state = STATE_CLOSED;
-        uip_abort();
+struct httpd_state *s = (struct httpd_state *)&(uip_conn->appstate);
+
+if(uip_closed() || uip_aborted() || uip_timedout()) {
+    s->state=STATE_CLOSED;
+    mqtt.state=STATE_CLOSED;
+  } else if(uip_connected()) {
+    PSOCK_INIT(&s->sin, s->inputbuf, sizeof(s->inputbuf) - 1);
+    s->state = STATE_CONNECTED_TCP;
+    mqtt.state = STATE_CONNECTED_TCP;
+    s->timer = 0;
+  } else if (s != NULL) {
+      if (uip_poll()) {
+          ++s->timer;
+          if (s->timer >= 75) {
+              uip_close();
+          }
+      } else {
+          s->timer = 0;
+      }
+      handle_mqtt_output(s);
+  } else {
+      uip_abort();
+  }
+}
+
+/********************************************************************//**
+ * @brief       MQTT_Task waits 30 seconds for new sensor and receives it
+ *              using a Queue. If data is available it changes
+ *              the status of the connection to tell it to send data.
+ *              If connection is closed, it reconnects automatically
+ * @param[in]   None
+ * @return      None
+ *********************************************************************/
+void MQTT_Task(void *pvParameters) {
+//    size_t heap;
+
+    connect:
+    mqtt.state = STATE_CONNECTING;
+    do {
+        setup_mqtt();
+        vTaskDelay(6000);
+        if (mqtt.state == STATE_CONNECTING)
+            vTaskDelay(30000);
+    } while (mqtt.state == STATE_CONNECTING);
+
+       for (;;) {
+//           heap = xPortGetFreeHeapSize();
+           if (xQueueReceive(MQTT_Queue, &mqtt_data, 30000)) {
+               if (checkcredentials()) {
+                   if (mqtt.state == STATE_CLOSED) {
+                       goto connect;
+                   } else if (mqtt.state == STATE_SUBSCRIBED) {
+                       mqtt.state = STATE_POLLED;
+                       uip_poll_conn(mqtt.conn);
+                       //vTaskDelay(5000);
+                   }
+               }
+           } else { //send heartbeat
+               if (checkcredentials()) {
+                   if (mqtt.state == STATE_CLOSED) {
+                       goto connect;
+                   } else if (mqtt.state == STATE_SUBSCRIBED) {
+                       mqtt.state = STATE_HEARTBEAT;
+                       uip_poll_conn(mqtt.conn);
+                   } else {
+                       mqtt.state = STATE_HEARTBEAT;
+                   }
+               }
+          }
+       }
+   }
+
+/********************************************************************//**
+ * @brief       Start MQTT Task
+ * @param[in]   None
+ * @return      None
+ *********************************************************************/
+void init_mqtt() {
+
+    gpconfig->active = 1;
+    xTaskCreate(MQTT_Task, (signed char *) "MQTT", 500, NULL, mainUIP_TASK_PRIORITY, &xHandle_mqtt);
+}
+
+/********************************************************************//**
+ * @brief       Stop MQTT Task
+ * @param[in]   None
+ * @return      None
+ *********************************************************************/
+void deinit_mqtt() {
+    gpconfig->active = 0;
+    mqtt.state = STATE_CLOSING;
+    uip_poll_conn(mqtt.conn);
+    if (xHandle_mqtt != NULL) {
+        vTaskDelete(xHandle_mqtt);
     }
-
-    if (uip_timedout()) {
-        mqtt.state = STATE_CLOSED;
-        uip_close();
-    }
-
-    if (uip_closed()) {
-        mqtt.state = STATE_CLOSED;
-    }
-
-    if(uip_connected()) {
-        mqtt.state = STATE_CONNECTED_TCP;
-        createMQTTConnect();
-        uip_send(mqtt_buffer, mqtt_buffer_len);
-    }
-
-    if (uip_acked()) {
-        }
-
-    if (uip_rexmit()) {
-        uip_send(mqtt_buffer, mqtt_buffer_len);
-    }
-
-    if (uip_newdata()) {
-            switch (check_header(uip_appdata)) {
-                case 2:
-                    mqtt.state = STATE_CONNECTED_MQTT;
-                    createMQTTSubscribe();
-                    uip_send(mqtt_buffer, mqtt_buffer_len);
-                    break;
-                case 3:
-                    checkMQTTPublish(uip_appdata);
-                    break;
-                case 9:
-                    mqtt.state = STATE_MQTT_SUBSCRIBED;
-                default:
-                    break;
-            }
-            return;
-        }
-
-    if (uip_poll() && mqtt.state == STATE_POLLED) {
-            createMQTTPublish();
-            uip_send(mqtt_buffer, mqtt_buffer_len);
-            mqtt.state = STATE_MQTT_SUBSCRIBED;
-    }
-
-    if (uip_poll() && mqtt.state == STATE_HEARTBEAT) {
-                uip_send(mqtt_buffer, mqtt_buffer_len);
-                mqtt.state = STATE_MQTT_SUBSCRIBED;
-        }
 }
 
 /********************************************************************//**
@@ -368,74 +570,4 @@ void mqtt_activate(char *c) {
             writeflash();
         }
     }
-}
-
-/********************************************************************//**
- * @brief       MQTT_Task waits i seconds for new sensor and receives it
- *              using a Queue. If data is available it changes
- *              the status of the connection to tell it to send data.
- *              If connection is closed, it reconnects automatically
- * @param[in]   None
- * @return      None
- *********************************************************************/
-void MQTT_Task(void *pvParameters) {
-    createMQTTConnect();
-    mqtt.state == STATE_CLOSED;
-    setup_mqtt();
-    while (mqtt.state != STATE_MQTT_SUBSCRIBED) {
-        vTaskDelay(1000);
-    }
-
-       for (;;) {
-           if (xQueueReceive(MQTT_Queue, &mqtt_data, 30000)) {
-               if (checkcredentials()) {
-                   if (mqtt.state == STATE_CLOSED) {
-                       mqtt.state = STATE_CONNECTING;
-                       setup_mqtt();
-                       vTaskDelay(2000);
-                   } else if (mqtt.state == STATE_MQTT_SUBSCRIBED) {
-                       createMQTTPublish();
-                       mqtt.state = STATE_POLLED;
-                       uip_poll_conn(mqtt.conn);
-                   }
-               }
-
-           } else {
-               if (checkcredentials()) {
-                   //send heartbeat
-                   if (mqtt.state == STATE_CLOSED) {
-                       mqtt.state = STATE_CONNECTING;
-                       setup_mqtt();
-                   } else if (mqtt.state == STATE_MQTT_SUBSCRIBED) {
-                       create_Heartbeat();
-                       mqtt.state = STATE_HEARTBEAT;
-                       uip_poll_conn(mqtt.conn);
-                   }
-               }
-           }
-       }
-   }
-
-/********************************************************************//**
- * @brief       Start MQTT Task
- * @param[in]   None
- * @return      None
- *********************************************************************/
-void init_mqtt() {
-
-    gpconfig->active = 1;
-    xTaskCreate(MQTT_Task, (signed char *) "MQTT", 300, NULL, 4,
-                &xHandle_mqtt);
-
-}
-
-/********************************************************************//**
- * @brief       Stop MQTT Task
- * @param[in]   None
- * @return      None
- *********************************************************************/
-void deinit_mqtt() {
-    gpconfig->active = 0;
-    mqtt.state = STATE_CLOSED;
-    vTaskDelete(xHandle_mqtt);
 }

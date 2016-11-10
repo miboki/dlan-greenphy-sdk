@@ -223,7 +223,7 @@ PT_THREAD(net_stats(struct httpd_state *s, char *ptr))
 
 extern void vTaskList( signed char *pcWriteBuffer );
 //static char cCountBuf[ 128 ];
-static char cCountBuf[750];
+static char cCountBuf[700];
 long lRefreshCount = 0;
 static unsigned short
 generate_rtos_stats(void *arg)
@@ -451,41 +451,53 @@ static PT_THREAD(slaves_data(struct httpd_state *s, char *ptr)) {
 
 static unsigned short generate_clickboard_config(void *arg) {
 
-	sprintf(cCountBuf, " ");
+    sprintf(cCountBuf, "");
 
-	if (gpconfig->M1 == 1)
-		sprintf(cCountBuf, " checked");
-	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"temp\"");
+//    strcat(cCountBuf, "<tr><td>HDC1000</td><td><input type=\"radio\" name=\"M1\" value=\"hdc1000\"");
+//    if(gpconfig->M1 == 1) strcat(cCountBuf, " checked");
+//    strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"hdc1000\"");
+//    if(gpconfig->M2 == 1) strcat(cCountBuf, " checked");
+//    strcat(cCountBuf, "></td></tr>");
 
-	if(gpconfig->M2 == 1)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td></tr><tr><td>Relay</td><td><input type=\"radio\" name=\"M1\" value=\"relay\"");
-	if(gpconfig->M1 == 2)
-		strcat(cCountBuf, " checked");
+	strcat(cCountBuf, "<tr><td>Relay</td><td><input type=\"radio\" name=\"M1\" value=\"relay\"");
+	if(gpconfig->M1 == 2) strcat(cCountBuf, " checked");
 	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"relay\"");
-	if(gpconfig->M2 == 2)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td></tr><tr><td>DALI</td><td><input type=\"radio\" name=\"M1\" value=\"dali\"");
-	if(gpconfig->M1 == 3)
-		strcat(cCountBuf, " checked");
+	if(gpconfig->M2 == 2) strcat(cCountBuf, " checked");
+	strcat(cCountBuf, "></td></tr>");
+
+	strcat(cCountBuf, "<tr><td>DALI</td><td><input type=\"radio\" name=\"M1\" value=\"dali\"");
+	if(gpconfig->M1 == 3) strcat(cCountBuf, " checked");
 	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"dali\"");
-	if(gpconfig->M2 == 3)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td></tr><tr><td>Color</td><td><input type=\"radio\" name=\"M1\" value=\"color\"");
-	if(gpconfig->M1 == 4)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"color\"");
-	if(gpconfig->M2 == 4)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td></tr><tr><td>UV</td><td><input type=\"radio\" name=\"M1\" value=\"uv\"");
-	if(gpconfig->M1 == 5)
-		strcat(cCountBuf, " checked");
-	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"uv\" disabled></td></tr><tr><td>None</td><td><input type=\"radio\" name=\"M1\" value=\"none\"");
-	if(gpconfig->M1 == 0)
-		strcat(cCountBuf, " checked");
+	if(gpconfig->M2 == 3) strcat(cCountBuf, " checked");
+	strcat(cCountBuf, "></td></tr>");
+
+//	strcat(cCountBuf, "<tr><td>Color</td><td><input type=\"radio\" name=\"M1\" value=\"color\"");
+//	if(gpconfig->M1 == 4) strcat(cCountBuf, " checked");
+//	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"color\"");
+//	if(gpconfig->M2 == 4) strcat(cCountBuf, " checked");
+//	strcat(cCountBuf, "></td></tr>");
+
+	strcat(cCountBuf, "<tr><td>UV</td><td><input type=\"radio\" name=\"M1\" value=\"uv\"");
+	if(gpconfig->M1 == 5) strcat(cCountBuf, " checked");
+	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"uv\" disabled></td></tr>");
+
+    strcat(cCountBuf, "<tr><td>Thermo3</td><td><input type=\"radio\" name=\"M1\" value=\"thermo3\"");
+    if(gpconfig->M1 == 6) strcat(cCountBuf, " checked");
+    strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"thermo3\"");
+    if(gpconfig->M2 == 6) strcat(cCountBuf, " checked");
+    strcat(cCountBuf, "></td></tr>");
+
+    strcat(cCountBuf, "<tr><td>LCD</td><td><input type=\"radio\" name=\"M1\" value=\"lcd\"");
+    if(gpconfig->M1 == 7) strcat(cCountBuf, " checked");
+    strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"lcd\"");
+    if(gpconfig->M2 == 7) strcat(cCountBuf, " checked");
+    strcat(cCountBuf, "></td></tr>");
+
+	strcat(cCountBuf, "<tr><td>None</td><td><input type=\"radio\" name=\"M1\" value=\"none\"");
+	if(gpconfig->M1 == 0) strcat(cCountBuf, " checked");
 	strcat(cCountBuf, "></td><td><input type=\"radio\" name=\"M2\" value=\"none1\"");
-	if(gpconfig->M2 == 0)
-		strcat(cCountBuf, " checked>");
+	if(gpconfig->M2 == 0) strcat(cCountBuf, " checked");
+    strcat(cCountBuf, ">");
 
 	strcat (uip_appdata, cCountBuf);
 

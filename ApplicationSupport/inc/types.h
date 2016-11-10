@@ -12,21 +12,17 @@
 #include "uip.h"
 #include "timer.h"
 #include "psock.h"
+#include "task.h"
+#include "jansson.h"
 
 struct MQTT_Queue_struct {
     char meaning[16];
-    float value;
-};
-
-enum Sensor_Types {
-    NONE = 0,
-    TEMPERATURE,
-    HUMIDITY,
-    UV,
-    COLOR,
-    RELAY1,
-    RELAY2,
-    DALI
+    json_type type;
+    union {
+        int   i_val;
+        float f_val;
+        char  s_val[32];
+    };
 };
 
 typedef struct __attribute__ ((packed)) config {

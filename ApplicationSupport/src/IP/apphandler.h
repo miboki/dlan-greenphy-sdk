@@ -8,7 +8,7 @@
 #ifndef SRC_IP_APPHANDLER_H_
 #define SRC_IP_APPHANDLER_H_
 
-void apphandler(void);
-
+void apphandler_tcp(void);
+void apphandler_udp(void);
 
 #endif /* SRC_IP_APPHANDLER_H_ */

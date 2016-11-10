@@ -60,7 +60,7 @@
 #include <mmeHandling.h>
 #include <debug.h>
 
-#if GREEN_PHY_SIMPLE_QOS == ON
+#if (GREEN_PHY_SIMPLE_QOS == ON)
 
 /* Simple QoS - The resource allocation ratio between different CAP
  * priorities.
@@ -106,6 +106,8 @@ struct netdeviceQueueElement * qcaspi_create_get_sw_version_mme(struct qcaspi *q
 
 	return rv;
 }
+
+#if GREEN_PHY_SIMPLE_QOS
 
 struct netdeviceQueueElement * qcaspi_create_get_property_host_q_info(struct qcaspi *qca)
 {
@@ -157,6 +159,8 @@ struct netdeviceQueueElement * qcaspi_create_get_property_host_q_info(struct qca
 	return rv;
 }
 
+#endif
+
 /*
  * This function is used at the initial stage to determine if the QCA7000
  * device is operating in Bootloader mode/Serial Over Ethernet Ver0
@@ -206,21 +210,21 @@ int process_rx_mme_frame(struct qcaspi* qca, data_t data)
 				{
 					sw_ver_cnf_mme = (struct SwVerCnf*)(&mme_frame->mRegular_V0.mMMEntry);
 
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_INFO, "GreenPHY FW '%s'\n\r",sw_ver_cnf_mme->mVersion);
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_INFO, "GreenPHY FW '%s'\r\n",sw_ver_cnf_mme->mVersion);
 
 					if(memcmp(sw_ver_cnf_mme->mVersion, "BootLoader", sizeof("BootLoader")) == 0) {
-						DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_INFO, "BOOTLOADER MODE\n\r");
+						DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_INFO, "BOOTLOADER MODE\r\n");
 						qca->driver_state = BOOTLOADER_MODE;
 						//netif_tx_start_all_queues(qca->dev);
 					} else {
-						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "FIRMWARE MODE\n\r");
+						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "FIRMWARE MODE\r\n");
 						if(memcmp(sw_ver_cnf_mme->mVersion, FIRMWARE_1_1_0_11, strlen(FIRMWARE_1_1_0_11)) == 0) {
 					   		qca->driver_state = SERIAL_OVER_ETH_VER0_MODE;
-					   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_ERR, "For "FIRMWARE_1_1_0_11" workaround to SERIAL_OVER_ETH_VER0_MODE\n\r");
+					   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_ERR, "For "FIRMWARE_1_1_0_11" workaround to SERIAL_OVER_ETH_VER0_MODE\r\n");
 						}
 						else if(memcmp(sw_ver_cnf_mme->mVersion, FIRMWARE_1_1_0_01, strlen(FIRMWARE_1_1_0_01)) == 0) {
 					   		qca->driver_state = SERIAL_OVER_ETH_VER0_MODE;
-					   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_ERR, "For "FIRMWARE_1_1_0_01" workaround to SERIAL_OVER_ETH_VER0_MODE\n\r");
+					   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES|DEBUG_ERR, "For "FIRMWARE_1_1_0_01" workaround to SERIAL_OVER_ETH_VER0_MODE\r\n");
 						}
 						else
 						{
@@ -239,11 +243,11 @@ int process_rx_mme_frame(struct qcaspi* qca, data_t data)
 				memcpy(&temp_a, &get_property_cnf_mme->mStatus, 4);
 				temp_b = __le32_to_cpu(temp_a);
 				if(temp_b == 0) { 	//Get property SUCCESS
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "SERIAL_OVER_ETH_VER1_MODE\n\r");
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "SERIAL_OVER_ETH_VER1_MODE\r\n");
 					host_queue_info =
 					    (struct HostQueueInfo*)(&get_property_cnf_mme->mFirstByteOfPropertyData);
 
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Max Size:%d\n\r %d %d %d %d\n\r",
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Max Size:%d\r\n %d %d %d %d\r\n",
 						__func__,
 						host_queue_info->mMaxQueueSize[0],
 						host_queue_info->mCurrentQueueStatus[0],
@@ -274,7 +278,7 @@ int process_rx_mme_frame(struct qcaspi* qca, data_t data)
 						/* the last one will have all the remaining */
 						qca->max_queue_size[QCAGP_NO_OF_QUEUES-1] = qca->total_credits - temp;
 
-						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Queue size distribution: %d %d %d %d\n\r",
+						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Queue size distribution: %d %d %d %d\r\n",
 							__func__,
 							qca->max_queue_size[0],
 							qca->max_queue_size[1],
@@ -291,17 +295,17 @@ int process_rx_mme_frame(struct qcaspi* qca, data_t data)
 						//netif_tx_start_all_queues(qca->dev);
 					}
 			   		qca->driver_state = SERIAL_OVER_ETH_VER0_MODE;
-			   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "SERIAL_OVER_ETH_VER0_MODE\n\r");
+			   		DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "SERIAL_OVER_ETH_VER0_MODE\r\n");
 				}
 				break;
 
 			case MME_TYPE_VS_HST_ACTION_IND:
-				DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Host Action MME 0xA062\n\r", __func__);
+				DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "%s Host Action MME 0xA062\r\n", __func__);
 				qca->driver_state = BOOTLOADER_MODE;
 				//netif_tx_start_all_queues(qca->dev);
 			break;
 		    default:
-		    	DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "UNKNOWN MME TYPE!\n\r");
+		    	DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "UNKNOWN MME TYPE!\r\n");
 			break;
 		}
 	}
@@ -343,7 +347,7 @@ void filter_rx_mme(struct qcaspi* qca, struct netdeviceQueueElement **rxBuffer)
 		{
 			if(process_rx_mme_frame(qca, pFrame))
 			{
-				DEBUG_PRINT(GREEN_PHY_FW_FEATURES,"droped expected MME\n\r");
+				DEBUG_PRINT(GREEN_PHY_FW_FEATURES,"droped expected MME\r\n");
 				returnQueueElement(rxBuffer);
 			}
 		}

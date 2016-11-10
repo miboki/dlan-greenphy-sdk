@@ -37,6 +37,7 @@
 
 #include "greenPhyModuleApplication.h"
 
+#include "timer.h"
 #include "psock.h"
 #include "httpd-fs.h"
 
@@ -55,6 +56,8 @@ struct httpd_state {
   unsigned short count;
   char *textptr;
   int textlen;
+  struct timer rtimer;
+  u16_t ticks;
 };
 
 void httpd_init(void);

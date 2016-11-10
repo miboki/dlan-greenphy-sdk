@@ -43,7 +43,7 @@ extern const char const * features;
 /*-------------------------------VERSION-DEFINITIONS------------------------------------*/
 
 #define FW_VERSION "1.0.16"
-#define SDK_VERSION "2.1.0"
+#define SDK_VERSION "2.2.0"
 
 /* version string of the firmware */
 #define VERSION_STRING "SDK V" SDK_VERSION " FW V" FW_VERSION
@@ -68,10 +68,10 @@ extern const char const * features;
 
 /*---------------HERE-USE-THE-DEFINITIONS-FOR-CONFIGURATION----------------------*/
 
-#define ETHERNET_OVER_SPI_TO_ETHERNET_BRIDGE OFF
+#define ETHERNET_OVER_SPI_TO_ETHERNET_BRIDGE ON
 #define ETHERNET_LPC1758_FLOW_CONTROL ON
 #define COMMAND_LINE_INTERFACE OFF
-#define HTTP_SERVER ON
+#define HTTP_SERVER OFF
 #define TFTP_CLIENT_IAP OFF
 #define IP_STACK_DEVICE GREEN_PHY // LPC1758
 /* GREEN_PHY_SIMPLE_QOS is disabled on purpose; it is currently ALPHA and not yet in release state */

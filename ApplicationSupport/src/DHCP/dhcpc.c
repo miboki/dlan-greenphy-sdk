@@ -335,6 +335,8 @@ PT_THREAD(handle_dhcp(void))
      ntohs(dhcps.lease_time[0])*65536ul + ntohs(dhcps.lease_time[1]));
 #endif
 
+  // edited by Sebastian Sura
+  uip_udp_remove(dhcps.conn);
   dhcpc_configured(&dhcps);
 
   /*  timer_stop(&s.timer);*/
@@ -343,9 +345,10 @@ PT_THREAD(handle_dhcp(void))
    * PT_END restarts the thread so we do this instead. Eventually we
    * should reacquire expired leases here.
    */
-  while(1) {
-    PT_YIELD(&dhcps.pt);
-  }
+  // edited by Sebastian Sura
+  //while(1) {
+   // PT_YIELD(&dhcps.pt);
+  //}
 
   PT_END(&dhcps.pt);
 }
@@ -357,11 +360,6 @@ dhcpc_init(const void *mac_addr, int mac_len)
 
   dhcps.mac_addr = mac_addr;
   dhcps.mac_len  = mac_len;
-  //struct uip_eth_addr mac = { 0x00, 0x0b, 0x3b, 0x7f, 0x7d, 0x9a};
-  //uip_setethaddr(mac);
-  //dhcps.mac_addr = &mac;
-  //dhcps.mac_len  = 6;
-
   dhcps.state = STATE_INITIAL;
   uip_ipaddr(addr, 255,255,255,255);
   dhcps.conn = uip_udp_new(&addr, HTONS(DHCPC_SERVER_PORT));
@@ -390,17 +388,18 @@ dhcpc_request(void)
 }
 /*---------------------------------------------------------------------------*/
 
-static void DHCP_Task(void *pvParameters) {
-    vTaskDelay(2000);
-    dhcpc_init(NULL, NULL);
-    for(;;) {
-        vTaskDelay(100);
-    }
-}
-
-void init_dhcp() {
-
-    xTaskCreate(DHCP_Task, (signed char *) "DHCP", 240, NULL, 3,
-            xHandle_DHCP);
-}
+// edited by Sebastian Sura
+//static void DHCP_Task(void *pvParameters) {
+//    vTaskDelay(2000);
+//    dhcpc_init(NULL, NULL);
+//    for(;;) {
+//        vTaskDelay(100);
+//    }
+//}
+//
+//void init_dhcp() {
+//
+//    xTaskCreate(DHCP_Task, (signed char *) "DHCP", 240, NULL, 3,
+//            xHandle_DHCP);
+//}
 

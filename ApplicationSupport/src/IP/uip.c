@@ -1583,7 +1583,7 @@ uip_process(u8_t flag)
     state. We require that there is no outstanding data; otherwise the
     sequence numbers will be screwed up. */
 
-    if(BUF->flags & TCP_FIN && !(uip_connr->tcpstateflags & UIP_STOPPED)) {
+    if((BUF->flags & TCP_FIN) && !(uip_connr->tcpstateflags & UIP_STOPPED)) {
       if(uip_outstanding(uip_connr)) {
 	goto drop;
       }
@@ -1808,6 +1808,7 @@ uip_process(u8_t flag)
       uip_connr->tcpstateflags = UIP_TIME_WAIT;
       uip_connr->timer = 0;
     }
+    break;
   }
   goto drop;
 

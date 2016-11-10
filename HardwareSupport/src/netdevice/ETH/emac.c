@@ -225,7 +225,7 @@ static void prvInitDescriptors( void )
 		for( x = 0; x < NUM_RX_FRAG; x++ )
 		{
 			struct netdeviceQueueElement * tmp = getQueueElement(); //  |
-			DEBUG_PRINT(DEBUG_BUFFER,"[#I1#]\n\r");
+			DEBUG_PRINT(DEBUG_BUFFER,"[#I1#]\r\n");
 
 			/* Allocate the next Ethernet buffer to this descriptor. */
 			RX_DESC_PACKET( x ) = (int) removeDataFromQueueElement(&tmp);;
@@ -342,7 +342,7 @@ static inline void enableEthFlowControl (void)
 	LPC_EMAC->Command |= ( CR_TX_FLOW_CTRL );
 
 	DEBUG_PRINT(ETHERNET_INTERUPT,"F-");
-	DEBUG_PRINT(ETHERNET_FLOW_CONTROL,"F-\n\r");
+	DEBUG_PRINT(ETHERNET_FLOW_CONTROL,"F-\r\n");
 }
 
 static inline void disableEthFlowControl (void)
@@ -353,7 +353,7 @@ static inline void disableEthFlowControl (void)
 	LPC_EMAC->Command &= ~( CR_TX_FLOW_CTRL );
 
 	DEBUG_PRINT(ETHERNET_INTERUPT,"F+");
-	DEBUG_PRINT(ETHERNET_FLOW_CONTROL,"F+\n\r");
+	DEBUG_PRINT(ETHERNET_FLOW_CONTROL,"F+\r\n");
 #endif
 }
 #endif
@@ -479,7 +479,7 @@ struct netdeviceQueueElement * ulGetEMACRxDataGreenPhy( struct emacNetdevice * d
 
 			/* Allocate a new buffer to the descriptor. */
 			struct netdeviceQueueElement * tmp = getQueueElement();
-			DEBUG_PRINT(DEBUG_BUFFER,"[#I2#]\n\r");
+			DEBUG_PRINT(DEBUG_BUFFER,"[#I2#]\r\n");
 			data_t pData = removeDataFromQueueElement(&tmp);
 			DEBUG_PRINT(ETHERNET_RX,"(ETHERNET) new buffer: 0x%x\r\n",pData);
 
@@ -490,7 +490,7 @@ struct netdeviceQueueElement * ulGetEMACRxDataGreenPhy( struct emacNetdevice * d
 			else
 			{
 				DEBUG_PRINT(DEBUG_ERR,"(ETH) %s no buffer...\r\n",__func__);
-				DEBUG_PRINT(DEBUG_BUFFER,"[#I3#]\n\r");
+				DEBUG_PRINT(DEBUG_BUFFER,"[#I3#]\r\n");
 				removeDataFromQueueElement(&rv);
 			}
 		}
@@ -662,7 +662,7 @@ void vEMAC_ISR( void )
 		DEBUG_PRINT(ETHERNET_INTERUPT,"W");
 	}
 
-	DEBUG_PRINT(ETHERNET_INTERUPT,"]\n\r");
+	DEBUG_PRINT(ETHERNET_INTERUPT,"]\r\n");
 
 	portEND_SWITCHING_ISR( lHigherPriorityTaskWoken );
 }
@@ -721,7 +721,7 @@ static unsigned int input_MDIO (void) {
 
 static void ethAutoNegCheck( xTimerHandle xTimer )
 {
-	DEBUG_PRINT(ETHERNET_INTERUPT,"ETH AutoNeg timer with 0x%x expired\n\r",xTimer);
+	DEBUG_PRINT(ETHERNET_INTERUPT,"ETH AutoNeg timer with 0x%x expired\r\n",xTimer);
 
 	struct emacNetdevice * emacNetdevice = (struct emacNetdevice *) pvTimerGetTimerID(xTimer);
 	xTimerDelete(xTimer,0);
@@ -732,7 +732,7 @@ static void ethAutoNegCheck( xTimerHandle xTimer )
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(2)%s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(2)%s\r\n",__func__);
 	}
 }
 
@@ -745,7 +745,7 @@ static void startEthAutoNegGuard(struct netDeviceInterface * dev)
 	if(!emacNetdevice->ethAutoNegGuard)
 	{
 		xTimerHandle xTimer = xTimerCreate(ethAutoNegCheckName, 3000, FALSE, emacNetdevice, ethAutoNegCheck);
-		DEBUG_PRINT(ETHERNET_INTERUPT,"start ETH AutoNeg timer 0x%x with emacNetdevice 0x%x\n\r",xTimer,emacNetdevice);
+		DEBUG_PRINT(ETHERNET_INTERUPT,"start ETH AutoNeg timer 0x%x with emacNetdevice 0x%x\r\n",xTimer,emacNetdevice);
 		emacNetdevice->ethAutoNegGuard = 1;
 		xTimerStart(xTimer, 0);
 	}
@@ -757,17 +757,17 @@ static void emacNetdeviceReset(struct netDeviceInterface * dev)
 {
 	/* reset is normally active low, so reset ... */
 	GPIO_ClearValue(ETH_PHY_RESET_PORT,GPIO_MAP_PIN(ETH_PHY_RESET_PIN));
-	DEBUG_PRINT(ETHERNET_INTERUPT ,"EthPhy reset low\n\r");
+	DEBUG_PRINT(ETHERNET_INTERUPT ,"EthPhy reset low\r\n");
 	/*  ... for 100 ms ... */
 	INIT_DELAY_CALL( 100 / portTICK_RATE_MS);
 	/* ... and release poor PHY from reset */
 	GPIO_SetValue(ETH_PHY_RESET_PORT,GPIO_MAP_PIN(ETH_PHY_RESET_PIN));
-	DEBUG_PRINT(ETHERNET_INTERUPT ,"EthPhy reset high\n\r");
+	DEBUG_PRINT(ETHERNET_INTERUPT ,"EthPhy reset high\r\n");
 
 	/* Initialise the MAC. */
 	lEMACInit();
 
-	DEBUG_PRINT(ETHERNET_INTERUPT ,"init done\n\r");
+	DEBUG_PRINT(ETHERNET_INTERUPT ,"init done\r\n");
 
 	startEthAutoNegGuard(dev);
 
@@ -812,7 +812,7 @@ void ethPhyIrqHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(3)%s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(3)%s\r\n",__func__);
 	}
 
 	DEBUG_PRINT(ETHERNET_INTERUPT,"}");
@@ -826,7 +826,7 @@ static int emacNetdeviceInit(struct netDeviceInterface * dev)
 
 	if(!uxTaskIsSchedulerRunning())
 	{
-		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\n\r",__func__);
+		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
 
 	struct emacNetdevice * emacNetdevice = (struct emacNetdevice *) dev;
@@ -842,7 +842,7 @@ static int emacNetdeviceInit(struct netDeviceInterface * dev)
 		}
 		else
 		{
-			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(4)%s\n\r",__func__);
+			DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(4)%s\r\n",__func__);
 		}
 
 		if( emacNetdevice->xEMACSemaphore != NULL && emacNetdevice->xEMACAutoNegotiationSemaphore != NULL )
@@ -852,7 +852,7 @@ static int emacNetdeviceInit(struct netDeviceInterface * dev)
 			GPIO_IntCmd(ETH_PHY_INTERRUPT_PORT,GPIO_MAP_PIN(ETH_PHY_INTERRUPT_PIN),GPIO_INTERRUPT_FALLING_EDGE);
 
 			/* PHY reset pin set up */
-			DEBUG_PRINT(ETHERNET_INTERUPT,"EthPhy reset set to output\n\r");
+			DEBUG_PRINT(ETHERNET_INTERUPT,"EthPhy reset set to output\r\n");
 			GPIO_SetDir(ETH_PHY_RESET_PORT,GPIO_MAP_PIN(ETH_PHY_RESET_PIN),GPIO_OUT);
 		}
 		else
@@ -887,7 +887,7 @@ static int emacNetdeviceTx(struct netDeviceInterface * dev, struct netdeviceQueu
 	else
 	{
 		DEBUG_PRINT(ETHERNET_TX,"%s FULL! ",__func__);
-		DEBUG_PRINT(DEBUG_BUFFER,"[#B#]\n\r");
+		DEBUG_PRINT(DEBUG_BUFFER,"[#B#]\r\n");
 		returnQueueElement(&element);
 	}
 
@@ -926,7 +926,7 @@ static int emacNetdevicePutElementToHw(struct emacNetdevice * eth, struct netdev
 
 	length_t length = getLengthFromQueueElement(element)-1;
 	data_t pFrame = getDataFromQueueElement(element);
-	DEBUG_PRINT(DEBUG_BUFFER,"[#I4#]\n\r");
+	DEBUG_PRINT(DEBUG_BUFFER,"[#I4#]\r\n");
 	data_t pData = removeDataFromQueueElement(&element);
 	DEBUG_PRINT(ETHERNET_TX,"(ETHERNET) tx buffer: 0x%x length : %d\r\n",pData,length);
 
@@ -989,11 +989,11 @@ static int emacNetdeviceOpen(struct netDeviceInterface * dev)
 	/* wait for the autonegotiation process to complete */
 	if( xSemaphoreTake( emacNetdevice->xEMACAutoNegotiationSemaphore, portMAX_DELAY ) == pdTRUE )
 	{
-		DEBUG_PRINT(DEBUG_NOTICE," Autonegotiation complete\n\r");
+		DEBUG_PRINT(DEBUG_NOTICE," Autonegotiation complete\r\n");
 	}
 	else
 	{
-		DEBUG_PRINT(DEBUG_NOTICE," go on ... \n\r");
+		DEBUG_PRINT(DEBUG_NOTICE," go on ... \r\n");
 	}
 
 	return rv;

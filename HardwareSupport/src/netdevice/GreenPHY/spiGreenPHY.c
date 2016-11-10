@@ -106,17 +106,17 @@ int greenPhyHandlerInit(struct qcaspi *qca, struct netDeviceInterface * dev)
 
 static void greenPhyNetdeviceSyncCheck( xTimerHandle xTimer )
 {
-	DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy syncTimer with 0x%x expired\n\r",xTimer);
+	DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy syncTimer with 0x%x expired\r\n",xTimer);
 
 	struct qcaspi *qca = (struct qcaspi *) pvTimerGetTimerID(xTimer);
 	xTimerDelete(xTimer,0);
 	qca->syncGard = 0;
 
-	DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy sync status 0x%x \n\r",qca->sync);
+	DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy sync status 0x%x \r\n",qca->sync);
 
 	if(qca->sync == QCASPI_SYNC_READY)
 	{
-		DEBUG_PRINT(GREEN_PHY_INTERUPT|GREEN_PHY_SYNC_STATUS,"GreenPhy is ok\n\r");
+		DEBUG_PRINT(GREEN_PHY_INTERUPT|GREEN_PHY_SYNC_STATUS,"GreenPhy is ok\r\n");
 	}
 	else
 	{
@@ -124,17 +124,17 @@ static void greenPhyNetdeviceSyncCheck( xTimerHandle xTimer )
 		qcaspi_qca7k_sync(qca,QCASPI_SYNC_CPUON);
 		if(qca->sync == QCASPI_SYNC_READY)
 		{
-			DEBUG_PRINT(GREEN_PHY_INTERUPT|GREEN_PHY_SYNC_STATUS,"GreenPhy is now sync\n\r");
+			DEBUG_PRINT(GREEN_PHY_INTERUPT|GREEN_PHY_SYNC_STATUS,"GreenPhy is now sync\r\n");
 		}
 		else
 #endif
 		{
 			if( qca->syncGardTimeout < 60 )
 			{
-				DEBUG_PRINT(GREEN_PHY_INTERUPT,"Increasing timeout...\n\r");
+				DEBUG_PRINT(GREEN_PHY_INTERUPT,"Increasing timeout...\r\n");
 				qca->syncGardTimeout += 1;
 			}
-			DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset!!! \n\r");
+			DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset!!! \r\n");
 			struct netDeviceInterface * netdevice = qca->netdevice;
 			netdevice->reset(netdevice);
 		}
@@ -152,7 +152,7 @@ void startSyncGuard(struct qcaspi *qca)
 	if(!qca->syncGard)
 	{
 		xTimerHandle xTimer = xTimerCreate(greenPhySyncName, qca->syncGardTimeout * 1000, FALSE, qca, greenPhyNetdeviceSyncCheck);
-		DEBUG_PRINT(GREEN_PHY_SYNC_STATUS,"GreenPhy create syncTimer 0x%x with greenPhy 0x%x\n\r",xTimer,qca);
+		DEBUG_PRINT(GREEN_PHY_SYNC_STATUS,"GreenPhy create syncTimer 0x%x with greenPhy 0x%x\r\n",xTimer,qca);
 		xTimerStart(xTimer, 0);
 		qca->syncGard = 1;
 	}
@@ -393,7 +393,7 @@ uint16_t qcaspi_tx_frame(struct qcaspi *qca,struct netdeviceQueueElement * txBuf
 		if (status)
 			SSP_SSELToggle(qca->SSPx,1);
 
-		DEBUG_PRINT(DEBUG_BUFFER,"[#D#]\n\r");
+		DEBUG_PRINT(DEBUG_BUFFER,"[#D#]\r\n");
 		returnQueueElement(&txBuffer);
 		DEBUG_PRINT(GREEN_PHY_TX,"(GREEN_PHY) return buffer: 0x%x\r\n",pData);
 	}
@@ -645,7 +645,7 @@ int qcaspi_process_data(struct qcaspi *qca)
 	if(qca->rxStatus.greenPhyRxBuffer == NULL)
 	{
 		struct netdeviceQueueElement * tmp = getQueueElement();
-		DEBUG_PRINT(DEBUG_BUFFER,"[#I5#]\n\r");
+		DEBUG_PRINT(DEBUG_BUFFER,"[#I5#]\r\n");
 		qca->rxStatus.greenPhyRxBuffer = removeDataFromQueueElement(&tmp);
 		qca->rxStatus.current_position = qca->rxStatus.greenPhyRxBuffer;
 
@@ -717,7 +717,7 @@ int qcaspi_process_received_frame(struct qcaspi *qca)
 			if(xQueueSend(qca->rxQueue,&rxBuffer,10)!= pdPASS)
 			{
 				// Failed ...
-				DEBUG_PRINT(DEBUG_BUFFER,"[#E#]\n\r");
+				DEBUG_PRINT(DEBUG_BUFFER,"[#E#]\r\n");
 				returnQueueElement(&rxBuffer);
 				rv = -1;
 			}
@@ -767,7 +767,7 @@ uint32_t qcaspi_read_from_chip(struct qcaspi *qca)
 		DEBUG_PRINT(GREEN_PHY_RX,"(GREEN_PHY) read to 0x%x %d bytes", qca->rxStatus.current_position, read);
 		qca->rxStatus.current_position += read;
 		qca->rxStatus.length += read;
-		DEBUG_PRINT(GREEN_PHY_RX," current_position now 0x%x\n\r", qca->rxStatus.current_position);
+		DEBUG_PRINT(GREEN_PHY_RX," current_position now 0x%x\r\n", qca->rxStatus.current_position);
 	}
 
 	return rv;
@@ -841,7 +841,7 @@ static void qcaspi_flush_txq(struct qcaspi *qca)
 	{
 		while(xQueueReceive(qca->tx_priority_q[i],&txBuffer,0))
 		{
-			DEBUG_PRINT(DEBUG_BUFFER,"[#F#]\n\r");
+			DEBUG_PRINT(DEBUG_BUFFER,"[#F#]\r\n");
 			returnQueueElement(&txBuffer);
 		}
 	}
@@ -857,7 +857,7 @@ void qcaspi_qca7k_set_sync(struct qcaspi *qca, qca7k_sync_t sync)
 {
 	qca->sync = sync;
 
-	DEBUG_PRINT(GREEN_PHY_SYNC_STATUS,"new qca7k sync status 0x%x\n\r",qca->sync);
+	DEBUG_PRINT(GREEN_PHY_SYNC_STATUS,"new qca7k sync status 0x%x\r\n",qca->sync);
 
 	// check against QCASPI_SYNC_UNKNOWN due to reset code in qcaspi_qca7k_sync()
 	if (sync == QCASPI_SYNC_UNKNOWN)
@@ -1040,19 +1040,19 @@ int greenPhySpiWorker(void *data)
 			if((qca->driver_state < BOOTLOADER_MODE) && (qca->driver_state_count < 10)) {
 				qca->driver_state_count++;
 				if(qca->driver_state == FIRMWARE_MODE_QUERY_SERIAL_OVER_ETH_VERSION) {
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s FIRMWARE_MODE_QUERY_SERIAL_OVER_ETH_VERSION\n\r", __func__);
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s FIRMWARE_MODE_QUERY_SERIAL_OVER_ETH_VERSION\r\n", __func__);
 					struct netdeviceQueueElement * mme;
 					mme = qcaspi_create_get_property_host_q_info(qca);
 					qcaspi_tx_frame(qca, mme);
 				} else if(qca->driver_state == INITIALIZED){
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s INITIALIZED\n\r", __func__);
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s INITIALIZED\r\n", __func__);
 					qca->driver_state = SW_VERSION_QUERY;
 					qca->driver_state_count = 0;
 					struct netdeviceQueueElement * mme;
 					mme = qcaspi_create_get_sw_version_mme(qca);
 					qcaspi_tx_frame(qca, mme);
 				} else if(qca->driver_state == SW_VERSION_QUERY){
-					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s SW_VERSION_QUERY\n\r", __func__);
+					DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s SW_VERSION_QUERY\r\n", __func__);
 					if (qca->driver_state_count != 1)
 					{
 						struct netdeviceQueueElement * mme;
@@ -1061,14 +1061,14 @@ int greenPhySpiWorker(void *data)
 					}
 					else
 					{
-						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s version queried\n\r", __func__);
+						DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s version queried\r\n", __func__);
 					}
 				}
 			} else if((qca->driver_state < BOOTLOADER_MODE) && (qca->driver_state_count >= 10)){
 				qca->driver_state = SERIAL_OVER_ETH_VER0_MODE;
 				qca->driver_state_count = 0;
 				//netif_tx_start_all_queues(qca->dev);
-				DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s SERIAL_OVER_ETH_VER0_MODE\n\r", __func__);
+				DEBUG_PRINT(GREEN_PHY_FW_FEATURES, "qcaspi: %s SERIAL_OVER_ETH_VER0_MODE\r\n", __func__);
 			}
 #endif
 			if (qcaspi_is_packet_available_for_transmit(qca))

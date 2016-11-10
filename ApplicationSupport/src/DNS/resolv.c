@@ -461,17 +461,12 @@ void resolv_found(char *name, u16_t *ipaddr) {
 
     if (ipaddr != NULL) {
         uip_ipaddr_copy(mqtt_addr, ipaddr);
+        //Close DNS Client
+        uip_udp_remove(resolv_conn);
         init_mqtt();
     } else {
         if (resolv_lookup("mqtt.relayr.io") != NULL)
             return;
         resolv_query("mqtt.relayr.io");
     }
-
-        //gpconfig.IP[0] = uip_ipaddr1(&mqtt_addr);
-        //gpconfig.IP[1] = uip_ipaddr2(&mqtt_addr);
-        //gpconfig.IP[2] = uip_ipaddr3(&mqtt_addr);
-        //gpconfig.IP[3] = uip_ipaddr4(&mqtt_addr);
-
-
 }

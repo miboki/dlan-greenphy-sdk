@@ -14,6 +14,7 @@
 #include "stdbool.h"
 #include "queue.h"
 #include "types.h"
+#include "string.h"
 
 #define CS_PORT_NUM 2
 
@@ -90,13 +91,13 @@ void relay_on(int relay) {
 	case 1:
 		GPIO_SetValue(2, (1 << Relay1PIN));
 		oldstate1 = ON;
-		relay1_struct.value = 1;
+		relay1_struct.type = JSON_TRUE;
 		xQueueSend(MQTT_Queue, &relay1_struct, 5000);
 		break;
 	case 2:
 		GPIO_SetValue(2, (1 << Relay2PIN));
 		oldstate2 = ON;
-		relay2_struct.value = 1;
+		relay2_struct.type = JSON_TRUE;
 		xQueueSend(MQTT_Queue, &relay2_struct, 5000);
 		break;
 	}
@@ -107,13 +108,13 @@ void relay_off(int relay) {
 	case 1:
 		GPIO_ClearValue(2, (1 << Relay1PIN));
 		oldstate1 = OFF;
-		relay1_struct.value = 0;
+		relay1_struct.type = JSON_FALSE;
 		xQueueSend(MQTT_Queue, &relay1_struct, 10000);
 		break;
 	case 2:
 		GPIO_ClearValue(2, (1 << Relay2PIN));
 		oldstate2 = OFF;
-		relay2_struct.value = 0;
+		relay2_struct.type = JSON_FALSE;
 		xQueueSend(MQTT_Queue, &relay2_struct, 10000);
 		break;
 	}
@@ -125,12 +126,12 @@ bool getrelay_isactive() {
 
 void init_relay(int i) {
 
+	relayport = i;
     setup_relay();
-    strcpy(relay1_struct.meaning, "RELAY1");
-    strcpy(relay2_struct.meaning, "RELAY2");
+    strcpy(relay1_struct.meaning, "relay1");
+    strcpy(relay2_struct.meaning, "relay2");
     relay_on(Relay1PIN);
     relay_on(Relay2PIN);
-	relayport = i;
 	relay_isactive = true;
 }
 

@@ -58,7 +58,8 @@ typedef struct json_t {
 #ifdef _WIN32
 #define JSON_INTEGER_FORMAT "I64d"
 #else
-#define JSON_INTEGER_FORMAT "lld"
+//#define JSON_INTEGER_FORMAT "lld"
+#define JSON_INTEGER_FORMAT "d"
 #endif
 typedef long long json_int_t;
 #else

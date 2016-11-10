@@ -63,10 +63,10 @@ void gpioloop_help(void)
 {
 	 printToUart("To test the QCA7000 GPIOs, you have to utilise a magic gate at port ");
 	 printGpio(&gatePort);
-	 printToUart("\n\rfor the boot strap options to vanish ...\n\r");
-	 printToUart("Use '%s HIGH' to activate the port.\n\r",gpioloop_commandName());
-	 printToUart("Use '%s LOW' to deactivate the port.\n\r",gpioloop_commandName());
-	 printToUart("Beware, the port is not touched until you use '%s'!\n\r",gpioloop_commandName());
+	 printToUart("\r\nfor the boot strap options to vanish ...\r\n");
+	 printToUart("Use '%s HIGH' to activate the port.\r\n",gpioloop_commandName());
+	 printToUart("Use '%s LOW' to deactivate the port.\r\n",gpioloop_commandName());
+	 printToUart("Beware, the port is not touched until you use '%s'!\r\n",gpioloop_commandName());
 }
 
 static struct command gpioloop = {gpioloop_command,gpioloop_help, gpioloop_commandName};

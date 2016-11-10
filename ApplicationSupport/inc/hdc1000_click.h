@@ -14,7 +14,9 @@
 #define HUM 1
 #define HUM_REG 0x01 //Humidity Register
 #define HDC1000_I2C_ADDR 0x40 //I2C Address of HDC1000 Clickboard
+#define THERMO3_I2C_ADDR 0x48 //I2C Address of HDC1000 Clickboard
 
-void init_temp_sensor();
+void init_hdc1000_sensor(int i);
+void init_thermo3_sensor(int i);
 
 #endif /* INC_HDC1000_CLICK_H_ */

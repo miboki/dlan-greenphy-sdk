@@ -55,9 +55,9 @@ int resetnetdevice_CLI(char * arg)
 		{
 			if(!strncmp(arg,name,length))
 			{
-				DEBUG_PRINT(CLI, "resetting '%s' ...\n\r",name);
+				DEBUG_PRINT(CLI, "resetting '%s' ...\r\n",name);
 				netdevices[i].netdevice->reset(netdevices[i].netdevice);
-				DEBUG_PRINT(CLI, "reset '%s' done!\n\r",name);
+				DEBUG_PRINT(CLI, "reset '%s' done!\r\n",name);
 				rv = cli_ok;
 				break;
 			}
@@ -73,22 +73,22 @@ int printnetdevice_CLI(char * arg)
 
 	int i;
 
-	printToUart("Available devices:\n\r");
+	printToUart("Available devices:\r\n");
 	for(i=0;i<(sizeof(netdevices)/sizeof(struct netdevice_table));i+=1)
 	{
 		if(netdevices[i].name == NULL)
 			break;
-		printToUart(" %s\n\r",netdevices[i].name);
+		printToUart(" %s\r\n",netdevices[i].name);
 	}
-	printToUart("\n\r");
+	printToUart("\r\n");
 
 	return rv;
 }
 
 void netdevice_CLI_help(void)
 {
-	printToUart("Use '%s reset <name>' to reset a net device.\n\r",netdevice_CLI_commandName());
-	printToUart("Use '%s print' to print the available devices.\n\r",netdevice_CLI_commandName());
+	printToUart("Use '%s reset <name>' to reset a net device.\r\n",netdevice_CLI_commandName());
+	printToUart("Use '%s print' to print the available devices.\r\n",netdevice_CLI_commandName());
 	printnetdevice_CLI(netdevice_CLI_commandName());
 }
 

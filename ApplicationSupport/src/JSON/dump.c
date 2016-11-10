@@ -196,7 +196,7 @@ static int do_dump(const json_t *json, size_t flags, int depth,
             char buffer[MAX_INTEGER_STR_LENGTH];
             int size;
 
-            size = snprintf(buffer, MAX_INTEGER_STR_LENGTH,
+            size = sprintf(buffer,
                             "%" JSON_INTEGER_FORMAT,
                             json_integer_value(json));
             if(size < 0 || size >= MAX_INTEGER_STR_LENGTH)
@@ -304,7 +304,7 @@ static int do_dump(const json_t *json, size_t flags, int depth,
             if(dump_indent(flags, depth + 1, 0, dump, data))
                 goto object_error;
 
-            if(flags & JSON_SORT_KEYS || flags & JSON_PRESERVE_ORDER)
+            if((flags & JSON_SORT_KEYS) || (flags & JSON_PRESERVE_ORDER))
             {
                 struct object_key *keys;
                 size_t size, i;

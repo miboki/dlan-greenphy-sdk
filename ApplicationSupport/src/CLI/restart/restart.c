@@ -37,7 +37,7 @@ int restart_command(char * arg)
 
 void restart_help(void)
 {
-	 printToUart("This will restart the microprocessor.\n\r");
+	 printToUart("This will restart the microprocessor.\r\n");
 }
 
 static char name[] = "restart";
