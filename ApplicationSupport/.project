@@ -4,6 +4,7 @@
 	<comment></comment>
 	<projects>
 		<project>HardwareSupport</project>
+		<project>FreeRTOSv9.0.0</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -96,7 +96,7 @@ void DMA_IRQHandler(void)
 	{
 		DEBUG_PRINT(DMA_INTERUPT,"0");
 	  SSP0DMADone = 1;
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( SSP0DMADoneSemaphore, &lHigherPriorityTaskWoken );
 		}
@@ -109,7 +109,7 @@ void DMA_IRQHandler(void)
 	{
 		DEBUG_PRINT(DMA_INTERUPT,"1");
 	  SSP1DMADone = 1;
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( SSP1DMADoneSemaphore, &lHigherPriorityTaskWoken );
 		}
@@ -122,7 +122,7 @@ void DMA_IRQHandler(void)
 	{
 		DEBUG_PRINT(DMA_INTERUPT,"2");
 	  SSP2DMADone = 1;
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( SSP2DMADoneSemaphore, &lHigherPriorityTaskWoken );
 		}
@@ -135,7 +135,7 @@ void DMA_IRQHandler(void)
 	{
 		DEBUG_PRINT(DMA_INTERUPT,"3");
 	  SSP3DMADone = 1;
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( SSP3DMADoneSemaphore, &lHigherPriorityTaskWoken );
 		}
@@ -190,7 +190,7 @@ void DMA_Init( void )
   LPC_GPDMA->Config = 0x01;	/* Enable DMA channels, little endian */
   while ( !(LPC_GPDMA->Config & 0x01) );
 
-	if(!uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
 	{
 		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}

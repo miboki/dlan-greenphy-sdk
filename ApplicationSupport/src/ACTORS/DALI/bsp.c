@@ -120,7 +120,7 @@ void bsp_init(void) {
 	 EN_TIMER32_1 |
 	 EN_USBREG |
 	 EN_IOCON);
-	 /*
+
 
 	 // default function on port 3_0 is GPIO (D1 LED)
 	 LPC_GPIO3->DIR |= (1 << 0);     // set as output

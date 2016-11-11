@@ -35,6 +35,7 @@
  */
 
 #include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
 #include "portmacro.h"
 
 /*

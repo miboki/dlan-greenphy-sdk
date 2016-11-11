@@ -3,6 +3,7 @@
 	<name>HardwareSupport</name>
 	<comment></comment>
 	<projects>
+		<project>FreeRTOSv9.0.0</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -619,7 +619,7 @@ void vEMAC_ISR( void )
 		DEBUG_PRINT(ETHERNET_INTERUPT,"r");
 
 		/* Ensure the uIP task is not blocked as data has arrived. */
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( eth0.xEMACSemaphore, &lHigherPriorityTaskWoken );
 		}
