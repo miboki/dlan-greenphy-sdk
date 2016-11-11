@@ -116,7 +116,7 @@ static void greenPhyInterruptHandlerTask ( void * parameters)
 	struct greenPhyNetdevice * greenPhy = (struct greenPhyNetdevice *) parameters;
 
 	DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' eat up the first event ...\r\n",__func__);
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		xSemaphoreTake( greenPhy->greenPhyInterruptBinarySemaphore, 0 );
 	}
@@ -127,7 +127,7 @@ static void greenPhyInterruptHandlerTask ( void * parameters)
 
 	for (;;)
 	{
-		if(!uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
 		{
 			DEBUG_PRINT(DEBUG_ALL,"Scheduler stopped: %s\r\n",__func__);
 		}
@@ -152,7 +152,7 @@ void greenPhyIrqHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 	DEBUG_PRINT(GREEN_PHY_INTERUPT,"0x%x",grn0.intReq);
 
 	/* wake up the handler task */
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		xSemaphoreGiveFromISR( grn0.greenPhyInterruptBinarySemaphore, xHigherPriorityTaskWoken );
 	}
@@ -204,7 +204,7 @@ static int greenPhyNetdeviceInit (struct netDeviceInterface * dev)
 {
 	int rv = 1;
 
-	if(!uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
 	{
 		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
@@ -283,7 +283,7 @@ static int greenPhyNetdeviceTX(struct netDeviceInterface * dev, struct netdevice
 		returnQueueElement(&txBuffer);
 	}
 
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		DEBUG_PRINT(GREEN_PHY_INTERUPT,"'%s' giving ...\r\n",__func__);
 		xSemaphoreGive(greenPhy->greenPhyInterruptBinarySemaphore);

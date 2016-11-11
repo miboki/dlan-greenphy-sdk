@@ -221,7 +221,7 @@ PT_THREAD(net_stats(struct httpd_state *s, char *ptr))
 }
 /*---------------------------------------------------------------------------*/
 
-extern void vTaskList( signed char *pcWriteBuffer );
+extern void vTaskList( char *pcWriteBuffer );
 //static char cCountBuf[ 128 ];
 static char cCountBuf[700];
 long lRefreshCount = 0;
@@ -274,7 +274,7 @@ static unsigned short generate_io_state( void *arg )
 }
 /*---------------------------------------------------------------------------*/
 
-extern void vTaskGetRunTimeStats( signed char *pcWriteBuffer );
+extern void vTaskGetRunTimeStats( char *pcWriteBuffer );
 static unsigned short
 generate_runtime_stats(void *arg)
 {

@@ -28,6 +28,7 @@
  *
 ******************************************************************************/
 #include "FreeRTOS.h"
+#include "task.h"
 #include "semphr.h"
 
 #include <stdio.h>
@@ -340,7 +341,6 @@ static void UART_3_Init (struct UART * uart, uint32_t baudrate )
 ** Returned value:		None
 **
 *****************************************************************************/
-signed portBASE_TYPE uxTaskIsSchedulerRunning( void );
 
 static void UART_1_IRQHandler (struct UART * uart)
 {
@@ -416,14 +416,14 @@ static void UART_1_IRQHandler (struct UART * uart)
 
 	if(giveSemaphore)
 	{
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( uart->rxSemaphore, &lHigherPriorityTaskWoken );
 		}
 		uart->rx = 1;
 	}
 
-	if(!uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
 	{
 		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running:(1)%s\r\n",__func__);
 	}
@@ -514,14 +514,14 @@ static void UART_0_2_3_IRQHandler (struct UART * uart)
 
 	if(giveSemaphore)
 	{
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreGiveFromISR( uart->rxSemaphore, &lHigherPriorityTaskWoken );
 		}
 		uart->rx = 1;
 	}
 
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		portEND_SWITCHING_ISR( lHigherPriorityTaskWoken );
 	}

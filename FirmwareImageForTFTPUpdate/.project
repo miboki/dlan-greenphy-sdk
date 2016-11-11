@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>FirmwareImageForTFTPUpdate</name>
+	<name>HardwareSupport</name>
 	<comment></comment>
 	<projects>
-		<project>ApplicationSupport</project>
-		<project>CMSISv2p00_LPC17xx</project>
-		<project>Configuration</project>
-		<project>FreeRTOS_V7.1.0</project>
-		<project>HardwareSupport</project>
+		<project>FreeRTOSv9.0.0</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
@@ -36,7 +32,7 @@
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildLocation</key>
-					<value>${workspace_loc:/Test/Debug}</value>
+					<value>${workspace_loc:/HardwareSupport/Debug}</value>
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.cleanBuildTarget</key>

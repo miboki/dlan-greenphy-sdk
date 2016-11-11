@@ -3,7 +3,6 @@
 	<name>FreeRTOS-Plus-TCP</name>
 	<comment></comment>
 	<projects>
-		<project>Configuration</project>
 		<project>FreeRTOSv9.0.0</project>
 	</projects>
 	<buildSpec>
