@@ -179,6 +179,7 @@ struct xDHCPMessage
 	uint8_t ucFirstOptionByte;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xDHCPMessage DHCPMessage_t;
 
 /* DHCP state machine states. */

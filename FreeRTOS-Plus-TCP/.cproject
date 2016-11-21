@@ -6,6 +6,8 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS-Plus-TCP"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOS-Plus-TCP/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/FreeRTOS-Plus-TCP/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOS-Plus-TCP" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
@@ -43,6 +45,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.1669113864" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/FreeRTOSConfig.h}&quot;"/>
@@ -67,12 +70,13 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Test_Code|protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="portable/NetworkInterface|portable/NetworkInterface/Zynq|portable/NetworkInterface/WinPCap|portable/NetworkInterface/STM32Fxx|portable/NetworkInterface/ksz8851snl|portable/NetworkInterface/ATSAM4E|portable/BufferManagement/BufferAllocation_2.c|Test_Code|protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="portable/NetworkInterface/GreenPHY"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="FreeRTOSv9.0.0;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="FreeRTOSv9.0.0;com.crt.advproject.config.lib.debug.1944230779" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOSv9.0.0"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOSv9.0.0/include"/>
@@ -83,6 +87,14 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOSv9.0.0" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="com.crt.advproject.config.lib.release.1145014485">
@@ -90,6 +102,8 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS-Plus-TCP"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOS-Plus-TCP/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/FreeRTOS-Plus-TCP/Release"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOS-Plus-TCP" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
@@ -120,12 +134,28 @@
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
 								</option>
 								<option id="gnu.c.compiler.option.misc.other.1284874963" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
+								<option id="gnu.c.compiler.option.include.paths.2112873809" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
+								</option>
 								<inputType id="com.crt.advproject.compiler.input.222031415" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
 							<tool id="com.crt.advproject.gas.lib.release.1204094218" name="MCU Assembler" superClass="com.crt.advproject.gas.lib.release">
 								<option id="com.crt.advproject.gas.arch.124829162" name="Architecture" superClass="com.crt.advproject.gas.arch" value="com.crt.advproject.gas.target.cm3" valueType="enumerated"/>
 								<option id="com.crt.advproject.gas.thumb.606381755" name="Thumb mode" superClass="com.crt.advproject.gas.thumb" value="true" valueType="boolean"/>
 								<option id="gnu.both.asm.option.flags.crt.867567318" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -D__REDLIB__ -DNDEBUG -D__CODE_RED" valueType="string"/>
+								<option id="gnu.both.asm.option.include.paths.1528466501" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOSv9.0.0/include}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.884224535" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.517921953" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 							</tool>
@@ -133,11 +163,32 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Test_Code|protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="portable/NetworkInterface|portable/NetworkInterface/Zynq|portable/NetworkInterface/WinPCap|portable/NetworkInterface/STM32Fxx|portable/NetworkInterface/ksz8851snl|portable/NetworkInterface/ATSAM4E|portable/BufferManagement/BufferAllocation_2.c|Test_Code|protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="portable/NetworkInterface/GreenPHY"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
+				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041.2051660535" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Release"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
+				<externalSettings containerId="FreeRTOSv9.0.0;com.crt.advproject.config.lib.release.622722245" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOSv9.0.0"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOSv9.0.0/portable/GCC/ARM_CM3"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/FreeRTOSv9.0.0/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/FreeRTOSv9.0.0/Release"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOSv9.0.0" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
+			</storageModule>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
@@ -221,6 +272,12 @@
 	<storageModule moduleId="refreshScope"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="com.crt.advproject.config.lib.release.1145014485;com.crt.advproject.config.lib.release.1145014485.;com.crt.advproject.gas.lib.release.1204094218;com.crt.advproject.assembler.input.517921953">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.crt.advproject.GCCManagedMakePerProjectProfile"/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="com.crt.advproject.config.lib.release.1145014485;com.crt.advproject.config.lib.release.1145014485.;com.crt.advproject.gcc.lib.release.89133738;com.crt.advproject.compiler.input.222031415">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.crt.advproject.GCCManagedMakePerProjectProfile"/>
+		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="com.crt.advproject.config.lib.debug.1162817809;com.crt.advproject.config.lib.debug.1162817809.;com.crt.advproject.gas.lib.debug.822657059;com.crt.advproject.assembler.input.1991837555">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.crt.advproject.GCCManagedMakePerProjectProfile"/>
 		</scannerConfigBuildInfo>

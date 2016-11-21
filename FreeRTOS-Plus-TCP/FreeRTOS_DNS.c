@@ -197,6 +197,7 @@ struct xDNSMessage
 	uint16_t usAdditionalRRs;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xDNSMessage DNSMessage_t;
 
 /* A DNS query consists of a header, as described in 'struct xDNSMessage'
@@ -210,6 +211,7 @@ struct xDNSTail
 	uint16_t usClass;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xDNSTail DNSTail_t;
 
 #if( ipconfigUSE_LLMNR == 1 )
@@ -226,6 +228,7 @@ typedef struct xDNSTail DNSTail_t;
 		uint32_t ulIPAddress;
 	}
 	#include "pack_struct_end.h"
+	;
 	typedef struct xLLMNRAnswer LLMNRAnswer_t;
 
 #endif /* ipconfigUSE_LLMNR == 1 */
@@ -248,6 +251,7 @@ typedef struct xDNSTail DNSTail_t;
 		uint16_t usClass;
 	}
 	#include "pack_struct_end.h"
+	;
 	typedef struct xNBNSRequest NBNSRequest_t;
 
 	#include "pack_struct_start.h"
@@ -261,6 +265,7 @@ typedef struct xDNSTail DNSTail_t;
 		uint32_t ulIPAddress;
 	}
 	#include "pack_struct_end.h"
+	;
 	typedef struct xNBNSAnswer NBNSAnswer_t;
 
 #endif /* ipconfigUSE_NBNS == 1 */
