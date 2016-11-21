@@ -726,7 +726,7 @@ static void ethAutoNegCheck( xTimerHandle xTimer )
 	struct emacNetdevice * emacNetdevice = (struct emacNetdevice *) pvTimerGetTimerID(xTimer);
 	xTimerDelete(xTimer,0);
 	emacNetdevice->ethAutoNegGuard = 0;
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		xSemaphoreGive(emacNetdevice->xEMACAutoNegotiationSemaphore);
 	}
@@ -806,7 +806,7 @@ void ethPhyIrqHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
     /* Setup the PHY. eth0 is hardcoded, only one ETH interface present */
     prvSetupLinkStatus(&eth0);
 
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		xSemaphoreGiveFromISR( eth0.xEMACAutoNegotiationSemaphore, xHigherPriorityTaskWoken );
 	}
@@ -824,7 +824,7 @@ static int emacNetdeviceInit(struct netDeviceInterface * dev)
 {
 	int rv = 0;
 
-	if(!uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
 	{
 		DEBUG_PRINT(DEBUG_ALL,"Scheduler not running: %s\r\n",__func__);
 	}
@@ -836,7 +836,7 @@ static int emacNetdeviceInit(struct netDeviceInterface * dev)
 		vSemaphoreCreateBinary( emacNetdevice->xEMACSemaphore );
 		vSemaphoreCreateBinary( emacNetdevice->xEMACAutoNegotiationSemaphore );
 
-		if(uxTaskIsSchedulerRunning())
+		if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 		{
 			xSemaphoreTake( emacNetdevice->xEMACAutoNegotiationSemaphore, portMAX_DELAY );
 		}

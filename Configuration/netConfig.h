@@ -76,17 +76,17 @@
 #define configNET_MASK2		255
 #define configNET_MASK3		0
 
-/* default router IP address */
-#define configDRTR_IP_ADDR0		192
-#define configDRTR_IP_ADDR1		168
-#define configDRTR_IP_ADDR2		1
-#define configDRTR_IP_ADDR3		1
+/* default router ip address */
+#define configGATEWAY_ADDR0		192
+#define configGATEWAY_ADDR1		168
+#define configGATEWAY_ADDR2		1
+#define configGATEWAY_ADDR3		1
 
-/*default DNS IP address */
-#define configDNS_IP_ADDR0		192
-#define configDNS_IP_ADDR1		168
-#define configDNS_IP_ADDR2		1
-#define configDNS_IP_ADDR3		1
+/* default DNS SERVER ip address */
+#define configDNS_SERVER_ADDR0		192
+#define configDNS_SERVER_ADDR1		168
+#define configDNS_SERVER_ADDR2		1
+#define configDNS_SERVER_ADDR3		1
 
 /* TFTP server address */
 #define configTFTP_IP_ADDR0		192

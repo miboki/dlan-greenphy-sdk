@@ -4,6 +4,7 @@
 	<comment></comment>
 	<projects>
 		<project>CMSISv2p00_LPC17xx</project>
+		<project>FreeRTOS-Plus-TCP</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
