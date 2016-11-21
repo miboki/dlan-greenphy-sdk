@@ -98,6 +98,7 @@ struct xETH_HEADER
 	uint16_t usFrameType;              /* 12 + 2 = 14 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xETH_HEADER EthernetHeader_t;
 
 #include "pack_struct_start.h"
@@ -114,6 +115,7 @@ struct xARP_HEADER
 	uint32_t ulTargetProtocolAddress;		/* 24 +  4 = 28  */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xARP_HEADER ARPHeader_t;
 
 #include "pack_struct_start.h"
@@ -131,6 +133,7 @@ struct xIP_HEADER
 	uint32_t ulDestinationIPAddress;      /* 16 + 4 = 20 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xIP_HEADER IPHeader_t;
 
 #include "pack_struct_start.h"
@@ -142,6 +145,7 @@ struct xIGMP_HEADER
 	uint32_t usGroupAddress;   /* 4 + 4 = 8 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xIGMP_HEADER IGMPHeader_t;
 
 #include "pack_struct_start.h"
@@ -154,6 +158,7 @@ struct xICMP_HEADER
 	uint16_t usSequenceNumber; /* 6 + 2 = 8 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xICMP_HEADER ICMPHeader_t;
 
 #include "pack_struct_start.h"
@@ -165,6 +170,7 @@ struct xUDP_HEADER
 	uint16_t usChecksum;        /* 6 + 2 = 8 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xUDP_HEADER UDPHeader_t;
 
 #include "pack_struct_start.h"
@@ -185,6 +191,7 @@ struct xTCP_HEADER
 #endif
 }
 #include "pack_struct_end.h"
+;
 typedef struct xTCP_HEADER TCPHeader_t;
 
 #include "pack_struct_start.h"
@@ -197,6 +204,7 @@ struct xPSEUDO_HEADER
 	uint16_t usUDPLength;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xPSEUDO_HEADER PseudoHeader_t;
 
 /*-----------------------------------------------------------*/
@@ -210,6 +218,7 @@ struct xARP_PACKET
 	ARPHeader_t xARPHeader;			/* 14 + 28 = 42 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xARP_PACKET ARPPacket_t;
 
 #include "pack_struct_start.h"
@@ -219,6 +228,7 @@ struct xIP_PACKET
 	IPHeader_t xIPHeader;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xIP_PACKET IPPacket_t;
 
 #include "pack_struct_start.h"
@@ -229,6 +239,7 @@ struct xICMP_PACKET
 	ICMPHeader_t xICMPHeader;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xICMP_PACKET ICMPPacket_t;
 
 #include "pack_struct_start.h"
@@ -239,6 +250,7 @@ struct xUDP_PACKET
 	UDPHeader_t xUDPHeader;           /* 34 +  8 = 42 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xUDP_PACKET UDPPacket_t;
 
 #include "pack_struct_start.h"
@@ -249,6 +261,7 @@ struct xTCP_PACKET
 	TCPHeader_t xTCPHeader;           /* 34 + 32 = 66 */
 }
 #include "pack_struct_end.h"
+;
 typedef struct xTCP_PACKET TCPPacket_t;
 
 typedef union XPROT_PACKET
@@ -322,6 +335,7 @@ struct xUDP_IP_FRAGMENT_PARAMETERS
 	uint16_t usPayloadChecksum;
 }
 #include "pack_struct_end.h"
+;
 typedef struct xUDP_IP_FRAGMENT_PARAMETERS IPFragmentParameters_t;
 
 #if( ipconfigBYTE_ORDER == pdFREERTOS_LITTLE_ENDIAN )
