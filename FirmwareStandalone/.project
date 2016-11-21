@@ -8,6 +8,7 @@
 		<project>HardwareSupport</project>
 		<project>CMSISv2p00_LPC17xx</project>
 		<project>Configuration</project>
+		<project>FreeRTOS-Plus-TCP</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

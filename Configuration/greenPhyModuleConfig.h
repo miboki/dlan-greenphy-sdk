@@ -70,10 +70,10 @@ extern const char const * features;
 
 #define ETHERNET_OVER_SPI_TO_ETHERNET_BRIDGE OFF
 #define ETHERNET_LPC1758_FLOW_CONTROL ON
-#define COMMAND_LINE_INTERFACE OFF
-#define HTTP_SERVER ON
+#define COMMAND_LINE_INTERFACE ON
+#define HTTP_SERVER OFF
 #define TFTP_CLIENT_IAP OFF
-#define IP_STACK_DEVICE GREEN_PHY // LPC1758
+#define IP_STACK_DEVICE LPC1758 // GREEN_PHY // LPC1758
 /* GREEN_PHY_SIMPLE_QOS is disabled on purpose; it is currently ALPHA and not yet in release state */
 #define GREEN_PHY_SIMPLE_QOS OFF
 #define WATCHDOG OFF

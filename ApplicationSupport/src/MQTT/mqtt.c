@@ -21,6 +21,7 @@
 
 #include "relay_click.h"
 #include "lcd_click.h"
+#include "greenPhyModuleApplication.h"
 
 #define mqtt_TASK_PRIORITY          ( tskIDLE_PRIORITY + 2 )
 
@@ -384,66 +385,66 @@ int check_header(const char *buf) {
  * @param[in]   Pointer to the current connection
  * @return      None
  *********************************************************************/
-static PT_THREAD(handle_mqtt_output(struct httpd_state *s)) {
-
-    PSOCK_BEGIN(&s->sin);
-    s->ticks = CLOCK_SECOND;
-
-    //check for new Data from MQTT Broker
-    if ((s->state == STATE_SUBSCRIBED) && (PSOCK_NEWDATA(&s->sin)) && (check_header(uip_appdata) == 3)) {
-        checkMQTTPublish(uip_appdata);
-        memset(uip_appdata, '\0', sizeof(uip_appdata));
-    }
-
-    //close connection when MQTT Task is deleted
-    if (mqtt.state == STATE_CLOSING) {
-        mqtt.state = STATE_CLOSED;
-        s->state = STATE_CLOSED;
-        PSOCK_CLOSE_EXIT(&s->sin);
-    }
-
-    //CONNECT
-    if (s->state == STATE_CONNECTED_TCP) {
-        createMQTTConnect();
-        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
-        PSOCK_READTO(&s->sin, 0x20);
-        if(s->inputbuf[0] != 0x20) {
-            PSOCK_CLOSE_EXIT(&s->sin);
-        }
-        s->state = STATE_CONNECTED_MQTT;
-        mqtt.state = STATE_CONNECTED_MQTT;
-    }
-
-    //SUBSCRIBE
-    if (s->state == STATE_CONNECTED_MQTT) {
-            createMQTTSubscribe();
-            PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
-            PSOCK_READTO(&s->sin, 0x90);
-            s->state = STATE_SUBSCRIBED;
-            mqtt.state = STATE_SUBSCRIBED;
-    }
-
-    //PUBLISH
-    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_POLLED) {
-        createMQTTPublish();
-        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
-        s->timer = 0;
-        s->state = STATE_SUBSCRIBED;
-        mqtt.state = STATE_SUBSCRIBED;
-    }
-
-    //PINGREQ
-    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_HEARTBEAT) {
-        createMQTTPingreq();
-        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
-        PSOCK_READTO(&s->sin, 0xd0);
-        s->timer = 0;
-        s->state = STATE_SUBSCRIBED;
-        mqtt.state = STATE_SUBSCRIBED;
-        }
-
-    PSOCK_END(&s->sin);
-}
+//static PT_THREAD(handle_mqtt_output(struct httpd_state *s)) {
+//
+//    PSOCK_BEGIN(&s->sin);
+//    s->ticks = CLOCK_SECOND;
+//
+//    //check for new Data from MQTT Broker
+//    if ((s->state == STATE_SUBSCRIBED) && (PSOCK_NEWDATA(&s->sin)) && (check_header(uip_appdata) == 3)) {
+//        checkMQTTPublish(uip_appdata);
+//        memset(uip_appdata, '\0', sizeof(uip_appdata));
+//    }
+//
+//    //close connection when MQTT Task is deleted
+//    if (mqtt.state == STATE_CLOSING) {
+//        mqtt.state = STATE_CLOSED;
+//        s->state = STATE_CLOSED;
+//        PSOCK_CLOSE_EXIT(&s->sin);
+//    }
+//
+//    //CONNECT
+//    if (s->state == STATE_CONNECTED_TCP) {
+//        createMQTTConnect();
+//        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+//        PSOCK_READTO(&s->sin, 0x20);
+//        if(s->inputbuf[0] != 0x20) {
+//            PSOCK_CLOSE_EXIT(&s->sin);
+//        }
+//        s->state = STATE_CONNECTED_MQTT;
+//        mqtt.state = STATE_CONNECTED_MQTT;
+//    }
+//
+//    //SUBSCRIBE
+//    if (s->state == STATE_CONNECTED_MQTT) {
+//            createMQTTSubscribe();
+//            PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+//            PSOCK_READTO(&s->sin, 0x90);
+//            s->state = STATE_SUBSCRIBED;
+//            mqtt.state = STATE_SUBSCRIBED;
+//    }
+//
+//    //PUBLISH
+//    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_POLLED) {
+//        createMQTTPublish();
+//        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+//        s->timer = 0;
+//        s->state = STATE_SUBSCRIBED;
+//        mqtt.state = STATE_SUBSCRIBED;
+//    }
+//
+//    //PINGREQ
+//    if ((s->state == STATE_SUBSCRIBED || s->state == STATE_CONNECTED_MQTT) && mqtt.state == STATE_HEARTBEAT) {
+//        createMQTTPingreq();
+//        PSOCK_SEND(&s->sin,mqtt_buffer,mqtt_buffer_len);
+//        PSOCK_READTO(&s->sin, 0xd0);
+//        s->timer = 0;
+//        s->state = STATE_SUBSCRIBED;
+//        mqtt.state = STATE_SUBSCRIBED;
+//        }
+//
+//    PSOCK_END(&s->sin);
+//}
 
 
 /********************************************************************//**
@@ -454,29 +455,29 @@ static PT_THREAD(handle_mqtt_output(struct httpd_state *s)) {
  *********************************************************************/
 void mqtt_appcall() {
 
-struct httpd_state *s = (struct httpd_state *)&(uip_conn->appstate);
-
-if(uip_closed() || uip_aborted() || uip_timedout()) {
-    s->state=STATE_CLOSED;
-    mqtt.state=STATE_CLOSED;
-  } else if(uip_connected()) {
-    PSOCK_INIT(&s->sin, s->inputbuf, sizeof(s->inputbuf) - 1);
-    s->state = STATE_CONNECTED_TCP;
-    mqtt.state = STATE_CONNECTED_TCP;
-    s->timer = 0;
-  } else if (s != NULL) {
-      if (uip_poll()) {
-          ++s->timer;
-          if (s->timer >= 75) {
-              uip_close();
-          }
-      } else {
-          s->timer = 0;
-      }
-      handle_mqtt_output(s);
-  } else {
-      uip_abort();
-  }
+//struct httpd_state *s = (struct httpd_state *)&(uip_conn->appstate);
+//
+//if(uip_closed() || uip_aborted() || uip_timedout()) {
+//    s->state=STATE_CLOSED;
+//    mqtt.state=STATE_CLOSED;
+//  } else if(uip_connected()) {
+//    PSOCK_INIT(&s->sin, s->inputbuf, sizeof(s->inputbuf) - 1);
+//    s->state = STATE_CONNECTED_TCP;
+//    mqtt.state = STATE_CONNECTED_TCP;
+//    s->timer = 0;
+//  } else if (s != NULL) {
+//      if (uip_poll()) {
+//          ++s->timer;
+//          if (s->timer >= 75) {
+//              uip_close();
+//          }
+//      } else {
+//          s->timer = 0;
+//      }
+//      handle_mqtt_output(s);
+//  } else {
+//      uip_abort();
+//  }
 }
 
 /********************************************************************//**
@@ -533,8 +534,8 @@ void MQTT_Task(void *pvParameters) {
  *********************************************************************/
 void init_mqtt() {
 
-    gpconfig->active = 1;
-    xTaskCreate(MQTT_Task, (signed char *) "MQTT", 500, NULL, mainUIP_TASK_PRIORITY, &xHandle_mqtt);
+    // gpconfig->active = 1;
+    // xTaskCreate(MQTT_Task, (signed char *) "MQTT", 500, NULL, mainUIP_TASK_PRIORITY, &xHandle_mqtt);
 }
 
 /********************************************************************//**
@@ -556,6 +557,7 @@ void deinit_mqtt() {
  * @param[in]   Pointer to Input String from webserver task
  * @return      None
  *********************************************************************/
+extern void writeflash();
 void mqtt_activate(char *c) {
 
     if (strstr(c, "?activate_mqtt=yes")) {

@@ -634,7 +634,7 @@ int UARTReceive( uint32_t portNum, uint8_t *buffer, uint16_t length, timeout_t t
 	struct UART * usedUart = &uart[portNum];
 
 	signed portBASE_TYPE taken;
-	if(uxTaskIsSchedulerRunning())
+	if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
 	{
 		taken = xSemaphoreTake( uart->rxSemaphore, timeout_ms);
 	}
