@@ -3,7 +3,8 @@
 	<name>ApplicationSupport</name>
 	<comment></comment>
 	<projects>
-		<project>HardwareSupport</project>
+		<project>Configuration</project>
+		<project>Libraries</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

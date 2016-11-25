@@ -32,8 +32,8 @@
 #ifndef __WWDT_001_H_
 #define __WWDT_001_H_
 
-#include "core_cm3.h"
 #include "LPC17xx.h"
+#include "core_cm3.h"
 #define CHIP_LPC175X_6X
 #define STATIC static
 #define INLINE inline

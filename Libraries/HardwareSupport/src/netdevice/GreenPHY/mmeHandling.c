@@ -107,7 +107,7 @@ struct netdeviceQueueElement * qcaspi_create_get_sw_version_mme(struct qcaspi *q
 	return rv;
 }
 
-#if GREEN_PHY_SIMPLE_QOS
+#if (GREEN_PHY_SIMPLE_QOS == ON)
 
 struct netdeviceQueueElement * qcaspi_create_get_property_host_q_info(struct qcaspi *qca)
 {
