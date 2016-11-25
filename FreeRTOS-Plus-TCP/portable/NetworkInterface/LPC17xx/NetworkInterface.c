@@ -53,7 +53,7 @@
 //#include "FreeRTOS_IO.h"
 
 /* FreeRTOS+UDP includes. */
-#include "FreeRTOS_UDP_IP.h"
+#include "FreeRTOS_IP.h"
 #include "FreeRTOS_IP_Private.h"
 #include "FreeRTOS_Sockets.h"
 #include "NetworkBufferManagement.h"
@@ -120,7 +120,7 @@ extern uint8_t ucMACAddress[ 6 ];
 
 		/* Enable the interrupt and set its priority to the minimum
 		interrupt priority.  */
-		NVIC_SetPriority( ENET_IRQn, configMAC_INTERRUPT_PRIORITY );
+		NVIC_SetPriority( ENET_IRQn, configEMAC_INTERRUPT_PRIORITY );
 		NVIC_EnableIRQ( ENET_IRQn );
 
 		xReturn = pdPASS;
@@ -136,7 +136,7 @@ extern uint8_t ucMACAddress[ 6 ];
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxNetworkBuffer )
+BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t xReleaseAfterSend )
 {
 BaseType_t xReturn = pdFAIL;
 int32_t x;
@@ -150,17 +150,17 @@ extern void EMAC_SetNextPacketToSend( uint8_t * pucBuffer );
 		if( EMAC_CheckTransmitIndex() == TRUE )
 		{
 			/* Will the data fit in the Tx buffer? */
-			if( pxNetworkBuffer->xDataLength < EMAC_ETH_MAX_FLEN ) /*_RB_ The size needs to come from FreeRTOSIPConfig.h. */
+			if( pxDescriptor->xDataLength < EMAC_ETH_MAX_FLEN ) /*_RB_ The size needs to come from FreeRTOSIPConfig.h. */
 			{
 				/* Assign the buffer to the Tx descriptor that is now known to
 				be free. */
-				EMAC_SetNextPacketToSend( pxNetworkBuffer->pucEthernetBuffer );
+				EMAC_SetNextPacketToSend( pxDescriptor->pucEthernetBuffer );
 
 				/* The EMAC now owns the buffer. */
-				pxNetworkBuffer->pucEthernetBuffer = NULL;
+				pxDescriptor->pucEthernetBuffer = NULL;
 
 				/* Initiate the Tx. */
-				EMAC_StartTransmitNextBuffer( pxNetworkBuffer->xDataLength );
+				EMAC_StartTransmitNextBuffer( pxDescriptor->xDataLength );
 				iptraceNETWORK_INTERFACE_TRANSMIT();
 
 				/* The Tx has been initiated. */
@@ -175,7 +175,13 @@ extern void EMAC_SetNextPacketToSend( uint8_t * pucBuffer );
 	}
 
 	/* Finished with the network buffer. */
-	vNetworkBufferRelease( pxNetworkBuffer );
+	if( xReleaseAfterSend != pdFALSE )
+	{
+		/* It is assumed SendData() copies the data out of the FreeRTOS+TCP Ethernet
+		buffer.  The Ethernet buffer is therefore no longer needed, and must be
+		freed for re-use. */
+		vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+	}
 
 	return xReturn;
 }
@@ -217,7 +223,7 @@ static void prvEMACHandlerTask( void *pvParameters )
 {
 size_t xDataLength;
 const uint16_t usCRCLength = 4;
-NetworkBufferDescriptor_t *pxNetworkBuffer;
+NetworkBufferDescriptor_t *pxDescriptor;
 IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 
 /* This is not included in the header file for some reason. */
@@ -246,19 +252,19 @@ extern uint8_t *EMAC_NextPacketToRead( void );
 				stack.  No storage is required as the network buffer
 				will point directly to the buffer that already holds
 				the	received data. */
-				pxNetworkBuffer = pxNetworkBufferGet( 0, ( TickType_t ) 0 );
+				pxDescriptor = pxGetNetworkBufferWithDescriptor( 0, ( TickType_t ) 0 );
 
-				if( pxNetworkBuffer != NULL )
+				if( pxDescriptor != NULL )
 				{
-					pxNetworkBuffer->pucEthernetBuffer = EMAC_NextPacketToRead();
-					pxNetworkBuffer->xDataLength = xDataLength;
-					xRxEvent.pvData = ( void * ) pxNetworkBuffer;
+					pxDescriptor->pucEthernetBuffer = EMAC_NextPacketToRead();
+					pxDescriptor->xDataLength = xDataLength;
+					xRxEvent.pvData = ( void * ) pxDescriptor;
 
 					/* Data was received and stored.  Send a message to the IP
 					task to let it know. */
 					if( xQueueSendToBack( xNetworkEventQueue, &xRxEvent, ( TickType_t ) 0 ) == pdFALSE )
 					{
-						vReleaseNetworkBuffer( pxNetworkBuffer );
+						vReleaseNetworkBufferAndDescriptor( pxDescriptor );
 						iptraceETHERNET_RX_EVENT_LOST();
 					}
 				}
