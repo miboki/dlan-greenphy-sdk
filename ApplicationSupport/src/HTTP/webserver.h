@@ -35,7 +35,7 @@
 #ifndef __WEBSERVER_H__
 #define __WEBSERVER_H__
 
-#include "greenPhyModuleApplication.h"
+// #include "greenPhyModuleApplication.h"
 
 #undef UIP_APPCALL
 

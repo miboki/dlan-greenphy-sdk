@@ -16,7 +16,7 @@
 #include "diagnostics.h"
 #include "clock.h"
 
-#include "debug.h"
+// #include "debug.h"
 
 #define FLASH_TIME (CLOCK_SECOND/4)
 #define PAUSE_TIME (CLOCK_SECOND*2)

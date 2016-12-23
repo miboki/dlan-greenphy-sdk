@@ -35,7 +35,7 @@
 #ifndef __HTTPD_H__
 #define __HTTPD_H__
 
-#include "greenPhyModuleApplication.h"
+// #include "greenPhyModuleApplication.h"
 
 #include "timer.h"
 #include "psock.h"

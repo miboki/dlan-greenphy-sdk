@@ -57,7 +57,7 @@
 
 #include <stdint.h>
 
-#include "greenPhyModuleApplication.h"
+// #include "greenPhyModuleApplication.h"
 
 #define PACK_STRUCT_END __attribute((packed))
 

@@ -69,7 +69,7 @@
 
 #include "uip-conf.h"
 
-#include "greenPhyModuleApplication.h"
+// #include "greenPhyModuleApplication.h"
 
 /*------------------------------------------------------------------------------*/
 

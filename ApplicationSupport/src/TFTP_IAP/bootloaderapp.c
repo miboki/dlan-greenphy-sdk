@@ -17,7 +17,7 @@
 #include "flash.h"
 #include "diagnostics.h"
 
-#include "greenPhyModuleApplication.h"
+//#include "greenPhyModuleApplication.h"
 
 #if TFTP_CLIENT_IAP == ON
 

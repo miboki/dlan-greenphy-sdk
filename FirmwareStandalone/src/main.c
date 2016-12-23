@@ -1,35 +1,41 @@
-/*
- 1 tab == 4 spaces!
+#if defined (__USE_LPCOPEN)
+#if defined(NO_BOARD_LIB)
+#include "chip.h"
+#else
+#include "board.h"
+#endif
+#endif
 
- */
+#include <cr_section_macros.h>
 
 /* FreeRTOS includes. */
 #include <FreeRTOS.h>
 #include "task.h"
 
 #include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
 
-#include "clocking.h"
-#include "greenPhyModuleApplication.h"
-#include "string.h"
-#include "uart.h"
-#include "queue.h"
+//#include "clocking.h"
+//#include "greenPhyModuleApplication.h"
+//#include "string.h"
+//#include "uart.h"
+//#include "queue.h"
 #include "netConfig.h"
 
 #if HTTP_SERVER == ON || COMMAND_LINE_INTERFACE == ON
-#include "relay.h"
+//#include "relay.h"
 #endif
 
-#include "bootloaderapp.h"
+// #include "bootloaderapp.h"
 
-#include "MQTTClient.h"
-#include "uip.h"
-#include "jansson.h"
-#include "lcd_click.h"
+//#include "MQTTClient.h"
+//#include "uip.h"
+//#include "jansson.h"
+//#include "lcd_click.h"
 
 //Queue
-xQueueHandle MQTT_Queue = 0;
-uint8_t cloudactive;
+//xQueueHandle MQTT_Queue = 0;
+//uint8_t cloudactive;
 
 /* The default IP and MAC address used by the demo.  The address configuration
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
@@ -59,7 +65,7 @@ const uint8_t ucMACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_
 /*-----------------------------------------------------------*/
 
 void vApplicationMallocFailedHook(void) {
-	printToUart("Malloc failed!\r\n");
+//	printToUart("Malloc failed!\r\n");
 	for (;;)
 		;
 }
@@ -69,8 +75,8 @@ void vApplicationMallocFailedHook(void) {
 void vApplicationTickHook(void) {
 	/* Called from every tick interrupt */
 
-	DEBUG_EXECUTE(
-			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
+//	DEBUG_EXECUTE(
+//			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
 }
 
 /*-----------------------------------------------------------*/
@@ -92,10 +98,56 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 }
 
 /*-----------------------------------------------------------*/
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
+	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
+	static BaseType_t xTasksAlreadyCreated = pdFALSE;
+	int8_t cBuffer[ 16 ];
+
+	    /* Check this was a network up event, as opposed to a network down event. */
+	    DEBUGOUT("Network hook\r\n");
+	    if( eNetworkEvent == eNetworkUp )
+	    {
+		    DEBUGOUT("Network up\r\n");
+	        /* Create the tasks that use the TCP/IP stack if they have not already been
+	        created. */
+	        if( xTasksAlreadyCreated == pdFALSE )
+	        {
+	            /*
+	             * Create the tasks here.
+	             */
+
+	            xTasksAlreadyCreated = pdTRUE;
+	        }
+
+	        /* The network is up and configured.  Print out the configuration,
+	        which may have been obtained from a DHCP server. */
+	        FreeRTOS_GetAddressConfiguration( &ulIPAddress,
+	                                          &ulNetMask,
+	                                          &ulGatewayAddress,
+	                                          &ulDNSServerAddress );
+
+	        /* Convert the IP address to a string then print it out. */
+	        FreeRTOS_inet_ntoa( ulIPAddress, cBuffer );
+	        DEBUGOUT( "IP Address: %s\r\n", cBuffer );
+
+	        /* Convert the net mask to a string then print it out. */
+	        FreeRTOS_inet_ntoa( ulNetMask, cBuffer );
+	        printf( "Subnet Mask: %s\r\n", cBuffer );
+
+	        /* Convert the IP address of the gateway to a string then print it out. */
+	        FreeRTOS_inet_ntoa( ulGatewayAddress, cBuffer );
+	        printf( "Gateway IP Address: %s\r\n", cBuffer );
+
+	        /* Convert the IP address of the DNS server to a string then print it out. */
+	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
+	        printf( "DNS server IP Address: %s\r\n", cBuffer );
+	    }
+}
+/*-----------------------------------------------------------*/
 
 void vConfigureTimerForRunTimeStats(void) {
-	const unsigned long TCR_COUNT_RESET = 2, CTCR_CTM_TIMER = 0x00,
-			TCR_COUNT_ENABLE = 0x01;
+	//const unsigned long TCR_COUNT_RESET = 2, CTCR_CTM_TIMER = 0x00,
+	//		TCR_COUNT_ENABLE = 0x01;
 
 	/* This function configures a timer that is used as the time base when
 	 collecting run time statistical information - basically the percentage
@@ -104,55 +156,72 @@ void vConfigureTimerForRunTimeStats(void) {
 	 to 1). */
 
 	/* Power up and feed the timer. */
-	LPC_SC->PCONP |= 0x02UL;
-	LPC_SC->PCLKSEL0 = (LPC_SC->PCLKSEL0 & (~(0x3 << 2))) | (0x01 << 2);
+	//LPC_SC->PCONP |= 0x02UL;
+	Chip_TIMER_Init(LPC_TIMER0);
+
+	//LPC_SC->PCLKSEL0 = (LPC_SC->PCLKSEL0 & (~(0x3 << 2))) | (0x01 << 2);
+	Chip_Clock_SetPCLKDiv(SYSCTL_PCLK_TIMER0, SYSCTL_CLKDIV_1);
 
 	/* Reset Timer 0 */
-	LPC_TIM0->TCR = TCR_COUNT_RESET;
+	// LPC_TIM0->TCR = TCR_COUNT_RESET;
+	Chip_TIMER_Reset(LPC_TIMER0);
 
 	/* Just count up. */
-	LPC_TIM0->CTCR = CTCR_CTM_TIMER;
+	//LPC_TIM0->CTCR = CTCR_CTM_TIMER;
+	Chip_TIMER_TIMER_SetCountClockSrc(LPC_TIMER0, 0, 0);
 
 	/* Prescale to a frequency that is good enough to get a decent resolution,
 	 but not too fast so as to overflow all the time. */
-	LPC_TIM0->PR = ( configCPU_CLOCK_HZ / 10000UL) - 1UL;
+	//LPC_TIM0->PR = ( configCPU_CLOCK_HZ / 10000UL) - 1UL;
+	Chip_TIMER_PrescaleSet(LPC_TIMER0, ( configCPU_CLOCK_HZ / 10000UL) - 1UL);
 
 	/* Start the counter. */
-	LPC_TIM0->TCR = TCR_COUNT_ENABLE;
+	//LPC_TIM0->TCR = TCR_COUNT_ENABLE;
+	Chip_TIMER_Enable(LPC_TIMER0);
+}
+
+/*-----------------------------------------------------------*/
+
+/* Sets up system hardware */
+static void prvSetupHardware(void)
+{
+	SystemCoreClockUpdate();
+	Board_Init();
 }
 
 /*-----------------------------------------------------------*/
 
 int main(void) {
-	LPC_UseOscillator(LPC_MAIN_OSC);
-	LPC_SetPLL0(100000000);
+	prvSetupHardware();
 
-	printInit(UART0);
-	DEBUG_INIT(UART0);
+	DEBUGOUT("test\r\n");
 
-	printToUart("\r\n\r\nSTANDALONE ");
-	{
-		uint32_t reset_reason = LPC_SC->RSID;
-		printToUart("RSID:0x%x", reset_reason);
-		if (!reset_reason)
-			printToUart("->Bootloader");
-		if (reset_reason & 0x1)
-			printToUart("->Power On");
-		if (reset_reason & 0x2)
-			printToUart("->Reset");
-		if (reset_reason & 0x4)
-			printToUart("->Watchdog");
-		if (reset_reason & 0x8)
-			printToUart("->BrownOut Detection");
-		if (reset_reason & 0x10)
-			printToUart("->JTAG/restart");
-		printToUart("\r\n");
-		LPC_SC->RSID = reset_reason;
-	}
+//	printInit(UART0);
+//	DEBUG_INIT(UART0);
+//
+//	printToUart("\r\n\r\nSTANDALONE ");
+//	{
+//		uint32_t reset_reason = LPC_SC->RSID;
+//		printToUart("RSID:0x%x", reset_reason);
+//		if (!reset_reason)
+//			printToUart("->Bootloader");
+//		if (reset_reason & 0x1)
+//			printToUart("->Power On");
+//		if (reset_reason & 0x2)
+//			printToUart("->Reset");
+//		if (reset_reason & 0x4)
+//			printToUart("->Watchdog");
+//		if (reset_reason & 0x8)
+//			printToUart("->BrownOut Detection");
+//		if (reset_reason & 0x10)
+//			printToUart("->JTAG/restart");
+//		printToUart("\r\n");
+//		LPC_SC->RSID = reset_reason;
+//	}
+//
+//	printToUart("UART0 %s(%s)\r\n", features, version);
 
-	printToUart("UART0 %s(%s)\r\n", features, version);
-
-    FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
+FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
 
 //#if HTTP_SERVER == ON || COMMAND_LINE_INTERFACE == ON
 //	initRelay();
@@ -198,11 +267,11 @@ int main(void) {
 //	size_t mem = xPortGetFreeHeapSize();
 //	printToUart("free heap: %d(0x%x)\r\n", mem, mem);
 //
-#if COMMAND_LINE_INTERFACE == ON
-	cliInit();
+//#if COMMAND_LINE_INTERFACE == ON
+//	cliInit();
 //#else
 //	printToUart("OK\r\n");
-#endif
+//#endif
 
 	/*Initialize Queue*/
 //	MQTT_Queue = xQueueCreate(3, 24);
@@ -214,7 +283,7 @@ int main(void) {
 
 	// the application will be only started after the scheduler is ended by the bootloader calling vTaskEndScheduler()
 
-	startApplication();
+	//startApplication();
 
 	// shall never be reached ...
 

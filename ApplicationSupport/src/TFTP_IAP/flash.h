@@ -13,7 +13,7 @@
 #define FLASH_H_
 
 //#ifdef __USE_CMSIS
-#include "LPC17xx.h"
+#include "cmsis.h"
 //#endif
 
 void flash_init();

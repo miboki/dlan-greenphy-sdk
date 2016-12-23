@@ -4,11 +4,8 @@
 	<comment></comment>
 	<projects>
 		<project>ApplicationSupport</project>
-		<project>FreeRTOSv9.0.0</project>
-		<project>HardwareSupport</project>
 		<project>Configuration</project>
-		<project>FreeRTOS-Plus-TCP</project>
-		<project>CMSIS_CORE_LPC17xx</project>
+		<project>Libraries</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
