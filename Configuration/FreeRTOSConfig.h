@@ -54,7 +54,7 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "LPC17xx.h"
+#include "chip.h"
 #include "netConfig.h"
 
 /*-----------------------------------------------------------
@@ -92,7 +92,7 @@
 
 #define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
 
-#define configUSE_COUNTING_SEMAPHORES 	0
+#define configUSE_COUNTING_SEMAPHORES 	1
 #define configUSE_ALTERNATIVE_API 		0
 #define configCHECK_FOR_STACK_OVERFLOW	2
 #define configUSE_RECURSIVE_MUTEXES		1
@@ -141,7 +141,7 @@ numeric value the higher the interrupt priority). */
 #define configDMA_INTERRUPT_PRIORITY		7
 #define configSPI_INTERRUPT_PRIORITY		8
 #define configSPI_INTERRUPT_TASK_PRIORITY	9
-#define configEMAC_INTERRUPT_PRIORITY		10
+#define configETHERNET_INTERRUPT_PRIORITY	10
 #define configUART0_INTERRUPT_PRIORITY		12
 #define configUART1_INTERRUPT_PRIORITY		13
 #define configUART2_INTERRUPT_PRIORITY		14
@@ -154,6 +154,12 @@ numeric value the higher the interrupt priority). */
  *-----------------------------------------------------------*/
 extern void vConfigureTimerForRunTimeStats( void );
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() vConfigureTimerForRunTimeStats()
-#define portGET_RUN_TIME_COUNTER_VALUE() LPC_TIM0->TC
-
+//#define portGET_RUN_TIME_COUNTER_VALUE() LPC_TIM0->TC
+#define portGET_RUN_TIME_COUNTER_VALUE() Chip_TIMER_ReadCount(LPC_TIMER0)
 #endif /* FREERTOS_CONFIG_H */
+
+/* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
+standard names - or at least those used in the unmodified vector table. */
+#define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler

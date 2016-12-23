@@ -48,7 +48,7 @@ extern "C" {
  * PHY via a MII link (Chip_ENET_StartMIIWrite(), Chip_ENET_IsMIIBusy(),
  * Chip_ENET_StartMIIRead(), and Chip_ENET_ReadMIIData()).
  *
- * Once initialized, just preiodically call the lpcPHYStsPoll() function
+ * Once initialized, just periodically call the lpcPHYStsPoll() function
  * from the background loop or a thread and monitor the returned status
  * to determine if the PHY state has changed and the current PHY state.
  * @{
