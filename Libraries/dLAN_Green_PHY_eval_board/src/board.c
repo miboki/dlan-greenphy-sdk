@@ -32,7 +32,7 @@
 #include "board.h"
 #include "string.h"
 
-#include "retarget.h"
+// #include "retarget.h"
 
 /*****************************************************************************
  * Private types/enumerations/variables
@@ -237,24 +237,10 @@ void Board_ENET_GetMacADDR(uint8_t *mcaddr)
 }
 
 /* Initialize pin muxing for SSP interface */
-void Board_SSP_Init(LPC_SSP_T *pSSP)
+void Board_SSP_Init(LPC_SSP_T *pSSP, bool isMaster)
 {
-	if (pSSP == LPC_SSP1) {
-		/* Set up clock and muxing for SSP1 interface */
-		/*
-		 * Initialize SSP0 pins connect
-		 * P0.7: SCK
-		 * P0.6: SSEL
-		 * P0.8: MISO
-		 * P0.9: MOSI
-		 */
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 7, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 6, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 8, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 9, IOCON_MODE_INACT, IOCON_FUNC2);
-	}
-	else {
-		/* Set up clock and muxing for SSP0 interface */
+	if (pSSP == LPC_SSP0)
+	{
 		/*
 		 * Initialize SSP0 pins connect
 		 * P0.15: SCK
@@ -263,10 +249,81 @@ void Board_SSP_Init(LPC_SSP_T *pSSP)
 		 * P0.18: MOSI
 		 */
 		Chip_IOCON_PinMux(LPC_IOCON, 0, 15, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_INACT, IOCON_FUNC2);
+		if (isMaster) {
+			Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC0);
+			Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 16);
+			Board_SSP_DeassertSSEL(pSSP);
+		}
+		else {
+			Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC2);
+		}
 		Chip_IOCON_PinMux(LPC_IOCON, 0, 17, IOCON_MODE_INACT, IOCON_FUNC2);
 		Chip_IOCON_PinMux(LPC_IOCON, 0, 18, IOCON_MODE_INACT, IOCON_FUNC2);
+
+		Chip_SSP_Init(pSSP);
+		/* QCA7000 specific configuration */
+		Chip_SSP_Set_Mode(pSSP, SSP_MODE_MASTER);
+		Chip_SSP_SetFormat(pSSP, SSP_BITS_8, SSP_FRAMEFORMAT_SPI, SSP_CLOCK_CPHA1_CPOL1);
+		Chip_SSP_SetBitRate(pSSP, 12000000);
 	}
+	else
+	{
+		/*
+		 * Initialize SSP1 pins connect
+		 * P0.7: SCK
+		 * P0.6: SSEL
+		 * P0.8: MISO
+		 * P0.9: MOSI
+		 */
+		Chip_IOCON_PinMux(LPC_IOCON, 0, 7, IOCON_MODE_INACT, IOCON_FUNC2);
+		if (isMaster) {
+			Chip_IOCON_PinMux(LPC_IOCON, 0, 6, IOCON_MODE_PULLUP, IOCON_FUNC0);
+			Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 6);
+			Board_SSP_DeassertSSEL(pSSP);
+		}
+		else {
+			Chip_IOCON_PinMux(LPC_IOCON, 0, 6, IOCON_MODE_PULLUP, IOCON_FUNC2);
+		}
+		Chip_IOCON_PinMux(LPC_IOCON, 0, 8, IOCON_MODE_INACT, IOCON_FUNC2);
+		Chip_IOCON_PinMux(LPC_IOCON, 0, 9, IOCON_MODE_INACT, IOCON_FUNC2);
+
+		Chip_SSP_Init(pSSP);
+	}
+	Chip_SSP_Enable(pSSP);
+}
+
+/* Assert SSEL pin */
+bool Board_SSP_AssertSSEL(LPC_SSP_T *pSSP)
+{
+	int rv = 0;
+	if (pSSP == LPC_SSP0)
+	{
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 16);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 16);
+	}
+	else
+	{
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 6);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 6);
+	}
+	return rv;
+}
+
+/* De-Assert SSEL pin */
+bool Board_SSP_DeassertSSEL(LPC_SSP_T *pSSP)
+{
+	int rv = 0;
+	if (pSSP == LPC_SSP0)
+	{
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 16);
+		Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 16);
+	}
+	else
+	{
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 6);
+		Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 6);
+	}
+	return rv;
 }
 
 /* Initialize pin muxing for SPI interface */
@@ -283,7 +340,7 @@ void Board_SPI_Init(bool isMaster)
 	Chip_IOCON_PinMux(LPC_IOCON, 0, 15, IOCON_MODE_PULLDOWN, IOCON_FUNC3);
 	if (isMaster) {
 		Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC0);
-		Chip_GPIO_WriteDirBit(LPC_GPIO, 0, 16, true);
+		Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 16);
 		Board_SPI_DeassertSSEL();
 
 	}
@@ -297,13 +354,13 @@ void Board_SPI_Init(bool isMaster)
 /* Assert SSEL pin */
 void Board_SPI_AssertSSEL(void)
 {
-	Chip_GPIO_WritePortBit(LPC_GPIO, 0, 16, false);
+	Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 16);
 }
 
 /* De-Assert SSEL pin */
 void Board_SPI_DeassertSSEL(void)
 {
-	Chip_GPIO_WritePortBit(LPC_GPIO, 0, 16, true);
+	Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 16);
 }
 
 void Board_Audio_Init(LPC_I2S_T *pI2S, int micIn)
@@ -360,60 +417,6 @@ uint32_t Buttons_GetStatus(void)
 	}
 	return ret;
 }
-
-///* Baseboard joystick buttons */
-//#define NUM_BUTTONS 5
-//static const uint8_t portButton[NUM_BUTTONS] = {
-//	JOYSTICK_UP_GPIO_PORT_NUM,
-//	JOYSTICK_DOWN_GPIO_PORT_NUM,
-//	JOYSTICK_LEFT_GPIO_PORT_NUM,
-//	JOYSTICK_RIGHT_GPIO_PORT_NUM,
-//	JOYSTICK_PRESS_GPIO_PORT_NUM
-//};
-//static const uint8_t pinButton[NUM_BUTTONS] = {
-//	JOYSTICK_UP_GPIO_BIT_NUM,
-//	JOYSTICK_DOWN_GPIO_BIT_NUM,
-//	JOYSTICK_LEFT_GPIO_BIT_NUM,
-//	JOYSTICK_RIGHT_GPIO_BIT_NUM,
-//	JOYSTICK_PRESS_GPIO_BIT_NUM
-//};
-//static const uint8_t stateButton[NUM_BUTTONS] = {
-//	JOY_UP,
-//	JOY_DOWN,
-//	JOY_LEFT,
-//	JOY_RIGHT,
-//	JOY_PRESS
-//};
-//
-///* Initialize Joystick */
-//void Board_Joystick_Init(void)
-//{
-//	int ix;
-//
-//	/* IOCON states already selected in SystemInit(), GPIO setup only. Pullups
-//	   are external, so IOCON with no states */
-//	for (ix = 0; ix < NUM_BUTTONS; ix++) {
-//		Chip_GPIO_SetPinDIRInput(LPC_GPIO, portButton[ix], pinButton[ix]);
-//	}
-//}
-//
-///* Get Joystick status */
-//uint8_t Joystick_GetStatus(void)
-//{
-//	uint8_t ix, ret = 0;
-//
-//	for (ix = 0; ix < NUM_BUTTONS; ix++) {
-//		if ((Chip_GPIO_GetPinState(LPC_GPIO, portButton[ix], pinButton[ix])) == false) {
-//			ret |= stateButton[ix];
-//		}
-//	}
-//
-//	return ret;
-//}
-
-
-void Serial_CreateStream(void *Stream)
-{}
 
 void Board_USBD_Init(uint32_t port)
 {

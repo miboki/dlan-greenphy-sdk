@@ -308,7 +308,7 @@ static void prvSetupTxDescriptors( void )
 {
 	BaseType_t x;
 
-	#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+	#if( ipconfigZERO_COPY_TX_DRIVER == 0 )
 		#error "ipconfigZERO_COPY_TX_DRIVER should be set to 1"
 	#endif
 
@@ -496,7 +496,7 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 						}
 						else
 						{
-							// ML: What to do, if there is no free buffer?
+							// ML: Todo: No buffer available, drop packet
 						}
 					}
 				}

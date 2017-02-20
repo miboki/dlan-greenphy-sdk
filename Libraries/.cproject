@@ -72,7 +72,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="FreeRTOS-Plus-TCP/portable/BufferManagement/BufferAllocation_2.c|FreeRTOSv9.0.0/portable/MemMang/heap_5.c|FreeRTOSv9.0.0/portable/MemMang/heap_3.c|FreeRTOSv9.0.0/portable/MemMang/heap_2.c|FreeRTOSv9.0.0/portable/MemMang/heap_1.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/ATSAM4E|FreeRTOS-Plus-TCP/portable/NetworkInterface/WinPCap|FreeRTOS-Plus-TCP/portable/NetworkInterface/STM32Fxx|FreeRTOS-Plus-TCP/portable/NetworkInterface/Zynq|FreeRTOS-Plus-TCP/portable/NetworkInterface/ksz8851snl|FreeRTOS-Plus-TCP/protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="FreeRTOS-Plus-TCP/portable/NetworkInterface/LPC1758|FreeRTOS-Plus-TCP/portable/NetworkInterface/QCA7000/mmeHandling.c|dLAN_Green_PHY_eval_board/src/debug.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/ATSAM4E|FreeRTOS-Plus-TCP/portable/NetworkInterface/WinPCap|FreeRTOS-Plus-TCP/portable/NetworkInterface/STM32Fxx|FreeRTOSv9.0.0/portable/MemMang/heap_1.c|FreeRTOSv9.0.0/portable/MemMang/heap_5.c|FreeRTOSv9.0.0/portable/MemMang/heap_3.c|FreeRTOSv9.0.0/portable/MemMang/heap_2.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/Zynq|FreeRTOS-Plus-TCP/portable/NetworkInterface/ksz8851snl|FreeRTOS-Plus-TCP/protocols|FreeRTOS-Plus-TCP/portable/BufferManagement/BufferAllocation_2.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -156,7 +156,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="FreeRTOS-Plus-TCP/portable/BufferManagement/BufferAllocation_2.c|FreeRTOSv9.0.0/portable/MemMang/heap_5.c|FreeRTOSv9.0.0/portable/MemMang/heap_3.c|FreeRTOSv9.0.0/portable/MemMang/heap_2.c|FreeRTOSv9.0.0/portable/MemMang/heap_1.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/ATSAM4E|FreeRTOS-Plus-TCP/portable/NetworkInterface/WinPCap|FreeRTOS-Plus-TCP/portable/NetworkInterface/STM32Fxx|FreeRTOS-Plus-TCP/portable/NetworkInterface/Zynq|FreeRTOS-Plus-TCP/portable/NetworkInterface/ksz8851snl|FreeRTOS-Plus-TCP/protocols" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="FreeRTOS-Plus-TCP/portable/NetworkInterface/LPC1758|FreeRTOS-Plus-TCP/portable/NetworkInterface/QCA7000/mmeHandling.c|dLAN_Green_PHY_eval_board/src/debug.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/ATSAM4E|FreeRTOS-Plus-TCP/portable/NetworkInterface/WinPCap|FreeRTOS-Plus-TCP/portable/NetworkInterface/STM32Fxx|FreeRTOSv9.0.0/portable/MemMang/heap_1.c|FreeRTOSv9.0.0/portable/MemMang/heap_5.c|FreeRTOSv9.0.0/portable/MemMang/heap_3.c|FreeRTOSv9.0.0/portable/MemMang/heap_2.c|FreeRTOS-Plus-TCP/portable/NetworkInterface/Zynq|FreeRTOS-Plus-TCP/portable/NetworkInterface/ksz8851snl|FreeRTOS-Plus-TCP/protocols|FreeRTOS-Plus-TCP/portable/BufferManagement/BufferAllocation_2.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

@@ -108,6 +108,12 @@ extern "C" {
 #define MCB_17XX_AUDIO_MIC_SELECT       0x00
 #define MCB_17XX_AUDIO_LINE_IN_SELECT   0x00
 
+
+#define GREEN_PHY_INTERRUPT_PORT 0
+#define GREEN_PHY_INTERRUPT_PIN  22
+#define GREEN_PHY_RESET_PORT 1
+#define GREEN_PHY_RESET_PIN  29
+
 /**
  * @brief	Initialize pin muxing for a UART
  * @param	pUART	: Pointer to UART register block for UART pins to init
@@ -137,7 +143,21 @@ void Board_Audio_Init(LPC_I2S_T *pI2S, int micIn);
  * @param	pSSP	: Pointer to SSP interface to initialize
  * @return	Nothing
  */
-void Board_SSP_Init(LPC_SSP_T *pSSP);
+void Board_SSP_Init(LPC_SSP_T *pSSP, bool isMaster);
+
+/**
+ * @brief	Assert SSEL pin
+ * @param	pSSP	: Pointer to SSP interface to assert
+ * @return	previous SSEL state
+ */
+bool Board_SSP_AssertSSEL(LPC_SSP_T *pSSP);
+
+/**
+ * @brief	De-assert SSEL pin
+ * @param	pSSP	: Pointer to SSP interface to deassert
+ * @return	previous SSEL state
+ */
+bool Board_SSP_DeassertSSEL(LPC_SSP_T *pSSP);
 
 /**
  * @brief	Initialize pin muxing for SPI interface
@@ -202,25 +222,6 @@ void Board_Buttons_Init(void);
 uint32_t Buttons_GetStatus(void);
 
 /**
- * @brief	Initialize Joystick
- * @return	Nothing
- */
-void Board_Joystick_Init(void);
-
-/**
- * @brief	Get Joystick status
- * @return	status of Joystick
- */
-uint8_t Joystick_GetStatus(void);
-
-/**
- * @brief	Create Serial Stream
- * @param	Stream	: Pointer to stream
- * @return	Nothing
- */
-void Serial_CreateStream(void *Stream);
-
-/**
  * @brief	Initializes USB device mode pins per board design
  * @param	port	: USB port to be enabled 
  * @return	Nothing
@@ -232,8 +233,16 @@ void Board_USBD_Init(uint32_t port);
  * @}
  */
 
+/* GreenPHY Board Support includes */
 #include "board_api.h"
 #include "lpc_phy.h"
+#include "lpc_dma.h"
+#include "lpc_gpio_interrupt.h"
+#include "byteorder.h"
+
+/* GreenPHY SDK includes */
+#include "greenPhyModuleConfig.h"
+#include "debug.h"
 
 #ifdef __cplusplus
 }

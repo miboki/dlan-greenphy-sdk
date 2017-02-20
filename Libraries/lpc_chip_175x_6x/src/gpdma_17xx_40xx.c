@@ -329,7 +329,6 @@ uint32_t makeCtrlWord(const GPDMA_CH_CFG_T *GPDMAChannelConfig,
 					| GPDMA_DMACCxControl_I;
 
 		break;
-
 	/* Do not support any more transfer type, return ERROR */
 	default:
 		return ERROR;

@@ -33,7 +33,6 @@
 #define __LPC_PHY_H_
 
 #include "board.h"
-#include "chip.h"
 
 #ifdef __cplusplus
 extern "C" {

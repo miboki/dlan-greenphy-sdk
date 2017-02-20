@@ -34,7 +34,7 @@ STATIC const PINMUX_GRP_T pinmuxing[] = {
 	{0, 10,   IOCON_MODE_INACT | IOCON_FUNC0},  /* default GPIO; click TXD2 UART mikrobus2; P0.10 GPIO Port 0.10 TXD2 SDA2 MAT3.0*/
 	{0, 11,   IOCON_MODE_INACT | IOCON_FUNC0},  /* default GPIO; click RXD2 UART mikrobus2; P0.11 GPIO Port 0.11 RXD2 SCL2 MAT3.1 */
 	{0, 15,   IOCON_MODE_INACT | IOCON_FUNC2},  /* default: greenPHY SCK                    P0.15 GPIO Port 0.15 TXD1 SCK0 SCK */
-	{0, 16,   IOCON_MODE_INACT | IOCON_FUNC2},  /* default: greenPHY SSEL                   P0.16 GPIO Port 0.16 RXD1 SSEL0 SSEL*/
+	{0, 16,   IOCON_MODE_INACT | IOCON_FUNC0},  /* default: greenPHY SSEL as GPIO           P0.16 GPIO Port 0.16 RXD1 SSEL0 SSEL*/
 	{0, 17,   IOCON_MODE_INACT | IOCON_FUNC2},  /* default: greenPHY MISO                   P0.17 GPIO Port 0.17 CTS1 MISO0 MISO*/
 	{0, 18,   IOCON_MODE_INACT | IOCON_FUNC2},  /* default: greenPHY MOSI                   P0.18 GPIO Port 0.18 DCD1 MOSI0 MOSI*/
 	{0, 19,   IOCON_MODE_INACT | IOCON_FUNC0},  /* Not available on 80-pin package. */
