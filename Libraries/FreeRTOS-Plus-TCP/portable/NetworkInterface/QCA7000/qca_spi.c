@@ -34,8 +34,6 @@
  *--------------------------------------------------------------------*/
 /* Standard includes. */
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 /* LPCOpen includes */
 #include "board.h"
@@ -264,8 +262,16 @@ qcaspi_transmit(struct qcaspi *qca)
 	/* read the available space in bytes from QCA7k */
 	available = qcaspi_read_register(qca, SPI_REG_WRBUF_SPC_AVA);
 
-	while( xQueuePeek(qca->txQueue, &txBuffer, 0) && available >= (txBuffer->xDataLength + QCAFRM_FRAME_OVERHEAD))
+	while( xQueuePeek(qca->txQueue, &txBuffer, 0) )
 	{
+		/* check whether there is enough space in the QCA7k buffer to hold
+		 * the next packet */
+		if ( available < (txBuffer->xDataLength + QCAFRM_FRAME_OVERHEAD) )
+		{
+			return -1;
+		}
+
+		/* receive and process the next packet */
 		xQueueReceive(qca->txQueue, &txBuffer, 0);
 
 		uint16_t writtenBytes = qcaspi_tx_frame(qca, txBuffer);
@@ -294,8 +300,11 @@ qcaspi_receive(struct qcaspi *qca)
 {
 	uint32_t available;
 	uint32_t bytes_read;
+	uint32_t bytes_proc;
 	uint32_t count;
-	uint8_t *cp;
+	uint8_t *rx_buffer;
+	uint16_t len;
+
 	IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 
 	/* Allocate rx buffer if we don't have one available. */
@@ -303,16 +312,15 @@ qcaspi_receive(struct qcaspi *qca)
 		qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, 0);
 		if (qca->rx_desc == NULL) {
 //			printk(KERN_DEBUG "qcaspi: out of RX resources\n");
-			return -1;
+			qca->stats.rx_dropped++;
+			//return -1;
 		}
 	}
 
 	/* Read the packet size. */
 	available = qcaspi_read_register(qca, SPI_REG_RDBUF_BYTE_AVA);
-//	pr_debug("qcaspi: qcaspi_receive: SPI_REG_RDBUF_BYTE_AVA: Value: %08x\n", available);
 
 	if (available == 0) {
-//		printk(KERN_DEBUG "qcaspi: qcaspi_receive called without any data being available!\n");
 		return -1;
 	}
 
@@ -325,14 +333,17 @@ qcaspi_receive(struct qcaspi *qca)
 		}
 
 		bytes_read = qcaspi_read_burst(qca, qca->rx_buffer, count);
-		cp = qca->rx_buffer;
+		rx_buffer = qca->rx_buffer;
 
 		DEBUGOUT("qcaspi: available: %d, byte read: %d\n", available, bytes_read);
 
 		available -= bytes_read;
 
-		while ((bytes_read--) && (qca->rx_desc)) {
-			int32_t retcode = QcaFrmFsmDecode(&qca->lFrmHdl, qca->rx_desc->pucEthernetBuffer, ipTOTAL_ETHERNET_FRAME_SIZE, *cp++);
+		while (bytes_read && (qca->rx_desc)) {
+			int32_t retcode = QcaFrmFsmDecode(&qca->lFrmHdl, qca->rx_desc->pucEthernetBuffer, ipTOTAL_ETHERNET_FRAME_SIZE,
+											  rx_buffer, bytes_read, &bytes_proc);
+			bytes_read -= bytes_proc;
+			rx_buffer  += bytes_proc;
 			switch (retcode) {
 			case QCAFRM_GATHER:
 				break;
@@ -341,13 +352,11 @@ qcaspi_receive(struct qcaspi *qca)
 				break;
 
 			case QCAFRM_NOTAIL:
-//				pr_debug("qcaspi: no RX tail\n");
 				qca->stats.rx_errors++;
 				qca->stats.rx_dropped++;
 				break;
 
 			case QCAFRM_INVLEN:
-//				pr_debug("qcaspi: invalid RX length\n");
 				qca->stats.rx_errors++;
 				qca->stats.rx_dropped++;
 				break;
@@ -365,6 +374,7 @@ qcaspi_receive(struct qcaspi *qca)
 					/* Could not send the descriptor into the TCP/IP
 					stack, it must be released. */
 					vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+					qca->stats.rx_dropped++;
 					iptraceETHERNET_RX_EVENT_LOST();
 				}
 
@@ -372,11 +382,12 @@ qcaspi_receive(struct qcaspi *qca)
 
 				qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, 0);
 				if (!qca->rx_desc) {
-					qca->stats.rx_errors++;
+					qca->stats.rx_dropped++;
 					break;
 				}
 				break;
 			}
+
 		}
 	}
 
@@ -547,7 +558,9 @@ qcaspi_spi_thread(void *data)
 	{
 		/* Take notification
 		 * 0 timeout
-		 * 1 interrupt or transmit
+		 * 1 interrupt (including receive)
+		 * 2 receive (not used, handled by interrupt)
+		 * 4 transmit
 		 * */
 		ulNotificationValue = ulTaskNotifyTake( pdTRUE, xSyncRemTime );
 
@@ -572,7 +585,8 @@ qcaspi_spi_thread(void *data)
 
 			DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_TX|DEBUG_ERROR_SEARCH,"[GreenPHY] %s got cause 0x%x\r\n",__func__,ulInterruptCause);
 
-			if (ulInterruptCause & SPI_INT_CPU_ON) {
+			if (ulInterruptCause & SPI_INT_CPU_ON)
+			{
 				DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_FW_FEATURES|DEBUG_ERR," QCASPI_SYNC_CPUON\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
 				/* if not synced, wait reset */
@@ -583,7 +597,8 @@ qcaspi_spi_thread(void *data)
 				intr_enable = (SPI_INT_CPU_ON | SPI_INT_PKT_AVLBL | SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR);
 			}
 
-			if (ulInterruptCause & SPI_INT_RDBUF_ERR) {
+			if (ulInterruptCause & SPI_INT_RDBUF_ERR)
+			{
 				/* restart sync */
 				DEBUG_PRINT(GREEN_PHY_RX|DEBUG_ERR," SPI_INT_RDBUF_ERR\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
@@ -591,12 +606,20 @@ qcaspi_spi_thread(void *data)
 				continue;
 			}
 
-			if (ulInterruptCause & SPI_INT_WRBUF_ERR) {
+			if (ulInterruptCause & SPI_INT_WRBUF_ERR)
+			{
 				/* restart sync */
 				DEBUG_PRINT(GREEN_PHY_TX|DEBUG_ERR," SPI_INT_WRBUF_ERR\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
 				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
 				continue;
+			}
+
+			if (ulInterruptCause & SPI_INT_WRBUF_BELOW_WM)
+			{
+				/* transmit is handled later */
+				/* disable write watermark interrupt */
+				intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
 			}
 
 			DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_TX,"[GreenPHY] %s early clearing cause 0x%x\r\n",__func__,vInterruptCause);
@@ -605,18 +628,27 @@ qcaspi_spi_thread(void *data)
 			enable_spi_interrupts(qca, intr_enable);
 
 			/* can only handle other interrupts if sync has occured */
-			if (qca->sync == QCASPI_SYNC_READY) {
-				if (ulInterruptCause & SPI_INT_PKT_AVLBL) {
+			if (qca->sync == QCASPI_SYNC_READY)
+			{
+				if (ulInterruptCause & SPI_INT_PKT_AVLBL)
+				{
 					DEBUG_PRINT(GREEN_PHY_RX,"%s RX\r\n",__func__);
 					qcaspi_receive(qca);
 				}
 			}
 		}
 
-		if ( ulNotificationValue & QCAGP_TX_FLAG )
+		if (qca->sync == QCASPI_SYNC_READY)
 		{
-			if (qca->sync == QCASPI_SYNC_READY) {
-				qcaspi_transmit(qca);
+			if( uxQueueMessagesWaiting(qca->txQueue) )
+			{
+				if( qcaspi_transmit(qca) != 0 )
+				{
+					/* QCA7k write buffer is full, but we need to send more packets
+					 * so set watermark interrupt */
+					uint32_t old_intr_enable = qcaspi_read_register(qca, SPI_REG_INTR_ENABLE);
+					qcaspi_write_register(qca, SPI_REG_INTR_ENABLE, old_intr_enable | SPI_INT_WRBUF_BELOW_WM);
+				}
 			}
 		}
 	}

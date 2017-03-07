@@ -469,7 +469,7 @@ void HardFault_HandlerC(unsigned long *hardfault_args){
 
         __asm("BKPT #0\n") ; // Break into the debugger
 #else
-        NVIC_SystemReset();
+//        NVIC_SystemReset();
 #endif
 
 }

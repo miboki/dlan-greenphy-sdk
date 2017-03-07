@@ -192,7 +192,7 @@ int main(void) {
 
 	// the application will be only started after the scheduler is ended by the bootloader calling vTaskEndScheduler()
 
-	startApplication();
+	// startApplication();
 
 	// shall never be reached ...
 

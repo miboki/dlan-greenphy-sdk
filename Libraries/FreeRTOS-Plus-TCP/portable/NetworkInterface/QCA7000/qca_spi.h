@@ -85,7 +85,7 @@
 #define QCAGP_TX_FLAG  (1<<2)
 
 /* Max amount of bytes read in one run */
-#define QCASPI_BURST_LEN 500
+#define QCASPI_BURST_LEN QCASPI_HW_BUF_LEN
 
 /*====================================================================*
  *   driver variables;
@@ -97,6 +97,8 @@ struct stats {
 	uint32_t rx_dropped;
 	uint32_t rx_packets;
 	uint32_t rx_bytes;
+	uint32_t tx_errors;
+	uint32_t tx_dropped;
 	uint32_t tx_packets;
 	uint32_t tx_bytes;
 };

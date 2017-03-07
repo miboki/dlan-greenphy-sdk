@@ -123,11 +123,11 @@ void GreenPHY_DMA_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken);
 /*-----------------------------------------------------------*/
 
 /* The struct to hold all QCA7k and SPI related information */
-static struct qcaspi qca;
+static struct qcaspi qca = { 0 };
 
 /* The handle of the task that processes Rx packets.  The handle is required so
 the task can be notified when new packets arrive. */
-static TaskHandle_t xGreenPHYHandlerTask = NULL;
+static TaskHandle_t xGreenPHYTaskHandle = NULL;
 SemaphoreHandle_t xGreenPHY_DMASemaphore;
 
 /*-----------------------------------------------------------*/
@@ -136,30 +136,33 @@ BaseType_t xNetworkInterfaceInitialise( void )
 {
 BaseType_t xReturn = pdPASS;
 
-	Chip_GPDMA_Init(LPC_GPDMA);
-	Board_SSP_Init(LPC_SSP0, true);
+	if( xGreenPHYTaskHandle == NULL )
+	{
+		Chip_GPDMA_Init(LPC_GPDMA);
+		Board_SSP_Init(LPC_SSP0, true);
 
-	qca.SSPx = LPC_SSP0;
-	qca.sync = QCASPI_SYNC_UNKNOWN;
-	qca.txQueue = xQueueCreate( configNUM_TX_DESCRIPTORS, sizeof( NetworkBufferDescriptor_t *) );
-	qca.rx_desc = NULL;
+		qca.SSPx = LPC_SSP0;
+		qca.sync = QCASPI_SYNC_UNKNOWN;
+		qca.txQueue = xQueueCreate( ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS, sizeof( NetworkBufferDescriptor_t *) );
+		qca.rx_desc = NULL;
 
-	qca.rx_buffer = malloc(QCASPI_BURST_LEN);
-	qca.buffer_size = QCASPI_BURST_LEN;
-	QcaFrmFsmInit(&qca.lFrmHdl);
-	xGreenPHY_DMASemaphore = xSemaphoreCreateBinary();
+		qca.rx_buffer = malloc(QCASPI_BURST_LEN);
+		qca.buffer_size = QCASPI_BURST_LEN;
+		QcaFrmFsmInit(&qca.lFrmHdl);
+		xGreenPHY_DMASemaphore = xSemaphoreCreateBinary();
 
-	/* Interrupt pin setup */
-	Chip_GPIO_SetPinDIRInput(LPC_GPIO,    GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN);
-	Chip_GPIOINT_SetIntFalling(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
-	Chip_GPIOINT_SetIntRising(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
+		/* Interrupt pin setup */
+		Chip_GPIO_SetPinDIRInput(LPC_GPIO, GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN);
+		Chip_GPIOINT_SetIntFalling(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
+		Chip_GPIOINT_SetIntRising(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
 
-	/* QCA7000 reset pin setup */
-	Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREEN_PHY_RESET_PORT, GREEN_PHY_RESET_PIN);
+		/* QCA7000 reset pin setup */
+		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREEN_PHY_RESET_PORT, GREEN_PHY_RESET_PIN);
 
-	xTaskCreate( qcaspi_spi_thread, "GreenPhyIntHandler", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYHandlerTask);
+		xTaskCreate( qcaspi_spi_thread, "GreenPhyIntHandler", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
 
-	registerInterruptHandlerGPIO(GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN, GreenPHY_GPIO_IRQHandler);
+		registerInterruptHandlerGPIO(GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN, GreenPHY_GPIO_IRQHandler);
+	}
 
 	return xReturn;
 }
@@ -189,10 +192,8 @@ BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxDescript
 {
 BaseType_t xReturn = pdFAIL;
 
-	// ML: Increase timeout and return buffer on fail
 	xReturn = xQueueSend(qca.txQueue, ( void * ) &pxDescriptor, 0);
-
-	xTaskNotify( xGreenPHYHandlerTask, QCAGP_TX_FLAG, eSetBits );
+	xTaskNotify( xGreenPHYTaskHandle, QCAGP_TX_FLAG, eSetBits );
 
 	return xReturn;
 }
@@ -201,7 +202,7 @@ BaseType_t xReturn = pdFAIL;
 void GreenPHY_GPIO_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 {
 	/* wake up the handler task */
-	xTaskNotifyFromISR( xGreenPHYHandlerTask,  QCAGP_INT_FLAG, eSetBits, xHigherPriorityTaskWoken );
+	xTaskNotifyFromISR( xGreenPHYTaskHandle,  QCAGP_INT_FLAG, eSetBits, xHigherPriorityTaskWoken );
 
 	/* Interrupt status clear and context switching
 	 * is done by GPIO Interrupt handler */

@@ -46,7 +46,7 @@
 #define UART2 2
 #define UART3 3
 
-#ifndef DEBUG
+#ifdef DEBUG
 
 /*----------------------------BASIC-LEVEL-DEFINITIONS-------------------------------*/
 

@@ -34,9 +34,7 @@
  *
  */
 
-#ifndef DEBUG
-#define DEBUG
-#endif
+#ifdef DEBUG
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -1176,3 +1174,4 @@ void dumpIcmpFrame(const int dumpLevel, data_t frame, length_t length, char * me
 	}
 }
 
+#endif

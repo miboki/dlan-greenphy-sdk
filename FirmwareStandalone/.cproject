@@ -40,8 +40,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1704353150" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="CORE_M3"/>
+									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -82,7 +82,7 @@
 								<option id="com.crt.advproject.link.gcc.multicore.master.userobjs.965612893" name="Slave Objects (not visible)" superClass="com.crt.advproject.link.gcc.multicore.master.userobjs" valueType="userObjs"/>
 								<option id="com.crt.advproject.link.gcc.hdrlib.1933334480" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.codered.nohost" valueType="enumerated"/>
 								<option id="gnu.c.link.option.paths.630462944" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Debug}&quot;"/>
 								</option>
 								<option id="gnu.c.link.option.libs.615615420" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
@@ -99,13 +99,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Libraries;com.crt.advproject.config.lib.debug.690962840" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Libraries;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Libraries"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>
@@ -114,9 +114,9 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/include"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/dLAN_Green_PHY_eval_board/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/lpc_chip_175x_6x/inc"/>
-						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="CORE_M3" value=""/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Debug"/>
+						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Release"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
@@ -161,19 +161,12 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.604359768" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="CORE_M3"/>
 									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
+									<listOptionValue builtIn="false" value="__CODE_RED"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.1945328500" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
@@ -192,14 +185,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.assembler.input.494296506" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1046397129" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -220,12 +205,10 @@
 								<option id="com.crt.advproject.link.gcc.hdrlib.2132308137" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.codered.nohost" valueType="enumerated"/>
 								<option id="gnu.c.link.option.paths.715242383" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/Release}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Release}&quot;"/>
 								</option>
 								<option id="gnu.c.link.option.libs.1578594200" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="ApplicationSupport"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.927861838" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
@@ -238,28 +221,13 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="ApplicationSupport;com.crt.advproject.config.lib.debug.1972589977.1188657435" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ApplicationSupport/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ApplicationSupport"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/TFTP_IAP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/CLI/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTClient-C/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTPacket/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/IP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/HTTP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ApplicationSupport/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ApplicationSupport" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041.2051660535" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Libraries;com.crt.advproject.config.lib.release.502008292" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Libraries;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Libraries"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>

@@ -47,6 +47,9 @@
 /* Frame is currently being received */
 #define QCAFRM_GATHER 0
 
+/* Ethernet frame is found and ready to be copied */
+#define QCAFRM_CPY_ETH_FRAME 1
+
 /*  No header byte while expecting it */
 #define QCAFRM_NOHEAD (QCAFRM_ERR_BASE - 1)
 
@@ -213,6 +216,6 @@ void QcaFrmFsmInit(QcaFrmHdl *frmHdl);
  *
  *--------------------------------------------------------------------*/
 
-int32_t QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *ethBuf, uint16_t ethBufLen, uint8_t recvByte);
+int32_t QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t *recvBuf, uint32_t recvLen, uint32_t *bytes_proc);
 
 #endif

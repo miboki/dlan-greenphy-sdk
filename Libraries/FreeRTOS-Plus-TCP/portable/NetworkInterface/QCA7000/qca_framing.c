@@ -27,6 +27,8 @@
  *
  *--------------------------------------------------------------------*/
 
+#include <string.h>
+
 #include "qca_framing.h"
 
 /*====================================================================*
@@ -128,10 +130,12 @@ QcaFrmFsmInit(QcaFrmHdl *frmHdl)
  *--------------------------------------------------------------------*/
 
 int32_t
-QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t recvByte)
+QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t *recvBuf, uint32_t recvLen, uint32_t *bytes_proc)
 {
 	int32_t ret = QCAFRM_GATHER;
+	uint8_t recvByte = *recvBuf;
 	uint16_t len;
+	*bytes_proc = 1;
 	switch(frmHdl->state)
 	{
 	case QCAFRM_HW_LEN0:
@@ -167,14 +171,13 @@ QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t recvB
 		break;
 
 		/* 2 bytes length. */
-		/* Borrow offset field to hold length for now. */
  	case QCAFRM_WAIT_LEN_BYTE0:
-		frmHdl->offset = recvByte;
+		frmHdl->len = recvByte;
 		frmHdl->state--;
 		break;
 
 	case QCAFRM_WAIT_LEN_BYTE1:
-		frmHdl->offset = frmHdl->offset | (recvByte << 8);
+		frmHdl->len = frmHdl->len | (recvByte << 8);
 		frmHdl->state--;
 		break;
 
@@ -184,15 +187,14 @@ QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t recvB
 
 	case QCAFRM_WAIT_RSVD_BYTE2:
 		frmHdl->state--;
-		len = frmHdl->offset;
-		if (len > buf_len || len < QCAFRM_ETHMINLEN)
+		if (frmHdl->len > buf_len || frmHdl->len < QCAFRM_ETHMINLEN)
 		{
 			ret = QCAFRM_INVLEN;
 			frmHdl->state = QCAFRM_HW_LEN0;
 		}
 		else
 		{
-			frmHdl->state = (QcaFrmState)(len + 1);
+			frmHdl->state = (QcaFrmState)(frmHdl->len + 1);
 			/* Remaining number of bytes. */
 			frmHdl->offset = 0;
 		}
@@ -200,8 +202,11 @@ QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t recvB
 
 	default:
 		/* Receiving Ethernet frame itself. */
-		buf[frmHdl->offset++] = recvByte;
-		frmHdl->state--;
+		len = MIN(recvLen, (frmHdl->len - frmHdl->offset));
+		memcpy(&buf[frmHdl->offset], recvBuf, len);
+		frmHdl->state -= len;
+		frmHdl->offset += len;
+		*bytes_proc = len;
 		break;
 
 	case QCAFRM_WAIT_551:
