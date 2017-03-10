@@ -61,8 +61,6 @@ void SystemInit(void)
 {
 	unsigned int *pSCB_VTOR = (unsigned int *) 0xE000ED08;
 
-	(void) pSCB_VTOR;
-
 #if defined(__IAR_SYSTEMS_ICC__)
 	extern void *__vector_table;
 

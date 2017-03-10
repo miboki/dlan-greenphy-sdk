@@ -58,6 +58,28 @@
 #ifndef FREERTOS_IP_CONFIG_H
 #define FREERTOS_IP_CONFIG_H
 
+///* Prototype for the function used to print out.  In this case it prints to the
+//console before the network is connected then a UDP port after the network has
+//connected. */
+//extern void vLoggingPrintf( const char *pcFormatString, ... );
+//
+///* Set to 1 to print out debug messages.  If ipconfigHAS_DEBUG_PRINTF is set to
+//1 then FreeRTOS_debug_printf should be defined to the function used to print
+//out the debugging messages. */
+//#define ipconfigHAS_DEBUG_PRINTF	0
+//#if( ipconfigHAS_DEBUG_PRINTF == 1 )
+//	#define FreeRTOS_debug_printf(X)	vLoggingPrintf X
+//#endif
+//
+///* Set to 1 to print out non debugging messages, for example the output of the
+//FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
+//then FreeRTOS_printf should be set to the function used to print out the
+//messages. */
+//#define ipconfigHAS_PRINTF			1
+//#if( ipconfigHAS_PRINTF == 1 )
+//	#define FreeRTOS_printf(X)			vLoggingPrintf X
+//#endif
+
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
 on).  Valid options are pdFREERTOS_BIG_ENDIAN and pdFREERTOS_LITTLE_ENDIAN. */
 #define ipconfigBYTE_ORDER pdFREERTOS_LITTLE_ENDIAN
@@ -118,6 +140,7 @@ generate a random number by sampling noise on an analogue input. */
 // XXX: need uxRand() ??
 //extern UBaseType_t uxRand();
 //#define ipconfigRAND32()    uxRand()
+
 
 /* If ipconfigUSE_NETWORK_EVENT_HOOK is set to 1 then FreeRTOS+TCP will call the
 network event hook at the appropriate times.  If ipconfigUSE_NETWORK_EVENT_HOOK
@@ -199,6 +222,9 @@ to ensure the total amount of RAM that can be consumed by the IP stack is capped
 to a pre-determinable value. */
 #define ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS      20
 
+#define ipconfigZERO_COPY_TX_DRIVER			1
+#define ipconfigZERO_COPY_RX_DRIVER			1
+
 /* A FreeRTOS queue is used to send events from application tasks to the IP
 stack.  ipconfigEVENT_QUEUE_LENGTH sets the maximum number of events that can
 be queued for processing at any one time.  The event queue must be a minimum of
@@ -228,6 +254,7 @@ aborted. */
 
 /* USE_WIN: Let TCP use windowing mechanism. */
 #define ipconfigUSE_TCP_WIN         ( 1 )
+
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
 through the FreeRTOS_gethostbyname() API function. */
@@ -292,6 +319,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigHAS_INLINE_FUNCTIONS 1
 
 
+
 /* Configuration for max. throughput */
 
 /* The MTU is the maximum number of bytes the payload of a network frame can
@@ -299,16 +327,32 @@ contain.  For normal Ethernet V2 frames the maximum MTU is 1500.  Setting a
 lower value can save RAM, depending on the buffer management scheme used.  If
 ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
-#define ipconfigNETWORK_MTU     1526
+#define ipconfigNETWORK_MTU     1500 /*1526*/
 
 #define ipconfigTCP_MSS         1460
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
 maximum size.  Define the size of Rx buffer for TCP sockets. */
-#define ipconfigTCP_TX_BUFFER_LENGTH  ( 16 * ipconfigTCP_MSS )
+#define ipconfigTCP_TX_BUFFER_LENGTH  ( 2 * ipconfigTCP_MSS )
 
 /* Define the size of Tx buffer for TCP sockets. */
-#define ipconfigTCP_RX_BUFFER_LENGTH  ( 16 * ipconfigTCP_MSS )
+#define ipconfigTCP_RX_BUFFER_LENGTH  ( 2 * ipconfigTCP_MSS )
+
+/* Set to 1 or 0 to include/exclude FTP and HTTP functionality from the standard
+server task. */
+#define ipconfigUSE_FTP                                         1
+#define ipconfigUSE_HTTP                                        1
+
+/* Buffer and window sizes used by the FTP and HTTP servers respectively.  The
+FTP and HTTP servers both execute in the standard server task. */
+#define ipconfigFTP_TX_BUFSIZE                          ( 4 * ipconfigTCP_MSS )
+#define ipconfigFTP_TX_WINSIZE                          ( 2 )
+#define ipconfigFTP_RX_BUFSIZE                          ( 8 * ipconfigTCP_MSS )
+#define ipconfigFTP_RX_WINSIZE                          ( 4 )
+#define ipconfigHTTP_TX_BUFSIZE                         ( 3 * ipconfigTCP_MSS )
+#define ipconfigHTTP_TX_WINSIZE                         ( 2 )
+#define ipconfigHTTP_RX_BUFSIZE                         ( 4 * ipconfigTCP_MSS )
+#define ipconfigHTTP_RX_WINSIZE                         ( 4 )
 
 #define NETWORK_IRQHandler ETH_IRQHandler
 

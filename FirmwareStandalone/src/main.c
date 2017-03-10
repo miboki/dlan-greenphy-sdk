@@ -22,15 +22,6 @@ static const uint8_t ucNetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, config
 static const uint8_t ucGatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
 static const uint8_t ucDNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
 
-/* Set the following constant to pdTRUE to log using the method indicated by the
-name of the constant, or pdFALSE to not log using the method indicated by the
-name of the constant.  Options include to standard out (xLogToStdout), to a disk
-file (xLogToFile), and to a UDP port (xLogToUDP).  If xLogToUDP is set to pdTRUE
-then UDP messages are sent to the IP address configured as the echo server
-address (see the configECHO_SERVER_ADDR0 definitions in FreeRTOSConfig.h) and
-the port number set by configPRINT_PORT in FreeRTOSConfig.h. */
-const BaseType_t xLogToStdout = pdTRUE, xLogToFile = pdFALSE, xLogToUDP = pdFALSE;
-
 /* Default MAC address configuration.  The demo creates a virtual network
 connection that uses this MAC address by accessing the raw Ethernet data
 to and from a real network connection on the host PC.  See the
@@ -108,15 +99,15 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 
 	        /* Convert the net mask to a string then print it out. */
 	        FreeRTOS_inet_ntoa( ulNetMask, cBuffer );
-	        printf( "Subnet Mask: %s\r\n", cBuffer );
+	        DEBUGOUT( "Subnet Mask: %s\r\n", cBuffer );
 
 	        /* Convert the IP address of the gateway to a string then print it out. */
 	        FreeRTOS_inet_ntoa( ulGatewayAddress, cBuffer );
-	        printf( "Gateway IP Address: %s\r\n", cBuffer );
+	        DEBUGOUT( "Gateway IP Address: %s\r\n", cBuffer );
 
 	        /* Convert the IP address of the DNS server to a string then print it out. */
 	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
-	        printf( "DNS server IP Address: %s\r\n", cBuffer );
+	        DEBUGOUT( "DNS server IP Address: %s\r\n", cBuffer );
 	    }
 }
 /*-----------------------------------------------------------*/
@@ -161,43 +152,31 @@ static void prvSetupHardware(void)
 int main(void) {
 	prvSetupHardware();
 
-	DEBUGOUT("test\r\n");
+	DEBUGSTR("\r\n\r\nSTANDALONE ");
+	{
+		uint32_t reset_reason = LPC_SYSCTL->RSID;
+		DEBUGOUT("RSID:0x%x", reset_reason);
+		if (!reset_reason)
+			DEBUGOUT("->Bootloader");
+		if (reset_reason & 0x1)
+			DEBUGOUT("->Power On");
+		if (reset_reason & 0x2)
+			DEBUGOUT("->Reset");
+		if (reset_reason & 0x4)
+			DEBUGOUT("->Watchdog");
+		if (reset_reason & 0x8)
+			DEBUGOUT("->BrownOut Detection");
+		if (reset_reason & 0x10)
+			DEBUGOUT("->JTAG/restart");
+		DEBUGOUT("\r\n");
+		LPC_SYSCTL->RSID = reset_reason;
+	}
 
-//	printToUart("\r\n\r\nSTANDALONE ");
-//	{
-//		uint32_t reset_reason = LPC_SC->RSID;
-//		printToUart("RSID:0x%x", reset_reason);
-//		if (!reset_reason)
-//			printToUart("->Bootloader");
-//		if (reset_reason & 0x1)
-//			printToUart("->Power On");
-//		if (reset_reason & 0x2)
-//			printToUart("->Reset");
-//		if (reset_reason & 0x4)
-//			printToUart("->Watchdog");
-//		if (reset_reason & 0x8)
-//			printToUart("->BrownOut Detection");
-//		if (reset_reason & 0x10)
-//			printToUart("->JTAG/restart");
-//		printToUart("\r\n");
-//		LPC_SC->RSID = reset_reason;
-//	}
-//
-//	printToUart("UART0 %s(%s)\r\n", features, version);
+	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
 
 	FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
 
-
 	vTaskStartScheduler();
-
-	// the application will be only started after the scheduler is ended by the bootloader calling vTaskEndScheduler()
-
-	// startApplication();
-
-	// shall never be reached ...
-
-	for (;;)
-		;
 
 	return 0;
 }

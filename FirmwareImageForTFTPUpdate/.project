@@ -4,6 +4,11 @@
 	<comment></comment>
 	<projects>
 		<project>FreeRTOSv9.0.0</project>
+		<project>ApplicationSupport</project>
+		<project>CMSISv2p00_LPC17xx</project>
+		<project>Configuration</project>
+		<project>FreeRTOS_V7.1.0</project>
+		<project>HardwareSupport</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -32,83 +32,11 @@
 #include "board.h"
 #include "string.h"
 
-// #include "retarget.h"
+#include "retarget.h"
 
 /*****************************************************************************
  * Private types/enumerations/variables
  ****************************************************************************/
-#define BUTTONS_BUTTON1_GPIO_PORT_NUM             2
-#define BUTTONS_BUTTON1_GPIO_BIT_NUM              10
-
-#define CLICKBOARD1_CS_GPIO_PORT_NUM              2
-#define CLICKBOARD1_CS_GPIO_BIT_NUM               2
-
-#define CLICKBOARD1_INT_GPIO_PORT_NUM             2
-#define CLICKBOARD1_INT_GPIO_BIT_NUM              3
-
-#define CLICKBOARD1_PWM_GPIO_PORT_NUM             2
-#define CLICKBOARD1_PWM_GPIO_BIT_NUM              4
-
-#define CLICKBOARD1_RST_GPIO_PORT_NUM             1
-#define CLICKBOARD1_RST_GPIO_BIT_NUM              26
-
-#define CLICKBOARD1_TX_GPIO_PORT_NUM              2
-#define CLICKBOARD1_TX_GPIO_BIT_NUM               0
-
-#define CLICKBOARD1_RX_GPIO_PORT_NUM              2
-#define CLICKBOARD1_RX_GPIO_BIT_NUM               1
-
-#define CLICKBOARD1_AN_GPIO_PORT_NUM              1
-#define CLICKBOARD1_AN_GPIO_BIT_NUM               31
-
-#define CLICKBOARD2_CS_GPIO_PORT_NUM              2
-#define CLICKBOARD2_CS_GPIO_BIT_NUM               7
-
-#define CLICKBOARD2_INT_GPIO_PORT_NUM             2
-#define CLICKBOARD2_INT_GPIO_BIT_NUM              6
-
-#define CLICKBOARD2_PWM_GPIO_PORT_NUM             2
-#define CLICKBOARD2_PWM_GPIO_BIT_NUM              5
-
-#define CLICKBOARD2_RST_GPIO_PORT_NUM             1
-#define CLICKBOARD2_RST_GPIO_BIT_NUM              28
-
-#define CLICKBOARD2_TX_GPIO_PORT_NUM              0
-#define CLICKBOARD2_TX_GPIO_BIT_NUM               10
-
-#define CLICKBOARD2_RX_GPIO_PORT_NUM              0
-#define CLICKBOARD2_RX_GPIO_BIT_NUM               11
-
-#define CLICKBOARD2_AN_GPIO_PORT_NUM              0
-#define CLICKBOARD2_AN_GPIO_BIT_NUM               25
-
-#define J12_GPP_GPIO_PORT_NUM                     0
-#define J12_GPP_GPIO_BIT_NUM                      26
-
-#define J10_PIN4_TX_GPIO_PORT_NUM                 0
-#define J10_PIN4_TX_GPIO_BIT_NUM                  3
-
-#define J10_PIN5_RX_GPIO_PORT_NUM                 0
-#define J10_PIN5_RX_GPIO_BIT_NUM                  2
-
-#define USB_PLUS_RX_GPIO_PORT_NUM                 0
-#define USB_PLUS_RX_GPIO_BIT_NUM                  29
-
-#define USB_MINUS_RX_GPIO_PORT_NUM                 0
-#define USB_MINUS_RX_GPIO_BIT_NUM                  30
-
-//#define JOYSTICK_UP_GPIO_PORT_NUM               2
-//#define JOYSTICK_UP_GPIO_BIT_NUM                3
-//#define JOYSTICK_DOWN_GPIO_PORT_NUM             0
-//#define JOYSTICK_DOWN_GPIO_BIT_NUM              15
-//#define JOYSTICK_LEFT_GPIO_PORT_NUM             2
-//#define JOYSTICK_LEFT_GPIO_BIT_NUM              4
-//#define JOYSTICK_RIGHT_GPIO_PORT_NUM            0
-//#define JOYSTICK_RIGHT_GPIO_BIT_NUM             16
-//#define JOYSTICK_PRESS_GPIO_PORT_NUM            0
-//#define JOYSTICK_PRESS_GPIO_BIT_NUM             17
-#define LED0_GPIO_PORT_NUM                      0
-#define LED0_GPIO_BIT_NUM                       6//22
 
 /*****************************************************************************
  * Public types/enumerations/variables
@@ -125,9 +53,10 @@ const uint32_t RTCOscRateIn = 32768;
 /* Initializes board LED(s) */
 static void Board_LED_Init(void)
 {
-	/* Pin PIO0_22 is configured as GPIO pin during SystemInit */
-	/* Set the PIO_22 as output */
-	Chip_GPIO_WriteDirBit(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM, true);
+	/* LED0 pin is configured as GPIO pin during SystemInit */
+	/* Set the LED0 pin as output */
+	Chip_GPIO_SetPinDIROutput(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM);
+	Board_LED_Set(LEDS_LED0, USR_LED_ON);
 }
 
 /*****************************************************************************
@@ -186,11 +115,11 @@ void Board_UARTPutSTR(char *str)
 }
 
 /* Sets the state of a board LED to on or off */
-void Board_LED_Set(uint8_t LEDNumber, bool On)
+void Board_LED_Set(uint8_t LEDNumber, bool Status)
 {
 	/* There is only one LED */
-	if (LEDNumber == 0) {
-		Chip_GPIO_WritePortBit(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM, On);
+	if (LEDNumber == LEDS_LED0) {
+		Chip_GPIO_SetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM, Status);
 	}
 }
 
@@ -199,8 +128,8 @@ bool Board_LED_Test(uint8_t LEDNumber)
 {
 	bool state = false;
 
-	if (LEDNumber == 0) {
-		state = Chip_GPIO_ReadPortBit(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM);
+	if (LEDNumber == LEDS_LED0) {
+		state = Chip_GPIO_GetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM);
 	}
 
 	return state;
@@ -208,7 +137,7 @@ bool Board_LED_Test(uint8_t LEDNumber)
 
 void Board_LED_Toggle(uint8_t LEDNumber)
 {
-	if (LEDNumber == 0) {
+	if (LEDNumber == LEDS_LED0) {
 		Board_LED_Set(LEDNumber, !Board_LED_Test(LEDNumber));
 	}
 }
@@ -228,60 +157,67 @@ void Board_Init(void)
 	Board_LED_Init();
 }
 
+extern const uint8_t ucMACAddress[ 6 ];
+
 /* Returns the MAC address assigned to this board */
 void Board_ENET_GetMacADDR(uint8_t *mcaddr)
 {
-	const uint8_t boardmac[] = {0x00, 0x60, 0x37, 0x12, 0x34, 0x56};
-
-	memcpy(mcaddr, boardmac, 6);
+	memcpy(mcaddr, ucMACAddress, 6);
 }
 
-/* Initialize pin muxing for SSP interface */
+/* Initialize SSP interface */
 void Board_SSP_Init(LPC_SSP_T *pSSP, bool isMaster)
 {
+	/* Set up clock and muxing for SPI0 interface */
+
+	/*
+	 * For SSP0:
+	 * P0.15: SCK0
+	 * P0.16: SSEL0
+	 * P0.17: MISO0
+	 * P0.18: MOSI0
+	 *
+	 * For SSP1:
+	 * P0.6: SSEL1 on evalboard connected to USR LED
+	 * P0.7: SCK1
+	 * P0.8: MISO1
+	 * P0.9: MOSI1
+	 */
+
 	if (pSSP == LPC_SSP0)
 	{
-		/*
-		 * Initialize SSP0 pins connect
-		 * P0.15: SCK
-		 * P0.16: SSEL
-		 * P0.17: MISO
-		 * P0.18: MOSI
-		 */
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 15, IOCON_MODE_INACT, IOCON_FUNC2);
-		if (isMaster) {
-			Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC0);
-			Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 16);
+		Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SCK_PORT_NUM, GREENPHY_SSP0_SCK_BIT_NUM, IOCON_MODE_PULLDOWN, IOCON_FUNC2);
+		if (isMaster)
+		{
+			Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM, IOCON_MODE_PULLUP, IOCON_FUNC0);
+			Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 			Board_SSP_DeassertSSEL(pSSP);
 		}
-		else {
-			Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC2);
+		else
+		{
+			Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM, IOCON_MODE_PULLUP, IOCON_FUNC2);
 		}
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 17, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 18, IOCON_MODE_INACT, IOCON_FUNC2);
+		Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_MISO_PORT_NUM, GREENPHY_SSP0_MISO_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC2);
+		Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_MOSI_BIT_NUM, GREENPHY_SSP0_MOSI_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC2);
 
 		Chip_SSP_Init(pSSP);
+
 		/* QCA7000 specific configuration */
 		Chip_SSP_Set_Mode(pSSP, SSP_MODE_MASTER);
 		Chip_SSP_SetFormat(pSSP, SSP_BITS_8, SSP_FRAMEFORMAT_SPI, SSP_CLOCK_CPHA1_CPOL1);
 		Chip_SSP_SetBitRate(pSSP, 12000000);
 	}
-	else
+	else if (pSSP == LPC_SSP1)
 	{
-		/*
-		 * Initialize SSP1 pins connect
-		 * P0.7: SCK
-		 * P0.6: SSEL
-		 * P0.8: MISO
-		 * P0.9: MOSI
-		 */
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 7, IOCON_MODE_INACT, IOCON_FUNC2);
-		if (isMaster) {
+		Chip_IOCON_PinMux(LPC_IOCON, 0, 7, IOCON_MODE_PULLDOWN, IOCON_FUNC2);
+		if (isMaster)
+		{
 			Chip_IOCON_PinMux(LPC_IOCON, 0, 6, IOCON_MODE_PULLUP, IOCON_FUNC0);
 			Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 6);
 			Board_SSP_DeassertSSEL(pSSP);
 		}
-		else {
+		else
+		{
 			Chip_IOCON_PinMux(LPC_IOCON, 0, 6, IOCON_MODE_PULLUP, IOCON_FUNC2);
 		}
 		Chip_IOCON_PinMux(LPC_IOCON, 0, 8, IOCON_MODE_INACT, IOCON_FUNC2);
@@ -298,14 +234,15 @@ bool Board_SSP_AssertSSEL(LPC_SSP_T *pSSP)
 	int rv = 0;
 	if (pSSP == LPC_SSP0)
 	{
-		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 16);
-		Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 16);
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 	}
-	else
+	else if (pSSP == LPC_SSP1)
 	{
 		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 6);
 		Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 6);
 	}
+
 	return rv;
 }
 
@@ -315,65 +252,47 @@ bool Board_SSP_DeassertSSEL(LPC_SSP_T *pSSP)
 	int rv = 0;
 	if (pSSP == LPC_SSP0)
 	{
-		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 16);
-		Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 16);
+		rv = Chip_GPIO_GetPinState(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
+		Chip_GPIO_SetPinOutHigh(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 	}
-	else
+	else if (pSSP == LPC_SSP1)
 	{
 		rv = Chip_GPIO_GetPinState(LPC_GPIO, 0, 6);
-		Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 6);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 6);
 	}
+
 	return rv;
 }
 
-/* Initialize pin muxing for SPI interface */
+/* Initialize pin muxing for SPI0 interface */
 void Board_SPI_Init(bool isMaster)
 {
-	/* Set up clock and muxing for SSP0 interface */
-	/*
-	 * Initialize SSP0 pins connect
-	 * P0.15: SCK
-	 * P0.16: SSEL
-	 * P0.17: MISO
-	 * P0.18: MOSI
-	 */
-	Chip_IOCON_PinMux(LPC_IOCON, 0, 15, IOCON_MODE_PULLDOWN, IOCON_FUNC3);
-	if (isMaster) {
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC0);
-		Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 16);
+	Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SCK_PORT_NUM, GREENPHY_SSP0_SCK_BIT_NUM, IOCON_MODE_PULLDOWN, IOCON_FUNC3);
+	if (isMaster)
+	{
+		Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM, IOCON_MODE_PULLUP, IOCON_FUNC0);
+		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 		Board_SPI_DeassertSSEL();
 
 	}
-	else {
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 16, IOCON_MODE_PULLUP, IOCON_FUNC3);
+	else
+	{
+		Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM, IOCON_MODE_PULLUP, IOCON_FUNC3);
 	}
-	Chip_IOCON_PinMux(LPC_IOCON, 0, 17, IOCON_MODE_INACT, IOCON_FUNC3);
-	Chip_IOCON_PinMux(LPC_IOCON, 0, 18, IOCON_MODE_INACT, IOCON_FUNC3);
+	Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_MISO_PORT_NUM, GREENPHY_SSP0_MISO_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
+	Chip_IOCON_PinMux(LPC_IOCON, GREENPHY_SSP0_MOSI_BIT_NUM, GREENPHY_SSP0_MOSI_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
 }
 
 /* Assert SSEL pin */
 void Board_SPI_AssertSSEL(void)
 {
-	Chip_GPIO_SetPinOutLow(LPC_GPIO, 0, 16);
+	Chip_GPIO_SetPinOutLow(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 }
 
 /* De-Assert SSEL pin */
 void Board_SPI_DeassertSSEL(void)
 {
-	Chip_GPIO_SetPinOutHigh(LPC_GPIO, 0, 16);
-}
-
-void Board_Audio_Init(LPC_I2S_T *pI2S, int micIn)
-{
-	I2S_AUDIO_FORMAT_T I2S_Config;
-
-	/* Chip_Clock_EnablePeripheralClock(SYSCTL_CLOCK_I2S); */
-
-	I2S_Config.SampleRate = 48000;
-	I2S_Config.ChannelNumber = 2;	/* 1 is mono, 2 is stereo */
-	I2S_Config.WordWidth =  16;		/* 8, 16 or 32 bits */
-	Chip_I2S_Init(pI2S);
-	Chip_I2S_TxConfig(pI2S, &I2S_Config);
+	Chip_GPIO_SetPinOutHigh(LPC_GPIO, GREENPHY_SSP0_SSEL_PORT_NUM, GREENPHY_SSP0_SSEL_BIT_NUM);
 }
 
 /* Sets up board specific I2C interface */
@@ -381,23 +300,23 @@ void Board_I2C_Init(I2C_ID_T id)
 {
 	switch (id) {
 	case I2C0:
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 27, IOCON_MODE_INACT, IOCON_FUNC1);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 28, IOCON_MODE_INACT, IOCON_FUNC1);
-		Chip_IOCON_SetI2CPad(LPC_IOCON, I2CPADCFG_STD_MODE);
+		/*not available on devolo evaluation board*/
 		break;
 
 	case I2C1:
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 19, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 20, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_EnableOD(LPC_IOCON, 0, 19);
-		Chip_IOCON_EnableOD(LPC_IOCON, 0, 20);
+		/*official clickboard I2C interface*/
+		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
+		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
+		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM);
+		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM);
 		break;
 
 	case I2C2:
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 10, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_PinMux(LPC_IOCON, 0, 11, IOCON_MODE_INACT, IOCON_FUNC2);
-		Chip_IOCON_EnableOD(LPC_IOCON, 0, 10);
-		Chip_IOCON_EnableOD(LPC_IOCON, 0, 11);
+		/*RX and TX pin on clickboard2 I2C interface, normally used by UART*/
+		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD2_SDA_I2C2_PORT_NUM, CLICKBOARD2_SDA_I2C2_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC2);
+		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD2_SCL_I2C2_PORT_NUM, CLICKBOARD2_SCL_I2C2_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC2);
+		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD2_SDA_I2C2_PORT_NUM, CLICKBOARD2_SDA_I2C2_BIT_NUM);
+		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD2_SCL_I2C2_PORT_NUM, CLICKBOARD2_SCL_I2C2_BIT_NUM);
 		break;
 	case I2C_NUM_INTERFACE:
 		break;
@@ -420,11 +339,11 @@ uint32_t Buttons_GetStatus(void)
 
 void Board_USBD_Init(uint32_t port)
 {
-	/* VBUS is not connected on the NXP LPCXpresso LPC1769, so leave the pin at default setting. */
-	/*Chip_IOCON_PinMux(LPC_IOCON, 1, 30, IOCON_MODE_INACT, IOCON_FUNC2);*/ /* USB VBUS */
+	/* Not tested */
+	Chip_IOCON_PinMux(LPC_IOCON, VBUS_USB_PORT_NUM, VBUS_USB_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC2);/* USB VBUS */
 	
-	Chip_IOCON_PinMux(LPC_IOCON, 0, 29, IOCON_MODE_INACT, IOCON_FUNC1);	/* P0.29 D1+, P0.30 D1- */
-	Chip_IOCON_PinMux(LPC_IOCON, 0, 30, IOCON_MODE_INACT, IOCON_FUNC1);
+	Chip_IOCON_PinMux(LPC_IOCON, NEGATIVE_USB_PORT_NUM, NEGATIVE_USB_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC1);	//D1+
+	Chip_IOCON_PinMux(LPC_IOCON, POSITIVE_USB_PORT_NUM, POSITIVE_USB_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC1);   //D1-
 
 	LPC_USB->USBClkCtrl = 0x12;                /* Dev, AHB clock enable */
 	while ((LPC_USB->USBClkSt & 0x12) != 0x12); 

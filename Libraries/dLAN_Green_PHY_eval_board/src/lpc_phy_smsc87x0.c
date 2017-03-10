@@ -83,62 +83,124 @@
 /* DP83848 PHY update flags */
 static uint32_t physts, olddphysts;
 
-/* PHY update counter for state machine */
-static int32_t phyustate;
-
 /* Pointer to delay function used for this driver */
 static p_msDelay_func_t pDelayMs;
 
-/* Write to the PHY. Will block for delays based on the pDelayMs function. Returns
-   true on success, or false on failure */
-static Status lpc_mii_write(uint8_t reg, uint16_t data)
-{
-	Status sts = ERROR;
-	int32_t mst = 250;
 
-	/* Write value for register */
-	Chip_ENET_StartMIIWrite(LPC_ETHERNET, reg, data);
+/*
+ * Apply NXP AN10859
+ * LPC1700 Ethernet MII Management (MDIO) via software
+ */
 
-	/* Wait for unbusy status */
-	while (mst > 0) {
-		if (Chip_ENET_IsMIIBusy(LPC_ETHERNET)) {
-			mst--;
-			pDelayMs(1);
+/*--------------------------- output_MDIO ------------------------------------*/
+
+static void output_MDIO (unsigned int val, unsigned int n) {
+	/* Output a value to the MII PHY management interface. */
+	for (val <<= (32 - n); n; val <<= 1, n--) {
+		if (val & 0x80000000) {
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
 		}
 		else {
-			mst = 0;
-			sts = SUCCESS;
+			Chip_GPIO_SetPinOutLow(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
 		}
+		Chip_GPIO_SetPinOutHigh(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
 	}
-
-	return sts;
 }
 
-/* Read from the PHY. Will block for delays based on the pDelayMs function. Returns
-   true on success, or false on failure */
-static Status lpc_mii_read(uint8_t reg, uint16_t *data)
+/*--------------------------- input_MDIO ------------------------------------*/
+
+static unsigned int input_MDIO (void) {
+	/* Input a value from the MII PHY management interface. */
+	unsigned int i,val = 0;
+
+	for (i = 0; i < 16; i++) {
+		val <<= 1;
+
+		Chip_GPIO_SetPinOutHigh(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
+		Chip_GPIO_SetPinOutLow(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
+		if (Chip_GPIO_GetPinState(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM)){
+			val |= 1;
+		}
+	}
+	return (val);
+}
+
+/*--------------------------- turnaround_MDIO -------------------------------*/
+
+static void turnaround_MDIO (void) {
+	/* Turnaround MDO is tristated. */
+	Chip_GPIO_SetPinDIRInput(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
+	Chip_GPIO_SetPinOutHigh(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
+	Chip_GPIO_SetPinOutLow(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
+}
+
+/*--------------------------- prvWritePHY ------------------------------------*/
+
+static long prvWritePHY( long lPhyReg, long lValue )
 {
-	Status sts = ERROR;
-	int32_t mst = 250;
+	const long lMaxTime = 10;
+	long x= 0;
 
-	/* Start register read */
-	Chip_ENET_StartMIIRead(LPC_ETHERNET, reg);
+	Chip_GPIO_SetPinDIROutput(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
 
-	/* Wait for unbusy status */
-	while (mst > 0) {
-		if (!Chip_ENET_IsMIIBusy(LPC_ETHERNET)) {
-			mst = 0;
-			*data = Chip_ENET_ReadMIIData(LPC_ETHERNET);
-			sts = SUCCESS;
-		}
-		else {
-			mst--;
-			pDelayMs(1);
-		}
-	}
+   /* 32 consecutive ones on MDO to establish sync */
+   output_MDIO (0xFFFFFFFF, 32);
 
-	return sts;
+   /* start code (01), write command (01) */
+   output_MDIO (0x05, 4);
+
+   /* write PHY address */
+   output_MDIO ( 0x0100/*Default PHY device address*/ >> 8, 5);
+
+   /* write the PHY register to write */
+   output_MDIO (lPhyReg, 5);
+
+   /* turnaround MDIO (1,0)*/
+   output_MDIO (0x02, 2);
+
+   /* write the data value */
+   output_MDIO (lValue, 16);
+
+   /* turnaround MDO is tristated */
+   turnaround_MDIO ();
+
+   return SUCCESS;
 }
+
+/*--------------------------- prvReadPHY ------------------------------------*/
+
+static unsigned short prvReadPHY( unsigned char ucPhyReg)
+{
+	unsigned int val;
+
+	/* Software MII Management for LPC175x. */
+	Chip_GPIO_SetPinDIROutput(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
+
+	/* 32 consecutive ones on MDO to establish sync */
+	output_MDIO (0xFFFFFFFF, 32);
+
+	/* start code (01), read command (10) */
+	output_MDIO (0x06, 4);
+
+	/* write PHY address */
+	output_MDIO (0x0100/*Default PHY device address*/ >> 8, 5);
+
+	/* write the PHY register to write */
+	output_MDIO (ucPhyReg, 5);
+
+	/* turnaround MDO is tristated */
+	turnaround_MDIO ();
+
+	/* read the data value */
+	val = input_MDIO ();
+
+	/* turnaround MDIO is tristated */
+	turnaround_MDIO ();
+
+	return (val);
+}
+/*-----------------------------------------------------------*/
 
 /* Update PHY status from passed value */
 static void smsc_update_phy_sts(uint16_t linksts, uint16_t sdsts)
@@ -188,22 +250,21 @@ uint32_t lpc_phy_init(bool rmii, p_msDelay_func_t pDelayMsFunc)
 	uint16_t tmp;
 	int32_t i;
 
+
 	pDelayMs = pDelayMsFunc;
 
 	/* Initial states for PHY status and state machine */
-	olddphysts = physts = phyustate = 0;
+	olddphysts = physts = 0;
+
+	Chip_GPIO_SetPinDIROutput(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
 
 	/* Only first read and write are checked for failure */
 	/* Put the DP83848C in reset mode and wait for completion */
-	if (lpc_mii_write(LAN8_BCR_REG, LAN8_RESET) != SUCCESS) {
-		return ERROR;
-	}
+	prvWritePHY(LAN8_BCR_REG, LAN8_RESET);
 	i = 400;
 	while (i > 0) {
 		pDelayMs(1);
-		if (lpc_mii_read(LAN8_BCR_REG, &tmp) != SUCCESS) {
-			return ERROR;
-		}
+		tmp = prvReadPHY(LAN8_BCR_REG);
 
 		if (!(tmp & (LAN8_RESET | LAN8_POWER_DOWN))) {
 			i = -1;
@@ -218,7 +279,8 @@ uint32_t lpc_phy_init(bool rmii, p_msDelay_func_t pDelayMsFunc)
 	}
 
 	/* Setup link */
-	lpc_mii_write(LAN8_BCR_REG, LAN8_AUTONEG);
+	prvWritePHY(LAN8_BCR_REG, LAN8_AUTONEG);
+
 
 	/* The link is not set active at this point, but will be detected
 	   later */
@@ -229,42 +291,7 @@ uint32_t lpc_phy_init(bool rmii, p_msDelay_func_t pDelayMsFunc)
 /* Phy status update state machine */
 uint32_t lpcPHYStsPoll(void)
 {
-	static uint16_t sts;
-
-	switch (phyustate) {
-	default:
-	case 0:
-		/* Read BMSR to clear faults */
-		Chip_ENET_StartMIIRead(LPC_ETHERNET, LAN8_BSR_REG);
-		physts &= ~PHY_LINK_CHANGED;
-		physts = physts | PHY_LINK_BUSY;
-		phyustate = 1;
-		break;
-
-	case 1:
-		/* Wait for read status state */
-		if (!Chip_ENET_IsMIIBusy(LPC_ETHERNET)) {
-			/* Get PHY status with link state */
-			sts = Chip_ENET_ReadMIIData(LPC_ETHERNET);
-			Chip_ENET_StartMIIRead(LPC_ETHERNET, LAN8_PHYSPLCTL_REG);
-			phyustate = 2;
-		}
-		break;
-
-	case 2:
-		/* Wait for read status state */
-		if (!Chip_ENET_IsMIIBusy(LPC_ETHERNET)) {
-			/* Update PHY status */
-			physts &= ~PHY_LINK_BUSY;
-			smsc_update_phy_sts(sts, Chip_ENET_ReadMIIData(LPC_ETHERNET));
-			phyustate = 0;
-		}
-		break;
-	}
-
+	physts &= ~PHY_LINK_CHANGED;
+	smsc_update_phy_sts(prvReadPHY(LAN8_BSR_REG), prvReadPHY(LAN8_PHYSPLCTL_REG));
 	return physts;
 }
-
-/**
- * @}
- */

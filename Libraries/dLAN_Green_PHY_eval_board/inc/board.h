@@ -1,32 +1,12 @@
 /*
- * @brief NXP LPC1769 XPresso board file
+ * @brief devolo dLAN Green PHY Module eval board
  *
  * @note
- * Copyright(C) NXP Semiconductors, 2012
+ * Copyright(C) devolo AG, 2016
  * All rights reserved.
  *
- * @par
- * Software that is described herein is for illustrative purposes only
- * which provides customers with programming information regarding the
- * LPC products.  This software is supplied "AS IS" without any warranties of
- * any kind, and NXP Semiconductors and its licensor disclaim any and
- * all warranties, express or implied, including all implied warranties of
- * merchantability, fitness for a particular purpose and non-infringement of
- * intellectual property rights.  NXP Semiconductors assumes no responsibility
- * or liability for the use of the software, conveys no license or rights under any
- * patent, copyright, mask work right, or any other intellectual property rights in
- * or to any products. NXP Semiconductors reserves the right to make changes
- * in the software without notification. NXP Semiconductors also makes no
- * representation or warranty that such application will be suitable for the
- * specified use without further testing or modification.
  *
- * @par
- * Permission to use, copy, modify, and distribute this software and its
- * documentation is hereby granted, under NXP Semiconductors' and its
- * licensor's relevant copyrights in the software, without fee, provided that it
- * is used in conjunction with NXP Semiconductors microcontrollers.  This
- * copyright, permission, and disclaimer notice must appear in all copies of
- * this code.
+ *
  */
 
 #ifndef __BOARD_H_
@@ -38,7 +18,7 @@
 extern "C" {
 #endif
 
-/** @defgroup BOARD_dLAN_Green_PHY_Module devolo LPC1769 board software API functions
+/** @defgroup BOARD_dLAN_Green_PHY_Module devolo LPC1758 board software API functions
  * @ingroup BOARD_dLAN_Green_PHY_Module
  * The board support software API functions provide some simple abstracted
  * functions used across multiple LPCOpen board examples. See @ref BOARD_COMMON_API
@@ -46,7 +26,7 @@ extern "C" {
  * @{
  */
 
-/** @defgroup BOARD_dLAN_Green_PHY_Module BOARD: devolo LPC1769 board build options
+/** @defgroup BOARD_dLAN_Green_PHY_Module BOARD: devolo LPC1758 board build options
  * This board has options that configure its operation at build-time.<br>
  * @{
  */
@@ -81,10 +61,9 @@ extern "C" {
 /**
  * LED defines
  */
-#define LEDS_LED1           0x01
-#define LEDS_LED2           0x02
-#define LEDS_LED3           0x04
-#define LEDS_LED4           0x08
+#define USR_LED_ON false
+#define USR_LED_OFF true
+#define LEDS_LED0           0x01
 #define LEDS_NO_LEDS        0x00
 
 /**
@@ -94,25 +73,136 @@ extern "C" {
 #define NO_BUTTON_PRESSED   0x00
 
 /**
- * Joystick defines
+ * Clickboard defines
  */
-#define JOY_UP              0x01
-#define JOY_DOWN            0x02
-#define JOY_LEFT            0x04
-#define JOY_RIGHT           0x08
-#define JOY_PRESS           0x10
+#define LED0_GPIO_PORT_NUM                      0
+#define LED0_GPIO_BIT_NUM                       6//22
+
+#define BUTTONS_BUTTON1_GPIO_PORT_NUM             2
+#define BUTTONS_BUTTON1_GPIO_BIT_NUM              10
+
+#define CLICKBOARD1_CS_GPIO_PORT_NUM              2
+#define CLICKBOARD1_CS_GPIO_BIT_NUM               2
+
+#define CLICKBOARD1_INT_GPIO_PORT_NUM             2
+#define CLICKBOARD1_INT_GPIO_BIT_NUM              3
+
+#define CLICKBOARD1_PWM_GPIO_PORT_NUM             2
+#define CLICKBOARD1_PWM_GPIO_BIT_NUM              4
+
+#define CLICKBOARD1_RST_GPIO_PORT_NUM             1
+#define CLICKBOARD1_RST_GPIO_BIT_NUM              26
+
+#define CLICKBOARD1_TX_GPIO_PORT_NUM              2
+#define CLICKBOARD1_TX_GPIO_BIT_NUM               0
+
+#define CLICKBOARD1_RX_GPIO_PORT_NUM              2
+#define CLICKBOARD1_RX_GPIO_BIT_NUM               1
+
+#define CLICKBOARD1_AN_GPIO_PORT_NUM              1
+#define CLICKBOARD1_AN_GPIO_BIT_NUM               31
+
+#define CLICKBOARD2_CS_GPIO_PORT_NUM              2
+#define CLICKBOARD2_CS_GPIO_BIT_NUM               7
+
+#define CLICKBOARD2_INT_GPIO_PORT_NUM             2
+#define CLICKBOARD2_INT_GPIO_BIT_NUM              6
+
+#define CLICKBOARD2_PWM_GPIO_PORT_NUM             2
+#define CLICKBOARD2_PWM_GPIO_BIT_NUM              5
+
+#define CLICKBOARD2_RST_GPIO_PORT_NUM             1
+#define CLICKBOARD2_RST_GPIO_BIT_NUM              28
+
+#define CLICKBOARD2_TX_GPIO_PORT_NUM              0
+#define CLICKBOARD2_TX_GPIO_BIT_NUM               10
+
+#define CLICKBOARD2_RX_GPIO_PORT_NUM              0
+#define CLICKBOARD2_RX_GPIO_BIT_NUM               11
+
+#define CLICKBOARD2_AN_GPIO_PORT_NUM              0
+#define CLICKBOARD2_AN_GPIO_BIT_NUM               25
+
+#define CLICKBOARD_SCK_SPI1_PORT_NUM              0
+#define CLICKBOARD_SCK_SPI1_BIT_NUM               7
+
+#define CLICKBOARD_MISO_SPI1_PORT_NUM             0
+#define CLICKBOARD_MISO_SPI1_BIT_NUM              8
+
+#define CLICKBOARD_MOSI_SPI1_PORT_NUM             0
+#define CLICKBOARD_MOSI_SPI1_BIT_NUM              9
+
+#define CLICKBOARD1_CS_SPI1_PORT_NUM              2
+#define CLICKBOARD1_CS_SPI1_BIT_NUM               2
+
+#define CLICKBOARD2_CS_SPI1_PORT_NUM              2
+#define CLICKBOARD2_CS_SPI1_BIT_NUM               7
+
+#define CLICKBOARD_SDA_I2C1_PORT_NUM              0
+#define CLICKBOARD_SDA_I2C1_BIT_NUM               0
+
+#define CLICKBOARD_SCL_I2C1_PORT_NUM              0
+#define CLICKBOARD_SCL_I2C1_BIT_NUM               1
+
+#define CLICKBOARD2_SDA_I2C2_PORT_NUM             0
+#define CLICKBOARD2_SDA_I2C2_BIT_NUM              10
+
+#define CLICKBOARD2_SCL_I2C2_PORT_NUM             0
+#define CLICKBOARD2_SCL_I2C2_BIT_NUM              11
+
+/*Peripherals*/
+#define J12_GPP_GPIO_PORT_NUM                     0
+#define J12_GPP_GPIO_BIT_NUM                      26
+
+#define J10_PIN4_TX_GPIO_PORT_NUM                 0
+#define J10_PIN4_TX_GPIO_BIT_NUM                  3
+
+#define J10_PIN5_RX_GPIO_PORT_NUM                 0
+#define J10_PIN5_RX_GPIO_BIT_NUM                  2
+
+#define USB_PLUS_RX_GPIO_PORT_NUM                 0
+#define USB_PLUS_RX_GPIO_BIT_NUM                  29
+
+#define USB_MINUS_RX_GPIO_PORT_NUM                0
+#define USB_MINUS_RX_GPIO_BIT_NUM                 30
+
+#define POSITIVE_USB_PORT_NUM                     0
+#define POSITIVE_USB_BIT_NUM                      30
+
+#define NEGATIVE_USB_PORT_NUM                     0
+#define NEGATIVE_USB_BIT_NUM                      29
+
+#define VBUS_USB_PORT_NUM                         1
+#define VBUS_USB_BIT_NUM                          30
 
 /**
- * Dummy audio input selection values enum
+ * GreenPHY defines
  */
-#define MCB_17XX_AUDIO_MIC_SELECT       0x00
-#define MCB_17XX_AUDIO_LINE_IN_SELECT   0x00
+#define GREENPHY_SSP0_SCK_PORT_NUM                0
+#define GREENPHY_SSP0_SCK_BIT_NUM                 15
 
+#define GREENPHY_SSP0_SSEL_PORT_NUM               0
+#define GREENPHY_SSP0_SSEL_BIT_NUM                16
 
-#define GREEN_PHY_INTERRUPT_PORT 0
-#define GREEN_PHY_INTERRUPT_PIN  22
-#define GREEN_PHY_RESET_PORT 1
-#define GREEN_PHY_RESET_PIN  29
+#define GREENPHY_SSP0_MISO_PORT_NUM               0
+#define GREENPHY_SSP0_MISO_BIT_NUM                17
+
+#define GREENPHY_SSP0_MOSI_PORT_NUM               0
+#define GREENPHY_SSP0_MOSI_BIT_NUM                18
+
+#define GREENPHY_SSP0_INT_PORT_NUM                0
+#define GREENPHY_SSP0_INT_BIT_NUM                 22
+
+#define GREENPHY_RESET_GPIO_PORT                  1
+#define GREENPHY_RESET_GPIO_PIN                   29
+
+/*onboard Ethernet interface*/
+#define MDC_GPIO_PORT_NUM                         1
+#define MDC_GPIO_BIT_NUM                          20
+
+#define MDIO_GPIO_PORT_NUM                        1
+#define MDIO_GPIO_BIT_NUM                         23
+
 
 /**
  * @brief	Initialize pin muxing for a UART
@@ -128,15 +218,6 @@ void Board_UART_Init(LPC_USART_T *pUART);
  * @note    Returns the MAC address used by Ethernet
  */
 void Board_ENET_GetMacADDR(uint8_t *mcaddr);
-
-/**
- * @brief	Sets up board specific I2S interface and UDA1380 CODEC
- * @param	pI2S	: I2S peripheral to use (Must be LPC_I2S)
- * @param	micIn	: If 1 MIC will be used as input device, if 0
- *          LINE_IN will be used as input to Audio Codec.
- * @return	Nothing
- */
-void Board_Audio_Init(LPC_I2S_T *pI2S, int micIn);
 
 /**
  * @brief	Initialize pin muxing for SSP interface
@@ -242,7 +323,6 @@ void Board_USBD_Init(uint32_t port);
 
 /* GreenPHY SDK includes */
 #include "greenPhyModuleConfig.h"
-#include "debug.h"
 
 #ifdef __cplusplus
 }
