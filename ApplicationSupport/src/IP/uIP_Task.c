@@ -69,6 +69,7 @@
 
 #include "greenPhyModuleApplication.h"
 #include "bootloaderapp.h"
+#include "netConfig.h"
 
 /* Demo includes. */
 
@@ -153,9 +154,9 @@ struct timer periodic_timer, arp_timer;
 	uip_sethostaddr( xIPAddr );
 	uip_ipaddr( xIPAddr, configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 );
 	uip_setnetmask( xIPAddr );
-	uip_ipaddr(xIPAddr, configDRTR_IP_ADDR0, configDRTR_IP_ADDR1, configDRTR_IP_ADDR2, configDRTR_IP_ADDR3);
+	uip_ipaddr(xIPAddr, configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3);
 	uip_setdraddr(xIPAddr);
-	uip_ipaddr(xIPAddr, configDNS_IP_ADDR0, configDNS_IP_ADDR1, configDNS_IP_ADDR2, configDNS_IP_ADDR3);
+	uip_ipaddr(xIPAddr, configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3);
 	//resolv_conf(xIPAddr);
 	readflash();
 #endif

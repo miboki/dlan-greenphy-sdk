@@ -14,7 +14,7 @@
 
 #undef UIP_UDP_APPCALL
 
-#include "greenPhyModuleApplication.h"
+//#include "greenPhyModuleApplication.h"
 
 #if TFTP_CLIENT_IAP == ON
 
