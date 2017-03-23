@@ -251,7 +251,7 @@ aborted. */
 #define ipconfigUSE_TCP             ( 1 )
 
 /* USE_WIN: Let TCP use windowing mechanism. */
-#define ipconfigUSE_TCP_WIN         ( 1 )
+#define ipconfigUSE_TCP_WIN         ( 0 )
 
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used

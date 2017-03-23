@@ -13,7 +13,6 @@
 
 /* GreenPHY SDK includes. */
 #include "netConfig.h"
-#include "greenPhyModuleConfig.h"
 
 /* The default IP and MAC address used by the demo.  The address configuration
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
@@ -45,16 +44,7 @@ void vApplicationTickHook(void) {
 	/* Called from every tick interrupt */
 
 //	DEBUG_EXECUTE(
-//	{
-//		static size_t old_mem = 0;
-//		size_t mem = xPortGetFreeHeapSize();
-//		if(old_mem != mem)
-//		{
-//			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem);
-//			old_mem = mem;
-//		}
-//	}
-//	);
+//			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
 }
 
 /*-----------------------------------------------------------*/
@@ -96,7 +86,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	             * Create the tasks here.
 	             */
 
-	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
+	        	#define	mainTCP_SERVER_STACK_SIZE						1400 /* Not used in the Win32 simulator. */
 
 	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
@@ -127,12 +117,6 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
 	        DEBUGOUT( "DNS server IP Address: %s\r\n", cBuffer );
 	    }
-}
-/*-----------------------------------------------------------*/
-
-const char *pcApplicationHostnameHook( void )
-{
-	return "GreenPHY evalboard II";
 }
 /*-----------------------------------------------------------*/
 
