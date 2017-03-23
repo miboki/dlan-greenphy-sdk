@@ -253,7 +253,7 @@ aborted. */
 #define ipconfigUSE_TCP             ( 1 )
 
 /* USE_WIN: Let TCP use windowing mechanism. */
-#define ipconfigUSE_TCP_WIN         ( 1 )
+#define ipconfigUSE_TCP_WIN         ( 0 )
 
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
@@ -340,7 +340,7 @@ maximum size.  Define the size of Rx buffer for TCP sockets. */
 
 /* Set to 1 or 0 to include/exclude FTP and HTTP functionality from the standard
 server task. */
-#define ipconfigUSE_FTP                                         1
+#define ipconfigUSE_FTP                                         0
 #define ipconfigUSE_HTTP                                        1
 
 /* Buffer and window sizes used by the FTP and HTTP servers respectively.  The
