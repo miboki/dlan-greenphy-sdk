@@ -65,7 +65,10 @@
 #define FREERTOS_NO_SOCKET		NULL
 
 /* FreeRTOS+FAT */
-#include "ff_stdio.h"
+// ML: change +FAT for Adam Dunkels http-fs
+//#include "ff_stdio.h"
+#include "httpd-fs.h"
+#define ffconfigMAX_FILENAME 64
 
 /* Each HTTP server has 1, at most 2 sockets */
 #define	HTTP_SOCKET_COUNT	2
@@ -120,7 +123,9 @@ struct xHTTP_CLIENT
 	const char *pcRestData;
 	char pcCurrentFilename[ ffconfigMAX_FILENAME ];
 	size_t uxBytesLeft;
-	FF_FILE *pxFileHandle;
+	// ML: change +FAT for Adam Dunkels http-fs
+	// FF_FILE *pxFileHandle;
+	struct httpd_fs_file *pxFileHandle;
 	union {
 		struct {
 			uint32_t
@@ -147,9 +152,9 @@ struct xFTP_CLIENT
 	Socket_t xTransferSocket;
 	BaseType_t xTransType;
 	BaseType_t xDirCount;
-	FF_FindData_t xFindData;
-	FF_FILE *pxReadHandle;
-	FF_FILE *pxWriteHandle;
+//	FF_FindData_t xFindData;
+//	FF_FILE *pxReadHandle;
+//	FF_FILE *pxWriteHandle;
 	char pcCurrentDir[ ffconfigMAX_FILENAME ];
 	char pcFileName[ ffconfigMAX_FILENAME ];
 	char pcConnectionAck[ 128 ];
