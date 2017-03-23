@@ -151,15 +151,19 @@ static struct httpd_fs_file *prv_fopen( const char *pcFile, const char *pcMode)
 	return NULL;
 }
 
-static void prv_fclose(struct httpd_fs_file *pxStream)
+static int prv_fclose(struct httpd_fs_file *pxStream)
 {
 	pxStream->data = NULL;
 	pxStream->len = 0;
+
+	return 0;
 }
 
 static size_t prv_fread(void *pvBuffer, size_t xSize, size_t xItems, struct httpd_fs_file *pxStream)
 {
 	memcpy(pvBuffer, pxStream->data, xSize*xItems);
+	pxStream->data += xSize*xItems;
+	pxStream->len -= xSize*xItems;
 	return xSize*xItems;
 }
 
@@ -188,6 +192,7 @@ static void prvFileClose( HTTPClient_t *pxClient )
 		// ML: change +FAT for Adam Dunkels http-fs
 		// ff_fclose( pxClient->pxFileHandle );
 		prv_fclose( pxClient->pxFileHandle );
+		pxClient->pxFileHandle = NULL;
 	}
 }
 /*-----------------------------------------------------------*/
