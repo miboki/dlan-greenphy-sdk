@@ -327,7 +327,7 @@ contain.  For normal Ethernet V2 frames the maximum MTU is 1500.  Setting a
 lower value can save RAM, depending on the buffer management scheme used.  If
 ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
-#define ipconfigNETWORK_MTU     586 // 1500 /*1526*/
+#define ipconfigNETWORK_MTU     1500 //586 // 1500 /*1526*/
 //#define ipconfigTCP_MSS         522 // 1460
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
