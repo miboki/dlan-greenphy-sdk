@@ -58,27 +58,27 @@
 #ifndef FREERTOS_IP_CONFIG_H
 #define FREERTOS_IP_CONFIG_H
 
-/* Prototype for the function used to print out.  In this case it prints to the
-console before the network is connected then a UDP port after the network has
-connected. */
-extern int printf( const char *pcFormatString, ... );
-
-/* Set to 1 to print out debug messages.  If ipconfigHAS_DEBUG_PRINTF is set to
-1 then FreeRTOS_debug_printf should be defined to the function used to print
-out the debugging messages. */
-#define ipconfigHAS_DEBUG_PRINTF	0
-#if( ipconfigHAS_DEBUG_PRINTF == 1 )
-	#define FreeRTOS_debug_printf(X)	printf X
-#endif
-
-/* Set to 1 to print out non debugging messages, for example the output of the
-FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
-then FreeRTOS_printf should be set to the function used to print out the
-messages. */
-#define ipconfigHAS_PRINTF			1
-#if( ipconfigHAS_PRINTF == 1 )
-	#define FreeRTOS_printf(X)			printf X
-#endif
+///* Prototype for the function used to print out.  In this case it prints to the
+//console before the network is connected then a UDP port after the network has
+//connected. */
+//extern void vLoggingPrintf( const char *pcFormatString, ... );
+//
+///* Set to 1 to print out debug messages.  If ipconfigHAS_DEBUG_PRINTF is set to
+//1 then FreeRTOS_debug_printf should be defined to the function used to print
+//out the debugging messages. */
+//#define ipconfigHAS_DEBUG_PRINTF	0
+//#if( ipconfigHAS_DEBUG_PRINTF == 1 )
+//	#define FreeRTOS_debug_printf(X)	vLoggingPrintf X
+//#endif
+//
+///* Set to 1 to print out non debugging messages, for example the output of the
+//FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
+//then FreeRTOS_printf should be set to the function used to print out the
+//messages. */
+//#define ipconfigHAS_PRINTF			1
+//#if( ipconfigHAS_PRINTF == 1 )
+//	#define FreeRTOS_printf(X)			vLoggingPrintf X
+//#endif
 
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
 on).  Valid options are pdFREERTOS_BIG_ENDIAN and pdFREERTOS_LITTLE_ENDIAN. */
@@ -130,14 +130,16 @@ task.  This setting is less important when the FreeRTOS Win32 simulator is used
 as the Win32 simulator only stores a fixed amount of information on the task
 stack.  FreeRTOS includes optional stack overflow detection, see:
 http://www.freertos.org/Stacks-and-stack-overflow-checking.html */
-#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( 200 )
+#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( configMINIMAL_STACK_SIZE * 5 )
 
 /* ipconfigRAND32() is called by the IP stack to generate random numbers for
 things such as a DHCP transaction number or initial sequence number.  Random
 number generation is performed via this macro to allow applications to use their
 own random number generation method.  For example, it might be possible to
 generate a random number by sampling noise on an analogue input. */
-#define ipconfigRAND32()    rand()
+// XXX: need uxRand() ??
+//extern UBaseType_t uxRand();
+//#define ipconfigRAND32()    uxRand()
 
 
 /* If ipconfigUSE_NETWORK_EVENT_HOOK is set to 1 then FreeRTOS+TCP will call the
@@ -251,7 +253,7 @@ aborted. */
 #define ipconfigUSE_TCP             ( 1 )
 
 /* USE_WIN: Let TCP use windowing mechanism. */
-#define ipconfigUSE_TCP_WIN         ( 0 )
+#define ipconfigUSE_TCP_WIN         ( 1 )
 
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
@@ -283,7 +285,11 @@ perform the filtering instead (it is much less efficient for the stack to do it
 because the packet will already have been passed into the stack).  If the
 Ethernet driver does all the necessary filtering in hardware then software
 filtering can be removed by using a value other than 1 or 0. */
-#define ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES 1 // TODO: fix this in the driver
+#define ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES 1
+
+/* The windows simulator cannot really simulate MAC interrupts, and needs to
+block occasionally to allow other tasks to run. */
+#define configWINDOWS_MAC_INTERRUPT_SIMULATOR_DELAY ( 20 / portTICK_PERIOD_MS )
 
 /* Advanced only: in order to access 32-bit fields in the IP packets with
 32-bit memory instructions, all packets will be stored 32-bit-aligned, plus 16-bits.
@@ -311,7 +317,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigTCP_KEEP_ALIVE_INTERVAL     ( 20 ) /* in seconds */
 
 #define ipconfigHAS_INLINE_FUNCTIONS 1
-#define ipconfigDHCP_REGISTER_HOSTNAME 1
+
 
 
 /* Configuration for max. throughput */
@@ -321,7 +327,7 @@ contain.  For normal Ethernet V2 frames the maximum MTU is 1500.  Setting a
 lower value can save RAM, depending on the buffer management scheme used.  If
 ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
-#define ipconfigNETWORK_MTU     1500 //586 // 1500 /*1526*/
+#define ipconfigNETWORK_MTU     586 // 1500 /*1526*/
 //#define ipconfigTCP_MSS         522 // 1460
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
@@ -347,9 +353,8 @@ FTP and HTTP servers both execute in the standard server task. */
 #define ipconfigHTTP_RX_BUFSIZE                         ( 1 * ipconfigTCP_MSS )
 #define ipconfigHTTP_RX_WINSIZE                         ( 1 )
 
-#define ipconfigTCP_COMMAND_BUFFER_SIZE 512
-#define ipconfigTCP_FILE_BUFFER_SIZE 512
-
 #define NETWORK_IRQHandler ETH_IRQHandler
+
+#define FreeRTOS_printf( MSG ) printf MSG
 
 #endif /* FREERTOS_IP_CONFIG_H */
