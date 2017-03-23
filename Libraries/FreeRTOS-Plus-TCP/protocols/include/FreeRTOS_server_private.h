@@ -152,9 +152,10 @@ struct xFTP_CLIENT
 	Socket_t xTransferSocket;
 	BaseType_t xTransType;
 	BaseType_t xDirCount;
-//	FF_FindData_t xFindData;
-//	FF_FILE *pxReadHandle;
-//	FF_FILE *pxWriteHandle;
+	// ML: without +FAT these data types do not exist
+	// FF_FindData_t xFindData;
+	// FF_FILE *pxReadHandle;
+	// FF_FILE *pxWriteHandle;
 	char pcCurrentDir[ ffconfigMAX_FILENAME ];
 	char pcFileName[ ffconfigMAX_FILENAME ];
 	char pcConnectionAck[ 128 ];

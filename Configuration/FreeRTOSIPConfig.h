@@ -253,7 +253,7 @@ aborted. */
 #define ipconfigUSE_TCP             ( 1 )
 
 /* USE_WIN: Let TCP use windowing mechanism. */
-#define ipconfigUSE_TCP_WIN         ( 0 )
+#define ipconfigUSE_TCP_WIN         ( 1 )
 
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
@@ -301,7 +301,7 @@ This has to do with the contents of the IP-packets: all 32-bit fields are
 TCP socket will use up to 2 x 6 descriptors, meaning that it can have 2 x 6
 outstanding packets (for Rx and Tx).  When using up to 10 TP sockets
 simultaneously, one could define TCP_WIN_SEG_COUNT as 120. */
-#define ipconfigTCP_WIN_SEG_COUNT       240
+#define ipconfigTCP_WIN_SEG_COUNT       12
 
 /* When using call-back handlers, the driver may check if the handler points to
 real program memory (RAM or flash) or just has a random non-zero value. */
@@ -327,9 +327,8 @@ contain.  For normal Ethernet V2 frames the maximum MTU is 1500.  Setting a
 lower value can save RAM, depending on the buffer management scheme used.  If
 ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
-#define ipconfigNETWORK_MTU     1500 /*1526*/
-
-#define ipconfigTCP_MSS         1460
+#define ipconfigNETWORK_MTU     586 // 1500 /*1526*/
+//#define ipconfigTCP_MSS         522 // 1460
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
 maximum size.  Define the size of Rx buffer for TCP sockets. */
@@ -345,14 +344,14 @@ server task. */
 
 /* Buffer and window sizes used by the FTP and HTTP servers respectively.  The
 FTP and HTTP servers both execute in the standard server task. */
-#define ipconfigFTP_TX_BUFSIZE                          ( 4 * ipconfigTCP_MSS )
-#define ipconfigFTP_TX_WINSIZE                          ( 2 )
-#define ipconfigFTP_RX_BUFSIZE                          ( 8 * ipconfigTCP_MSS )
-#define ipconfigFTP_RX_WINSIZE                          ( 4 )
-#define ipconfigHTTP_TX_BUFSIZE                         ( 3 * ipconfigTCP_MSS )
-#define ipconfigHTTP_TX_WINSIZE                         ( 2 )
-#define ipconfigHTTP_RX_BUFSIZE                         ( 4 * ipconfigTCP_MSS )
-#define ipconfigHTTP_RX_WINSIZE                         ( 4 )
+#define ipconfigFTP_TX_BUFSIZE                          ( 1 * ipconfigTCP_MSS )
+#define ipconfigFTP_TX_WINSIZE                          ( 1 )
+#define ipconfigFTP_RX_BUFSIZE                          ( 1 * ipconfigTCP_MSS )
+#define ipconfigFTP_RX_WINSIZE                          ( 1 )
+#define ipconfigHTTP_TX_BUFSIZE                         ( 1 * ipconfigTCP_MSS )
+#define ipconfigHTTP_TX_WINSIZE                         ( 1 )
+#define ipconfigHTTP_RX_BUFSIZE                         ( 1 * ipconfigTCP_MSS )
+#define ipconfigHTTP_RX_WINSIZE                         ( 1 )
 
 #define NETWORK_IRQHandler ETH_IRQHandler
 

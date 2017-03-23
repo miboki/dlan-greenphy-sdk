@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="com.crt.dsfdebug.crtmcu.launchType">
 <stringAttribute key=".gdbinit" value=""/>
+<stringAttribute key="InstructionTraceInfo" value="eJytVltv2jAUfp+0/xDlvSMJIQSprDKJGdFyk+20014iN7iUNSQsl67793MuUAiB8jAekH38ne9cfeLbu7dNLLyyLF+nyVSUv0iiwJIoXa6T1VQMyPxGF+++fv50y4oNKx5NVtB1nFcCQrMVK+aMFmXGcsGhv9LsfsfDWZx1cixoFDipiwPf9xCBplgRQeLMaM4EsFxyonwq3oyGmiap2lgRBZ+LWMK1huKgApsP5BSsa5ouawfgIitZg7f6yPWxNJGVXjwksz5npNH4kP+Jxnmr4HQVhsPRSFWHinQGz5P4p+jYUDRdHcpD7YwOyWjE5mWSsPjYsdFEU3WpNxBuxEgzhterZ77YbNOEA4TKbm/qjNxOo5ep6JZx3KxFgVMgtsIFp5mKVJfHqs6kcz8qKRNpImlnAdIk0iVVlpT+UzlS1EmkRF35kopt3Z92rVYFceR9C4h4mDSj3N9ccMvNI8umotpkA5fbbZoVbCkYm61Di+i5zZVg/I1iZqRlUlTwWlYpVClrm10waUGr/a4mgr1OXuT9zqFvDs157uSRuLcrNXb7aRrLLUuz6SWRL5Fc74vyf2jaGzjY57JtMz9Ln9YxnxdtFvO2HKFBkC3c07hk+3wMzuEHBwXeAU/7t76hxeaaxt4NkF1jP6TZct/Y7LFcIfZ7Hy/nxAXNCt7r23pW8V0c74/rnc1eWdwMsvWG5QU9yF59QcG7RjvW5gcBvXegZU5FfmiZKPQRxNAl3R6tEAQBA4aYAET4v+dfwi4ADufW3JsHtt13DmwCkQuIdQ/DGQKusQh9YHyH/YYXgTMLh0rYTul+QjtE8JuFOS/mK2CCmQ3bEncCr6vcSUEt442pijVd5XtoQp8sTm5rA5QaHPxBoGtCM6wWPCA7tFw/IOEswCG2fsLL2obnEq4YGp7jAwSIh/DH5morXkC4mXNouUU7M2hWzlm8bg+AGAvfs1zSuHiFpb7AMLSh8bGjhhe4VSUuo3xgoRCYJu8jfEUS2tpYLiYocHiRsRcgA56DK52cXRO245jQ8EyIrkKbgIBTvwfv/TXoHQ31K+C6mbF7F/TMjO53+ISO9fDtPs89H9f6ZmAy787HyyYayNHDqxYdP87+AZUt+kgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"/>
 <stringAttribute key="LAUNCH_ID.OFSemuDetails" value="Red Probe Family"/>
 <stringAttribute key="com.crt.ctrlcenter.OFSemuDetails" value="LinkServer"/>
 <booleanAttribute key="com.crt.ctrlcenter.crtInit" value="true"/>
@@ -36,6 +37,6 @@
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
 <listEntry value="4"/>
 </listAttribute>
-<stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#10;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;/&gt;&#10;"/>
+<stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#13;&#10;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;/&gt;&#13;&#10;"/>
 <stringAttribute key="process_factory_id" value="org.eclipse.cdt.dsf.gdb.GdbProcessFactory"/>
 </launchConfiguration>
