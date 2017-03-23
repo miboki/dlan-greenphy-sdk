@@ -3,7 +3,6 @@
 	<name>FirmwareStandalone</name>
 	<comment></comment>
 	<projects>
-		<project>ApplicationSupport</project>
 		<project>Configuration</project>
 		<project>Libraries</project>
 	</projects>
