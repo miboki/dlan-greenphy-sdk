@@ -27,20 +27,14 @@
 								<option id="com.crt.advproject.gcc.thumb.1819659104" name="Thumb mode" superClass="com.crt.advproject.gcc.thumb" value="true" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.misc.other.365530471" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
 								<option id="gnu.c.compiler.option.include.paths.590928224" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/HardwareSupport/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src/lpc1758}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.1462206155" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/FreeRTOSConfig.h}&quot;"/>
@@ -48,7 +42,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/netConfig.h}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1649623190" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
+									<listOptionValue builtIn="false" value="CORE_M3"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
+									<listOptionValue builtIn="false" value="__CODE_RED"/>
 									<listOptionValue builtIn="false" value="DEBUG"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.1342180198" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol"/>
@@ -59,19 +56,14 @@
 								<option id="com.crt.advproject.gas.thumb.1320297253" name="Thumb mode" superClass="com.crt.advproject.gas.thumb" value="true" valueType="boolean"/>
 								<option id="gnu.both.asm.option.flags.crt.1020396494" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -D__REDLIB__ -DDEBUG -D__CODE_RED" valueType="string"/>
 								<option id="gnu.both.asm.option.include.paths.827223866" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/HardwareSupport/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.assembler.input.2103625937" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1127551166" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -88,14 +80,12 @@
 									<listOptionValue builtIn="false" value="--gc-sections"/>
 								</option>
 								<option id="gnu.c.link.option.libs.1442528563" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="FreeRTOS_V7.1.0"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="CMSISv2p00_LPC17xx"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="ApplicationSupport"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 								</option>
 								<option id="gnu.c.link.option.paths.331389004" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/Debug}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/Debug}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Debug}&quot;"/>
 								</option>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.407845183" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
 								<option id="com.crt.advproject.link.gcc.multicore.master.userobjs.1758861871" name="Slave Objects (not visible)" superClass="com.crt.advproject.link.gcc.multicore.master.userobjs" valueType="userObjs"/>
@@ -109,45 +99,27 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="ApplicationSupport;com.crt.advproject.config.lib.debug.1972589977" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ApplicationSupport"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTPacket/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTClient-C/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/IP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/HTTP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/TFTP_IAP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/CLI/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ApplicationSupport/Debug"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ApplicationSupport" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="CMSISv2p00_LPC17xx;com.crt.advproject.config.lib.debug.1814355025" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/CMSISv2p00_LPC17xx/Debug"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="CMSISv2p00_LPC17xx" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="FreeRTOS_V7.1.0;com.crt.advproject.config.lib.debug.945114477" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Libraries;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS_V7.1.0/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/FreeRTOS_V7.1.0/Debug"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOS_V7.1.0" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="HardwareSupport;com.crt.advproject.config.lib.debug.695947555" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/HardwareSupport/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Libraries"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/dLAN_Green_PHY_eval_board/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/lpc_chip_175x_6x/inc"/>
+						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="CORE_M3" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__REDLIB__" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__CODE_RED" value=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>
@@ -179,20 +151,14 @@
 								<option id="com.crt.advproject.gcc.thumb.359362242" name="Thumb mode" superClass="com.crt.advproject.gcc.thumb" value="true" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.misc.other.650880943" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
 								<option id="gnu.c.compiler.option.include.paths.1621928785" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/HardwareSupport/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src/lpc1758}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.34798478" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/FreeRTOSConfig.h}&quot;"/>
@@ -200,7 +166,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/netConfig.h}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.762090597" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
+									<listOptionValue builtIn="false" value="CORE_M3"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
+									<listOptionValue builtIn="false" value="__CODE_RED"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.722121317" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
@@ -209,19 +178,14 @@
 								<option id="com.crt.advproject.gas.thumb.2015496405" name="Thumb mode" superClass="com.crt.advproject.gas.thumb" value="true" valueType="boolean"/>
 								<option id="gnu.both.asm.option.flags.crt.1491359176" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -D__REDLIB__ -DDEBUG -D__CODE_RED" valueType="string"/>
 								<option id="gnu.both.asm.option.include.paths.2070227663" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/HardwareSupport/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/TFTP_IAP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/CLI/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTClient-C/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/MQTT/MQTTPacket/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/IP}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/src/HTTP}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.assembler.input.1950420974" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1629707205" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -238,16 +202,12 @@
 									<listOptionValue builtIn="false" value="--gc-sections"/>
 								</option>
 								<option id="gnu.c.link.option.libs.2115648756" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="HardwareSupport"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="FreeRTOS_V7.1.0"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="CMSISv2p00_LPC17xx"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="ApplicationSupport"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 								</option>
 								<option id="gnu.c.link.option.paths.1552030137" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/HardwareSupport/Release}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/FreeRTOS_V7.1.0/Release}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/CMSISv2p00_LPC17xx/Release}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ApplicationSupport/Release}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Release}&quot;"/>
 								</option>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.898467147" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
 								<option id="com.crt.advproject.link.gcc.multicore.master.userobjs.336554058" name="Slave Objects (not visible)" superClass="com.crt.advproject.link.gcc.multicore.master.userobjs" valueType="userObjs"/>
@@ -261,48 +221,27 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="ApplicationSupport;com.crt.advproject.config.lib.debug.1972589977.1188657435" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ApplicationSupport/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/ApplicationSupport"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/TFTP_IAP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/CLI/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTClient-C/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/MQTT/MQTTPacket/src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/IP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/src/HTTP"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/ApplicationSupport/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/ApplicationSupport/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="ApplicationSupport" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="CMSISv2p00_LPC17xx;com.crt.advproject.config.lib.debug.1814355025.1604748705" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/CMSISv2p00_LPC17xx/inc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/CMSISv2p00_LPC17xx/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="CMSISv2p00_LPC17xx" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041.2051660535" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="FreeRTOS_V7.1.0;com.crt.advproject.config.lib.debug.945114477.1502627399" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Libraries;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS_V7.1.0/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/FreeRTOS_V7.1.0/src/portable/GCC/ARM_CM3"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/FreeRTOS_V7.1.0/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="FreeRTOS_V7.1.0" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<externalSettings containerId="HardwareSupport;com.crt.advproject.config.lib.debug.695947555.1475013847" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/HardwareSupport/include"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/HardwareSupport/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="HardwareSupport" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Libraries"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/portable/GCC/ARM_CM3"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/dLAN_Green_PHY_eval_board/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/lpc_chip_175x_6x/inc"/>
+						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="CORE_M3" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__REDLIB__" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__CODE_RED" value=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>
