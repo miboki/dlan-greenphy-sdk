@@ -28,6 +28,7 @@ Release/
 
 #Eclipse
 .metadata
+.settings
 
 #Mac
 .DS_Store
