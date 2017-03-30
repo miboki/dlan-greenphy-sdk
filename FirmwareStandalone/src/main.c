@@ -13,6 +13,7 @@
 
 /* GreenPHY SDK includes. */
 #include "netConfig.h"
+#include "greenPhyModuleConfig.h"
 
 /* The default IP and MAC address used by the demo.  The address configuration
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
@@ -44,7 +45,16 @@ void vApplicationTickHook(void) {
 	/* Called from every tick interrupt */
 
 //	DEBUG_EXECUTE(
-//			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
+//	{
+//		static size_t old_mem = 0;
+//		size_t mem = xPortGetFreeHeapSize();
+//		if(old_mem != mem)
+//		{
+//			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem);
+//			old_mem = mem;
+//		}
+//	}
+//	);
 }
 
 /*-----------------------------------------------------------*/
