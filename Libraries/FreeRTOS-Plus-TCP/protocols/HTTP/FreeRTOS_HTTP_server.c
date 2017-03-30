@@ -56,8 +56,6 @@
  */
 
 /* Standard includes. */
-#include <httpd-fs.h>
-#include <httpd-fs.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -74,10 +72,8 @@
 #include "FreeRTOS_TCP_server.h"
 #include "FreeRTOS_server_private.h"
 
-/* FreeRTOS+FAT includes. */
-// ML: change +FAT for Adam Dunkels http-fs
-// #include "ff_stdio.h"
-#include "httpd-fs.h"
+/* FreeRTOS+FAT */
+#include "ff_stdio.h"
 
 #ifndef HTTP_SERVER_BACKLOG
 	#define HTTP_SERVER_BACKLOG			( 12 )
@@ -133,42 +129,6 @@ static TypeCouple_t pxTypeCouples[ ] =
 	{ "ttc",  "application/x-font-ttf" }
 };
 
-/*****************************************************************************/
-
-// ML: change +FAT for Adam Dunkels http-fs
-static struct httpd_fs_file *prv_fopen( const char *pcFile, const char *pcMode)
-{
-	static struct httpd_fs_file pxFileHandle;
-
-	/* pcMode not used */
-	(void) pcMode;
-
-	if( httpd_fs_open( pcFile, &pxFileHandle ) )
-	{
-		return &pxFileHandle;
-	}
-
-	return NULL;
-}
-
-static int prv_fclose(struct httpd_fs_file *pxStream)
-{
-	pxStream->data = NULL;
-	pxStream->len = 0;
-
-	return 0;
-}
-
-static size_t prv_fread(void *pvBuffer, size_t xSize, size_t xItems, struct httpd_fs_file *pxStream)
-{
-	memcpy(pvBuffer, pxStream->data, xSize*xItems);
-	pxStream->data += xSize*xItems;
-	pxStream->len -= xSize*xItems;
-	return xSize*xItems;
-}
-
-/*****************************************************************************/
-
 void vHTTPClientDelete( TCPClient_t *pxTCPClient )
 {
 HTTPClient_t *pxClient = ( HTTPClient_t * ) pxTCPClient;
@@ -189,9 +149,7 @@ static void prvFileClose( HTTPClient_t *pxClient )
 	if( pxClient->pxFileHandle != NULL )
 	{
 		FreeRTOS_printf( ( "Closing file: %s\n", pxClient->pcCurrentFilename ) );
-		// ML: change +FAT for Adam Dunkels http-fs
-		// ff_fclose( pxClient->pxFileHandle );
-		prv_fclose( pxClient->pxFileHandle );
+		ff_fclose( pxClient->pxFileHandle );
 		pxClient->pxFileHandle = NULL;
 	}
 }
@@ -266,9 +224,7 @@ BaseType_t xRc = 0;
 				uxCount = sizeof( pxClient->pxParent->pcFileBuffer );
 			}
 
-			// ML: change +FAT for Adam Dunkels http-fs
-			// ff_fread( pxClient->pxParent->pcFileBuffer, 1, uxCount, pxClient->pxFileHandle );
-			prv_fread( pxClient->pxParent->pcFileBuffer, 1, uxCount, pxClient->pxFileHandle );
+			ff_fread( pxClient->pxParent->pcFileBuffer, 1, uxCount, pxClient->pxFileHandle );
 			pxClient->uxBytesLeft -= uxCount;
 
 			xRc = FreeRTOS_send( pxClient->xSocket, pxClient->pxParent->pcFileBuffer, uxCount, 0 );
@@ -349,13 +305,10 @@ char pcSlash[ 2 ];
 		strcpy(pxClient->pcCurrentFilename, "/index.html");
 	}
 
-	// ML: change +FAT for Adam Dunkels http-fs
-	// pxClient->pxFileHandle = ff_fopen( pxClient->pcCurrentFilename, "rb" );
-	pxClient->pxFileHandle = prv_fopen( pxClient->pcCurrentFilename, "rb" );
+	pxClient->pxFileHandle = ff_fopen( pxClient->pcCurrentFilename, "rb" );
 
 	FreeRTOS_printf( ( "Open file '%s': %s\n", pxClient->pcCurrentFilename,
-		// pxClient->pxFileHandle != NULL ? "Ok" : strerror( stdioGET_ERRNO() ) ) );
-		pxClient->pxFileHandle != NULL ? "Ok" : "ERROR" ) );
+		pxClient->pxFileHandle != NULL ? "Ok" : strerror( stdioGET_ERRNO() ) ) );
 
 	if( pxClient->pxFileHandle == NULL )
 	{
@@ -364,9 +317,7 @@ char pcSlash[ 2 ];
 	}
 	else
 	{
-		// ML: change +FAT for Adam Dunkels http-fs
-		// pxClient->uxBytesLeft = ( size_t ) pxClient->pxFileHandle->ulFileSize;
-		pxClient->uxBytesLeft = ( size_t ) pxClient->pxFileHandle->len;
+		pxClient->uxBytesLeft = ( size_t ) pxClient->pxFileHandle->ulFileSize;
 		xRc = prvSendFile( pxClient );
 	}
 
