@@ -132,7 +132,7 @@ your application. */
 #define configCPU_CLOCK_HZ                      ( ( unsigned long ) 100000000 )/*TF was 60000000 2017-02-09*/
 #define configTICK_RATE_HZ                      1000 /*TF was 250 2017-02-09*/
 #define configMAX_PRIORITIES                    5
-#define configMINIMAL_STACK_SIZE                ( ( unsigned short ) 80 ) /*TF was 128 2017-02-09*/
+#define configMINIMAL_STACK_SIZE                ( ( unsigned short ) 80 )
 #define configMAX_TASK_NAME_LEN                 12 /*TF was 16 2017-02-09*/
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
@@ -149,10 +149,10 @@ your application. */
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
 
 /* Memory allocation related definitions. */
-#define configSUPPORT_STATIC_ALLOCATION         0 /*TF was 1*/
+#define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 19 * 1024 ) ) /*TF was 10240 2012-02-09*/
-#define configAPPLICATION_ALLOCATED_HEAP        0 /*TF was 1*/
+#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( 19 * 1024 ) )
+#define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
 #define configUSE_IDLE_HOOK                     1 /*TF was 0 2017-02-09*/
@@ -198,7 +198,7 @@ your application. */
 #define INCLUDE_vTaskDelay                      1
 #define INCLUDE_xTaskGetSchedulerState          1
 #define INCLUDE_xTaskGetCurrentTaskHandle       1
-#define INCLUDE_uxTaskGetStackHighWaterMark     1 /*TF was 0 2017-02-09*/
+#define INCLUDE_uxTaskGetStackHighWaterMark     1
 #define INCLUDE_xTaskGetIdleTaskHandle          0
 #define INCLUDE_eTaskGetState                   0
 #define INCLUDE_xEventGroupSetBitFromISR        1

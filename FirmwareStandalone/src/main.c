@@ -96,7 +96,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	             * Create the tasks here.
 	             */
 
-	        	#define	mainTCP_SERVER_STACK_SIZE						1400 /* Not used in the Win32 simulator. */
+	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
 	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
@@ -127,6 +127,12 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
 	        DEBUGOUT( "DNS server IP Address: %s\r\n", cBuffer );
 	    }
+}
+/*-----------------------------------------------------------*/
+
+const char *pcApplicationHostnameHook( void )
+{
+	return "GreenPHY evalboard II";
 }
 /*-----------------------------------------------------------*/
 
