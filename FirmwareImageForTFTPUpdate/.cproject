@@ -34,6 +34,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.1462206155" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
@@ -42,11 +44,11 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/netConfig.h}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1649623190" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
+									<listOptionValue builtIn="false" value="DEBUG"/>
 									<listOptionValue builtIn="false" value="CORE_M3"/>
+									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
-									<listOptionValue builtIn="false" value="DEBUG"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.1342180198" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol"/>
 								<inputType id="com.crt.advproject.compiler.input.645993178" superClass="com.crt.advproject.compiler.input"/>
@@ -63,6 +65,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.assembler.input.2103625937" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
@@ -81,11 +85,9 @@
 								</option>
 								<option id="gnu.c.link.option.libs.1442528563" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 								</option>
 								<option id="gnu.c.link.option.paths.331389004" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Debug}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Debug}&quot;"/>
 								</option>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.407845183" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
 								<option id="com.crt.advproject.link.gcc.multicore.master.userobjs.1758861871" name="Slave Objects (not visible)" superClass="com.crt.advproject.link.gcc.multicore.master.userobjs" valueType="userObjs"/>
@@ -114,8 +116,11 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/include"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/dLAN_Green_PHY_eval_board/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/lpc_chip_175x_6x/inc"/>
-						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/protocols/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs"/>
+						<entry flags="RESOLVED" kind="macro" name="DEBUG" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="CORE_M3" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="__REDLIB__" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="__CODE_RED" value=""/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Debug"/>
@@ -158,6 +163,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.files.34798478" name="Include files (-include)" superClass="gnu.c.compiler.option.include.files" valueType="includeFiles">
@@ -166,8 +173,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/netConfig.h}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.762090597" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
+									<listOptionValue builtIn="false" value="DEBUG"/>
 									<listOptionValue builtIn="false" value="CORE_M3"/>
+									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
 								</option>
@@ -185,6 +193,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOSv9.0.0/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/dLAN_Green_PHY_eval_board/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/lpc_chip_175x_6x/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.assembler.input.1950420974" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
@@ -203,11 +213,11 @@
 								</option>
 								<option id="gnu.c.link.option.libs.2115648756" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 								</option>
 								<option id="gnu.c.link.option.paths.1552030137" name="Library search path (-L)" superClass="gnu.c.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Debug}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Release}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
 								</option>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.898467147" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
 								<option id="com.crt.advproject.link.gcc.multicore.master.userobjs.336554058" name="Slave Objects (not visible)" superClass="com.crt.advproject.link.gcc.multicore.master.userobjs" valueType="userObjs"/>
@@ -236,8 +246,11 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOSv9.0.0/include"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/dLAN_Green_PHY_eval_board/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/lpc_chip_175x_6x/inc"/>
-						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/protocols/include"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs"/>
+						<entry flags="RESOLVED" kind="macro" name="DEBUG" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="CORE_M3" value=""/>
+						<entry flags="RESOLVED" kind="macro" name="__USE_LPCOPEN" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="__REDLIB__" value=""/>
 						<entry flags="RESOLVED" kind="macro" name="__CODE_RED" value=""/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Libraries/Debug"/>

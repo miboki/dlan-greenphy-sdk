@@ -193,6 +193,14 @@ the defined MTU size can contain at ;east a complete TCP packet. */
 #endif /* !defined( SEND_REPEATED_COUNT ) */
 
 /*
+ * Define a maximum perdiod of time (ms) to leave a TCP-socket unattended.
+ * When a TCP timer expires, retries and keep-alive messages will be checked.
+ */
+#ifndef	tcpMAXIMUM_TCP_WAKEUP_TIME_MS
+	#define	tcpMAXIMUM_TCP_WAKEUP_TIME_MS		20000u
+#endif
+
+/*
  * The names of the different TCP states may be useful in logging.
  */
 #if( ( ipconfigHAS_DEBUG_PRINTF != 0 ) || ( ipconfigHAS_PRINTF != 0 ) )
@@ -804,7 +812,15 @@ NetworkBufferDescriptor_t xTempBuffer;
 			}
 
 			/* Avoid overflow of the 16-bit win field. */
-			ulWinSize = ( ulSpace >> pxSocket->u.xTCP.ucMyWinScaleFactor );
+			#if( ipconfigUSE_TCP_WIN != 0 )
+			{
+				ulWinSize = ( ulSpace >> pxSocket->u.xTCP.ucMyWinScaleFactor );
+			}
+			#else
+			{
+				ulWinSize = ulSpace;
+			}
+			#endif
 			if( ulWinSize > 0xfffcUL )
 			{
 				ulWinSize = 0xfffcUL;
@@ -953,7 +969,6 @@ NetworkBufferDescriptor_t xTempBuffer;
 			{
 			BaseType_t xIndex;
 
-				FreeRTOS_printf( ( "prvTCPReturnPacket: length %lu\n", pxNetworkBuffer->xDataLength ) );
 				for( xIndex = ( BaseType_t ) pxNetworkBuffer->xDataLength; xIndex < ( BaseType_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES; xIndex++ )
 				{
 					pxNetworkBuffer->pucEthernetBuffer[ xIndex ] = 0u;
@@ -1357,9 +1372,7 @@ static UBaseType_t prvSetSynAckOptions( FreeRTOS_Socket_t *pxSocket, TCPPacket_t
 {
 TCPHeader_t *pxTCPHeader = &pxTCPPacket->xTCPHeader;
 uint16_t usMSS = pxSocket->u.xTCP.usInitMSS;
-#if	ipconfigUSE_TCP_WIN == 1
-	UBaseType_t uxOptionsLength;
-#endif
+UBaseType_t uxOptionsLength;
 
 	/* We send out the TCP Maximum Segment Size option with our SYN[+ACK]. */
 
@@ -1383,7 +1396,6 @@ uint16_t usMSS = pxSocket->u.xTCP.usInitMSS;
 		uxOptionsLength = 4u;
 	}
 	#endif
-
 
 	#if( ipconfigUSE_TCP_WIN == 0 )
 	{
@@ -1431,7 +1443,7 @@ static void prvTCPTouchSocket( FreeRTOS_Socket_t *pxSocket )
 		pxSocket->u.xTCP.bits.bWaitKeepAlive = pdFALSE_UNSIGNED;
 		pxSocket->u.xTCP.bits.bSendKeepAlive = pdFALSE_UNSIGNED;
 		pxSocket->u.xTCP.ucKeepRepCount = 0u;
-		pxSocket->u.xTCP.xLastAliveTime = xTaskGetTickCount( );
+		pxSocket->u.xTCP.xLastAliveTime = xTaskGetTickCount();
 	}
 	#endif
 
@@ -1863,12 +1875,12 @@ int32_t lStreamPos;
 
 		#if	ipconfigUSE_TCP_TIMESTAMPS == 1
 		{
-			if( xOptionsLength == 0 )
+			if( uxOptionsLength == 0u )
 			{
 				if( pxSocket->u.xTCP.xTCPWindow.u.bits.bTimeStamps )
 				{
 					TCPPacket_t * pxTCPPacket = ( TCPPacket_t * ) ( pucEthernetBuffer );
-					xOptionsLength = prvTCPSetTimeStamp( 0, pxSocket, &pxTCPPacket->xTCPHeader );
+					uxOptionsLength = prvTCPSetTimeStamp( 0, pxSocket, &pxTCPPacket->xTCPHeader );
 				}
 			}
 		}
@@ -1886,7 +1898,7 @@ int32_t lStreamPos;
  */
 static TickType_t prvTCPNextTimeout ( FreeRTOS_Socket_t *pxSocket )
 {
-TickType_t ulDelayMs = ( TickType_t ) 20000;
+TickType_t ulDelayMs = ( TickType_t ) tcpMAXIMUM_TCP_WAKEUP_TIME_MS;
 
 	if( pxSocket->u.xTCP.ucTCPState == eCONNECT_SYN )
 	{
@@ -1921,7 +1933,14 @@ TickType_t ulDelayMs = ( TickType_t ) 20000;
 		BaseType_t xResult = xTCPWindowTxHasData( &pxSocket->u.xTCP.xTCPWindow, pxSocket->u.xTCP.ulWindowSize, &ulDelayMs );
 		if( ulDelayMs == 0u )
 		{
-			ulDelayMs = xResult ? 1UL : 20000UL;
+			if( xResult != ( BaseType_t )0 )
+			{
+				ulDelayMs = 1UL;
+			}
+			else
+			{
+				ulDelayMs = tcpMAXIMUM_TCP_WAKEUP_TIME_MS;
+			}
 		}
 		else
 		{
@@ -2289,7 +2308,7 @@ UBaseType_t uxOptionsLength = pxTCPWindow->ucOptionLength;
 	{
 		if( pxSocket->u.xTCP.xTCPWindow.u.bits.bTimeStamps )
 		{
-			uxOptionsLength += prvTCPSetTimeStamp( xOptionsLength, pxSocket, pxTCPHeader );
+			uxOptionsLength += prvTCPSetTimeStamp( uxOptionsLength, pxSocket, pxTCPHeader );
 		}
 	}
 	#endif	/* ipconfigUSE_TCP_TIMESTAMPS == 1 */
@@ -2379,14 +2398,17 @@ BaseType_t xSendLength = 0;
 			xSendLength = ( BaseType_t ) ( ipSIZE_OF_IPv4_HEADER + ipSIZE_OF_TCP_HEADER + uxOptionsLength );
 			pxTCPHeader->ucTCPOffset = ( uint8_t ) ( ( ipSIZE_OF_TCP_HEADER + uxOptionsLength ) << 2 );
 		}
-
-		if( pxSocket->u.xTCP.bits.bWinScaling == pdFALSE_UNSIGNED )
+		#if( ipconfigUSE_TCP_WIN != 0 )
 		{
-			/* The other party did not send a scaling factor.
-			A shifting factor in this side must be canceled. */
-			pxSocket->u.xTCP.ucMyWinScaleFactor = 0;
-			pxSocket->u.xTCP.ucPeerWinScaleFactor = 0;
+			if( pxSocket->u.xTCP.bits.bWinScaling == pdFALSE_UNSIGNED )
+			{
+				/* The other party did not send a scaling factor.
+				A shifting factor in this side must be canceled. */
+				pxSocket->u.xTCP.ucMyWinScaleFactor = 0;
+				pxSocket->u.xTCP.ucPeerWinScaleFactor = 0;
+			}
 		}
+		#endif /* ipconfigUSE_TCP_WIN */
 		/* This was the third step of connecting: SYN, SYN+ACK, ACK	so now the
 		connection is established. */
 		vTCPStateChange( pxSocket, eESTABLISHED );
@@ -2417,8 +2439,12 @@ int32_t lDistance, lSendResult;
 
 	/* Remember the window size the peer is advertising. */
 	pxSocket->u.xTCP.ulWindowSize = FreeRTOS_ntohs( pxTCPHeader->usWindow );
-	pxSocket->u.xTCP.ulWindowSize =
-		( pxSocket->u.xTCP.ulWindowSize << pxSocket->u.xTCP.ucPeerWinScaleFactor );
+	#if( ipconfigUSE_TCP_WIN != 0 )
+	{
+		pxSocket->u.xTCP.ulWindowSize =
+			( pxSocket->u.xTCP.ulWindowSize << pxSocket->u.xTCP.ucPeerWinScaleFactor );
+	}
+	#endif
 
 	if( ( ucTCPFlags & ( uint8_t ) ipTCP_FLAG_ACK ) != 0u )
 	{
@@ -2722,7 +2748,7 @@ uint32_t ulReceiveLength;	/* Number of bytes contained in the TCP message. */
 uint8_t *pucRecvData;
 uint32_t ulSequenceNumber = FreeRTOS_ntohl (pxTCPHeader->ulSequenceNumber);
 
-	/* xOptionsLength: the size of the options to be sent (always a multiple of
+	/* uxOptionsLength: the size of the options to be sent (always a multiple of
 	4 bytes)
 	1. in the SYN phase, we shall communicate the MSS
 	2. in case of a SACK, Selective ACK, ack a segment which comes in
@@ -2813,8 +2839,8 @@ TCPWindow_t *pxTCPWindow = &( pxSocket->u.xTCP.xTCPWindow );
 				xSendLength = ( BaseType_t ) ( ipSIZE_OF_IPv4_HEADER + ipSIZE_OF_TCP_HEADER + uxOptionsLength );
 
 				/* Set the TCP offset field:  ipSIZE_OF_TCP_HEADER equals 20 and
-				xOptionsLength is a multiple of 4.  The complete expression is:
-				ucTCPOffset = ( ( ipSIZE_OF_TCP_HEADER + xOptionsLength ) / 4 ) << 4 */
+				uxOptionsLength is a multiple of 4.  The complete expression is:
+				ucTCPOffset = ( ( ipSIZE_OF_TCP_HEADER + uxOptionsLength ) / 4 ) << 4 */
 				pxTCPHeader->ucTCPOffset = ( uint8_t )( ( ipSIZE_OF_TCP_HEADER + uxOptionsLength ) << 2 );
 				vTCPStateChange( pxSocket, eSYN_RECEIVED );
 

@@ -9,9 +9,11 @@
 /* FreeRTOS +TCP includes. */
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
+#include "FreeRTOS_TCP_server.h"
 
 /* GreenPHY SDK includes. */
 #include "netConfig.h"
+#include "greenPhyModuleConfig.h"
 
 /* The default IP and MAC address used by the demo.  The address configuration
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
@@ -43,7 +45,16 @@ void vApplicationTickHook(void) {
 	/* Called from every tick interrupt */
 
 //	DEBUG_EXECUTE(
-//			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem); old_mem = mem; } });
+//	{
+//		static size_t old_mem = 0;
+//		size_t mem = xPortGetFreeHeapSize();
+//		if(old_mem != mem)
+//		{
+//			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem);
+//			old_mem = mem;
+//		}
+//	}
+//	);
 }
 
 /*-----------------------------------------------------------*/
@@ -64,6 +75,8 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 		;
 }
 
+static void prvServerWorkTask( void *pvParameters );
+
 /*-----------------------------------------------------------*/
 void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
@@ -82,6 +95,11 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	            /*
 	             * Create the tasks here.
 	             */
+
+	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
+
+	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
+
 
 	            xTasksAlreadyCreated = pdTRUE;
 	        }
@@ -109,6 +127,12 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
 	        DEBUGOUT( "DNS server IP Address: %s\r\n", cBuffer );
 	    }
+}
+/*-----------------------------------------------------------*/
+
+const char *pcApplicationHostnameHook( void )
+{
+	return "GreenPHY evalboard II";
 }
 /*-----------------------------------------------------------*/
 
@@ -145,6 +169,35 @@ static void prvSetupHardware(void)
 {
 	SystemCoreClockUpdate();
 	Board_Init();
+}
+
+/*-----------------------------------------------------------*/
+
+static void prvServerWorkTask( void *pvParameters )
+{
+TCPServer_t *pxTCPServer = NULL;
+const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 200UL );
+
+/* A structure that defines the servers to be created.  Which servers are
+included in the structure depends on the mainCREATE_HTTP_SERVER and
+mainCREATE_FTP_SERVER settings at the top of this file. */
+static const struct xSERVER_CONFIG xServerConfiguration[] =
+{
+	/* Server type,		port number,	backlog, 	root dir. */
+	{ eSERVER_HTTP, 	80, 			12, 		"" }
+};
+
+	/* Remove compiler warning about unused parameter. */
+	( void ) pvParameters;
+
+	/* Create the servers defined by the xServerConfiguration array above. */
+	pxTCPServer = FreeRTOS_CreateTCPServer( xServerConfiguration, sizeof( xServerConfiguration ) / sizeof( xServerConfiguration[ 0 ] ) );
+	configASSERT( pxTCPServer );
+
+	for( ;; )
+	{
+		FreeRTOS_TCPServerWork( pxTCPServer, xInitialBlockTime );
+	}
 }
 
 /*-----------------------------------------------------------*/

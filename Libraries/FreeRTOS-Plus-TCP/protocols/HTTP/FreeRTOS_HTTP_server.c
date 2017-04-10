@@ -298,6 +298,12 @@ char pcSlash[ 2 ];
 		pcSlash,
 		pxClient->pcUrlData);
 
+	// ML: redirect root to index.html
+	if( strcmp(pxClient->pcCurrentFilename, "/") == 0 )
+	{
+		strcpy(pxClient->pcCurrentFilename, "/index.html");
+	}
+
 	pxClient->pxFileHandle = ff_fopen( pxClient->pcCurrentFilename, "rb" );
 
 	FreeRTOS_printf( ( "Open file '%s': %s\n", pxClient->pcCurrentFilename,
