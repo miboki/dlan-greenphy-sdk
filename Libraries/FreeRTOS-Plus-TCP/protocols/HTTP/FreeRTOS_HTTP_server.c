@@ -72,7 +72,7 @@
 #include "FreeRTOS_TCP_server.h"
 #include "FreeRTOS_server_private.h"
 
-/* FreeRTOS+FAT */
+/* FreeRTOS+FAT includes. */
 #include "ff_stdio.h"
 
 #ifndef HTTP_SERVER_BACKLOG
@@ -223,7 +223,6 @@ BaseType_t xRc = 0;
 			{
 				uxCount = sizeof( pxClient->pxParent->pcFileBuffer );
 			}
-
 			ff_fread( pxClient->pxParent->pcFileBuffer, 1, uxCount, pxClient->pxFileHandle );
 			pxClient->uxBytesLeft -= uxCount;
 
