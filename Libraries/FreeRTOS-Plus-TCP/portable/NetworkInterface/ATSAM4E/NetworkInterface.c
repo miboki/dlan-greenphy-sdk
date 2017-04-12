@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -70,6 +70,8 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_IP_Private.h"
+#include "FreeRTOS_DNS.h"
+#include "FreeRTOS_Routing.h"
 #include "NetworkBufferManagement.h"
 #include "NetworkInterface.h"
 
@@ -80,7 +82,7 @@
 #include <ethernet_phy.h>
 
 #ifndef	BMSR_LINK_STATUS
-	#define BMSR_LINK_STATUS            0x0004  //!< Link status
+	#define BMSR_LINK_STATUS            0x0004
 #endif
 
 #ifndef	PHY_LS_HIGH_CHECK_TIME_MS
@@ -104,8 +106,6 @@ expansion. */
 
 #define ETHERNET_CONF_PHY_ADDR  BOARD_GMAC_PHY_ADDR
 
-#define HZ_PER_MHZ				( 1000000UL )
-
 #ifndef	EMAC_MAX_BLOCK_TIME_MS
 	#define	EMAC_MAX_BLOCK_TIME_MS	100ul
 #endif
@@ -124,7 +124,7 @@ FreeRTOSConfig.h as configMINIMAL_STACK_SIZE is a user definable constant. */
  */
 static BaseType_t xGMACWaitLS( TickType_t xMaxTime );
 
-#if( ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM == 1 ) && ( ipconfigHAS_TX_CRC_OFFLOADING == 0 )
+#if( ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM == 1 )
 	void vGMACGenerateChecksum( uint8_t *apBuffer );
 #endif
 
@@ -141,12 +141,18 @@ static void prvEMACHandlerTask( void *pvParameters );
 /*
  * Initialise the ASF GMAC driver.
  */
-static BaseType_t prvGMACInit( void );
+static BaseType_t prvGMACInit( NetworkInterface_t *pxInterface );
 
 /*
  * Try to obtain an Rx packet from the hardware.
  */
 static uint32_t prvEMACRxPoll( void );
+
+static BaseType_t prvSAM4E_GMAC_Initialise( NetworkInterface_t *pxInterface );
+static BaseType_t prvSAM4E_GMAC_Output( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxBuffer, BaseType_t bReleaseAfterSend );
+static BaseType_t prvSAM4e_GMAC_GetPhyLinkStatus( NetworkInterface_t *pxInterface );
+
+static inline unsigned long ulReadMDIO( unsigned /*short*/ usAddress );
 
 /*-----------------------------------------------------------*/
 
@@ -164,20 +170,15 @@ Atmel was a bit ambiguous about it so the address will be stored
 in this variable, see ethernet_phy.c */
 extern int ethernet_phy_addr;
 
-/* LLMNR multicast address. */
-static const uint8_t llmnr_mac_address[] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0xFC };
-
 /* The GMAC object as defined by the ASF drivers. */
 static gmac_device_t gs_gmac_dev;
-
-/* MAC address to use. */
-extern const uint8_t ucMACAddress[ 6 ];
 
 /* Holds the handle of the task used as a deferred interrupt processor.  The
 handle is used so direct notifications can be sent to the task for all EMAC/DMA
 related interrupts. */
 TaskHandle_t xEMACTaskHandle = NULL;
 
+static NetworkInterface_t *pxMyInterface = NULL;
 
 /*-----------------------------------------------------------*/
 
@@ -211,13 +212,13 @@ static void prvRxCallback( uint32_t ulStatus )
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+static BaseType_t prvSAM4E_GMAC_Initialise( NetworkInterface_t *pxInterface )
 {
 const TickType_t x5_Seconds = 5000UL;
 
 	if( xEMACTaskHandle == NULL )
 	{
-		prvGMACInit();
+		prvGMACInit( pxInterface );
 
 		/* Wait at most 5 seconds for a Link Status in the PHY. */
 		xGMACWaitLS( pdMS_TO_TICKS( x5_Seconds ) );
@@ -226,6 +227,12 @@ const TickType_t x5_Seconds = 5000UL;
 		ensure the interrupt handler can return directly to it. */
 		xTaskCreate( prvEMACHandlerTask, "EMAC", configEMAC_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
 		configASSERT( xEMACTaskHandle );
+		pxMyInterface = pxInterface;
+	}
+	else
+	{
+		/* Check the link status, see if it is up now. */
+		ulPHYLinkStatus = ulReadMDIO( PHY_REG_01_BMSR );
 	}
 	/* When returning non-zero, the stack will become active and
     start DHCP (in configured) */
@@ -233,9 +240,34 @@ const TickType_t x5_Seconds = 5000UL;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xGetPhyLinkStatus( void )
+/* pxSAM4e_GMAC_FillInterfaceDescriptor() goes into the NetworkInterface.c of the SAM4e driver. */
+
+NetworkInterface_t *pxSAM4e_GMAC_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+{
+/* This function pxSAM4e_GMAC_FillInterfaceDescriptor() adds a network-interface.
+Make sure that the object pointed to by 'pxInterface'
+is declared static or global, and that it will remain to exist. */
+
+	memset( pxInterface, '\0', sizeof( *pxInterface ) );
+	pxInterface->pcName				= "Micrel";	/* Just for logging, debugging. */
+	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pfInitialise		= prvSAM4E_GMAC_Initialise;
+	pxInterface->pfOutput			= prvSAM4E_GMAC_Output;
+	pxInterface->pfGetPhyLinkStatus = prvSAM4e_GMAC_GetPhyLinkStatus;
+
+	return pxInterface;
+}
+/*-----------------------------------------------------------*/
+
+static BaseType_t prvSAM4e_GMAC_GetPhyLinkStatus( NetworkInterface_t *pxInterface )
 {
 BaseType_t xResult;
+
+	/*_RB_ Will this parameter be used by any port? */
+	/*_HT_ I think it will if there are two instances of an EMAC that share
+	the same driver and obviously get a different 'NetworkInterface_t'. */
+	/* Avoid warning about unused parameter. */
+	( void ) pxInterface;
 
 	/* This function returns true if the Link Status in the PHY is high. */
 	if( ( ulPHYLinkStatus & BMSR_LINK_STATUS ) != 0 )
@@ -251,33 +283,43 @@ BaseType_t xResult;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
+static BaseType_t prvSAM4E_GMAC_Output( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxBuffer, BaseType_t bReleaseAfterSend )
 {
+	/*_RB_ Will this parameter be used by any port? */
+	/*_HT_ Same answer as above. */
+	/* Avoid warning about unused parameter. */
+	( void ) pxInterface;
+
 	if( ( ulPHYLinkStatus & BMSR_LINK_STATUS ) != 0 )
 	{
 		/* Not interested in a call-back after TX. */
-		gmac_dev_write( &gs_gmac_dev, (void *)pxDescriptor->pucEthernetBuffer, pxDescriptor->xDataLength, NULL );
+		gmac_dev_write( &gs_gmac_dev, (void *)pxBuffer->pucEthernetBuffer, pxBuffer->xDataLength, NULL );
 		iptraceNETWORK_INTERFACE_TRANSMIT();
 	}
 
 	if( bReleaseAfterSend != pdFALSE )
 	{
-		vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+		vReleaseNetworkBufferAndDescriptor( pxBuffer );
 	}
 	return pdTRUE;
 }
 /*-----------------------------------------------------------*/
 
-static BaseType_t prvGMACInit( void )
+static BaseType_t prvGMACInit( NetworkInterface_t *pxInterface )
 {
 uint32_t ncfgr;
+NetworkEndPoint_t *pxEndPoint;
+BaseType_t xEntry = 1;
 
 	gmac_options_t gmac_option;
 
-	memset( &gmac_option, '\0', sizeof( gmac_option ) );
+	pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+	configASSERT( pxEndPoint != NULL );
+
+	memset( &gmac_option, '\0', sizeof gmac_option );
 	gmac_option.uc_copy_all_frame = 0;
 	gmac_option.uc_no_boardcast = 0;
-	memcpy( gmac_option.uc_mac_addr, ucMACAddress, sizeof( gmac_option.uc_mac_addr ) );
+	memcpy( gmac_option.uc_mac_addr, pxEndPoint->xMACAddress.ucBytes, sizeof gmac_option.uc_mac_addr );
 
 	gs_gmac_dev.p_hw = GMAC;
 	gmac_dev_init( GMAC, &gs_gmac_dev, &gmac_option );
@@ -294,7 +336,33 @@ uint32_t ncfgr;
 	/* The GMAC driver will call a hook prvRxCallback(), which
 	in turn will wake-up the task by calling vTaskNotifyGiveFromISR() */
 	gmac_dev_set_rx_callback( &gs_gmac_dev, prvRxCallback );
-	gmac_set_address( GMAC, 1, (uint8_t*)llmnr_mac_address );
+	gmac_set_address( GMAC, xEntry++, (uint8_t*)xLLMNR_MacAdress.ucBytes );
+
+	#if( ipconfigUSE_IPv6 == 0 )
+	{
+		gmac_set_address( GMAC, xEntry++, xLLMNR_MacAdress.ucBytes );
+	}
+	#else
+	{
+		gmac_set_address( GMAC, xEntry++, (uint8_t*)xLLMNR_MacAdress.ucBytes );
+		NetworkEndPoint_t *pxEndPoint;
+
+		for( pxEndPoint = FreeRTOS_FirstEndPoint( pxMyInterface );
+			pxEndPoint != NULL;
+			pxEndPoint = FreeRTOS_NextEndPoint( pxMyInterface, pxEndPoint ) )
+		{
+			if( pxEndPoint->bits.bIPv6 != NULL )
+			{
+			uint8_t ucMACAddress[ 6 ] = { 0x33, 0x33, 0xff, 0, 0, 0 };
+
+				ucMACAddress[ 3 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 13 ];
+				ucMACAddress[ 4 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 14 ];
+				ucMACAddress[ 5 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 15 ];
+				gmac_set_address( GMAC, xEntry++, ucMACAddress );
+			}
+		}
+	}
+	#endif
 
 	ncfgr = GMAC_NCFGR_SPD | GMAC_NCFGR_FD;
 
@@ -331,6 +399,7 @@ TickType_t xStartTime = xTaskGetTickCount();
 TickType_t xEndTime;
 BaseType_t xReturn;
 const TickType_t xShortTime = pdMS_TO_TICKS( 100UL );
+const uint32_t ulHz_Per_MHz = 1000000UL;
 
 	for( ;; )
 	{
@@ -361,25 +430,31 @@ const TickType_t xShortTime = pdMS_TO_TICKS( 100UL );
 	FreeRTOS_printf( ( "xGMACWaitLS: %ld (PHY %d) freq %lu Mz\n",
 		xReturn,
 		ethernet_phy_addr,
-		sysclk_get_cpu_hz() / HZ_PER_MHZ ) );
+		sysclk_get_cpu_hz() / ulHz_Per_MHz ) );
 
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
 
-#if( ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM == 1 ) && ( ipconfigHAS_TX_CRC_OFFLOADING == 0 )
+#if( ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM == 1 )
 
 	void vGMACGenerateChecksum( uint8_t *apBuffer )
 	{
 	ProtocolPacket_t *xProtPacket = (ProtocolPacket_t *)apBuffer;
-
+		#if( ipconfigUSE_IPv6 != 0 )
+			if ( xProtPacket->xTCPPacket.xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
+			{
+				usGenerateProtocolChecksum( apBuffer, pdTRUE );
+			}
+			else
+		#endif /* ipconfigUSE_IPv6 */
 		if ( xProtPacket->xTCPPacket.xEthernetHeader.usFrameType == ipIPv4_FRAME_TYPE )
 		{
-			IPHeader_t *pxIPHeader = &(xProtPacket->xTCPPacket.xIPHeader);
+			IPHeader_t *pxIPHeader = &( xProtPacket->xTCPPacket.xIPHeader );
 
 			/* Calculate the IP header checksum. */
 			pxIPHeader->usHeaderChecksum = 0x00;
-			pxIPHeader->usHeaderChecksum = usGenerateChecksum( 0, ( uint8_t * ) &( pxIPHeader->ucVersionHeaderLength ), ipSIZE_OF_IPv4_HEADER );
+			pxIPHeader->usHeaderChecksum = usGenerateChecksum( 0, ( uint8_t * ) &( pxIPHeader->ucVersionHeaderLength ), ipSIZE_OF_IP_HEADER_IPv4 );
 			pxIPHeader->usHeaderChecksum = ~FreeRTOS_htons( pxIPHeader->usHeaderChecksum );
 
 			/* Calculate the TCP checksum for an outgoing packet. */
@@ -394,28 +469,28 @@ static uint32_t prvEMACRxPoll( void )
 {
 unsigned char *pucUseBuffer;
 uint32_t ulReceiveCount, ulResult, ulReturnValue = 0;
-static NetworkBufferDescriptor_t *pxNextNetworkBufferDescriptor = NULL;
+static NetworkBufferDescriptor_t *pxNetworkBuffer = NULL;
 const UBaseType_t xMinDescriptorsToLeave = 2UL;
 const TickType_t xBlockTime = pdMS_TO_TICKS( 100UL );
 static IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 
 	for( ;; )
 	{
-		/* If pxNextNetworkBufferDescriptor was not left pointing at a valid
+		/* If pxNetworkBuffer was not left pointing at a valid
 		descriptor then allocate one now. */
-		if( ( pxNextNetworkBufferDescriptor == NULL ) && ( uxGetNumberOfFreeNetworkBuffers() > xMinDescriptorsToLeave ) )
+		if( ( pxNetworkBuffer == NULL ) && ( uxGetNumberOfFreeNetworkBuffers() > xMinDescriptorsToLeave ) )
 		{
-			pxNextNetworkBufferDescriptor = pxGetNetworkBufferWithDescriptor( ipTOTAL_ETHERNET_FRAME_SIZE, xBlockTime );
+			pxNetworkBuffer = pxGetNetworkBufferWithDescriptor( ipTOTAL_ETHERNET_FRAME_SIZE, xBlockTime );
 		}
 
-		if( pxNextNetworkBufferDescriptor != NULL )
+		if( pxNetworkBuffer != NULL )
 		{
 			/* Point pucUseBuffer to the buffer pointed to by the descriptor. */
-			pucUseBuffer = ( unsigned char* ) ( pxNextNetworkBufferDescriptor->pucEthernetBuffer - ipconfigPACKET_FILLER_SIZE );
+			pucUseBuffer = ( unsigned char* ) ( pxNetworkBuffer->pucEthernetBuffer - ipconfigPACKET_FILLER_SIZE );
 		}
 		else
 		{
-			/* As long as pxNextNetworkBufferDescriptor is NULL, the incoming
+			/* As long as pxNetworkBuffer is NULL, the incoming
 			messages will be flushed and ignored. */
 			pucUseBuffer = NULL;
 		}
@@ -429,7 +504,7 @@ static IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 			break;
 		}
 
-		if( pxNextNetworkBufferDescriptor == NULL )
+		if( pxNetworkBuffer == NULL )
 		{
 			/* Data was read from the hardware, but no descriptor was available
 			for it, so it will be dropped. */
@@ -438,22 +513,23 @@ static IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 		}
 
 		iptraceNETWORK_INTERFACE_RECEIVE();
-		pxNextNetworkBufferDescriptor->xDataLength = ( size_t ) ulReceiveCount;
-		xRxEvent.pvData = ( void * ) pxNextNetworkBufferDescriptor;
+		pxNetworkBuffer->xDataLength = ( size_t ) ulReceiveCount;
+		pxNetworkBuffer->pxInterface = pxMyInterface;
 
+		xRxEvent.pvData = ( void * ) pxNetworkBuffer;
 		/* Send the descriptor to the IP task for processing. */
 		if( xSendEventStructToIPTask( &xRxEvent, xBlockTime ) != pdTRUE )
 		{
 			/* The buffer could not be sent to the stack so must be released
 			again. */
-			vReleaseNetworkBufferAndDescriptor( pxNextNetworkBufferDescriptor );
+			vReleaseNetworkBufferAndDescriptor( pxNetworkBuffer );
 			iptraceETHERNET_RX_EVENT_LOST();
 			FreeRTOS_printf( ( "prvEMACRxPoll: Can not queue return packet!\n" ) );
 		}
-
 		/* Now the buffer has either been passed to the IP-task,
 		or it has been released in the code above. */
-		pxNextNetworkBufferDescriptor = NULL;
+		pxNetworkBuffer = NULL;
+
 		ulReturnValue++;
 	}
 
@@ -461,15 +537,42 @@ static IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 }
 /*-----------------------------------------------------------*/
 
+void vCheckBuffersAndQueue( void )
+{
+static UBaseType_t uxLastMinBufferCount = 0;
+#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
+	static UBaseType_t uxLastMinQueueSpace;
+#endif
+static UBaseType_t uxCurrentCount;
+
+	#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
+	{
+		uxCurrentCount = uxGetMinimumIPQueueSpace();
+		if( uxLastMinQueueSpace != uxCurrentCount )
+		{
+			/* The logging produced below may be helpful
+			while tuning +TCP: see how many buffers are in use. */
+			uxLastMinQueueSpace = uxCurrentCount;
+			FreeRTOS_printf( ( "Queue space: lowest %lu\n", uxCurrentCount ) );
+		}
+	}
+	#endif /* ipconfigCHECK_IP_QUEUE_SPACE */
+	uxCurrentCount = uxGetMinimumFreeNetworkBuffers();
+	if( uxLastMinBufferCount != uxCurrentCount )
+	{
+		/* The logging produced below may be helpful
+		while tuning +TCP: see how many buffers are in use. */
+		uxLastMinBufferCount = uxCurrentCount;
+		FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
+			uxGetNumberOfFreeNetworkBuffers(), uxCurrentCount ) );
+	}
+
+}
+
 static void prvEMACHandlerTask( void *pvParameters )
 {
 TimeOut_t xPhyTime;
 TickType_t xPhyRemTime;
-UBaseType_t uxLastMinBufferCount = 0;
-UBaseType_t uxCurrentCount;
-#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
-	UBaseType_t uxLastMinQueueSpace;
-#endif
 BaseType_t xResult = 0;
 uint32_t xStatus;
 const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
@@ -484,28 +587,7 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 
 	for( ;; )
 	{
-		uxCurrentCount = uxGetMinimumFreeNetworkBuffers();
-		if( uxLastMinBufferCount != uxCurrentCount )
-		{
-			/* The logging produced below may be helpful
-			while tuning +TCP: see how many buffers are in use. */
-			uxLastMinBufferCount = uxCurrentCount;
-			FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
-				uxGetNumberOfFreeNetworkBuffers(), uxCurrentCount ) );
-		}
-
-		#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
-		{
-			uxCurrentCount = uxGetMinimumIPQueueSpace();
-			if( uxLastMinQueueSpace != uxCurrentCount )
-			{
-				/* The logging produced below may be helpful
-				while tuning +TCP: see how many buffers are in use. */
-				uxLastMinQueueSpace = uxCurrentCount;
-				FreeRTOS_printf( ( "Queue space: lowest %lu\n", uxCurrentCount ) );
-			}
-		}
-		#endif /* ipconfigCHECK_IP_QUEUE_SPACE */
+		vCheckBuffersAndQueue();
 
 		if( ( ulISREvents & EMAC_IF_ALL_EVENT ) == 0 )
 		{

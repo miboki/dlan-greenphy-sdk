@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -61,7 +61,7 @@
  * http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_TCP/Embedded_Compiler_Porting.html
  *
  *****************************************************************************/
-__attribute__( (packed) )
+__attribute__( (packed) );
 
 
 

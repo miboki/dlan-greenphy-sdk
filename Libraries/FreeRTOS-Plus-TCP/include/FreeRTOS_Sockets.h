@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -161,16 +161,19 @@ FreeRTOS_setsockopt(). */
 #define FREERTOS_NOT_LAST_IN_FRAGMENTED_PACKET 	( 0x80 )  /* For internal use only, but also part of an 8-bit bitwise value. */
 #define FREERTOS_FRAGMENTED_PACKET				( 0x40 )  /* For internal use only, but also part of an 8-bit bitwise value. */
 
-/* Values for flag for FreeRTOS_shutdown(). */
+/* values for flag for FreeRTOS_shutdown() */
 #define FREERTOS_SHUT_RD				( 0 )		/* Not really at this moment, just for compatibility of the interface */
 #define FREERTOS_SHUT_WR				( 1 )
 #define FREERTOS_SHUT_RDWR				( 2 )
 
-/* Values for flag for FreeRTOS_recv(). */
+/* values for flag for FreeRTOS_recv() */
+
 #define FREERTOS_MSG_OOB				( 2 )		/* process out-of-band data */
 #define FREERTOS_MSG_PEEK				( 4 )		/* peek at incoming message */
 #define FREERTOS_MSG_DONTROUTE			( 8 )		/* send without using routing tables */
 #define FREERTOS_MSG_DONTWAIT			( 16 )		/* Can be used with recvfrom(), sendto(), recv(), and send(). */
+
+#define FREERTOS_INADDR_ANY				( 0ul )		/* The 0.0.0.0 IPv4 address. */
 
 typedef struct xWIN_PROPS {
 	/* Properties of the Tx buffer and Tx window */
@@ -189,16 +192,26 @@ typedef struct xWIN_PROPS {
 Berkeley style sockaddr structure. */
 struct freertos_sockaddr
 {
-	/* _HT_ On 32- and 64-bit architectures, the addition of the two uint8_t
-	fields doesn't make the structure bigger, due to alignment.
-	The fields are inserted as a preparation for IPv6. */
-
 	/* sin_len and sin_family not used in the IPv4-only release. */
+	/* Otherwise, for an IPv4 address:
+	 * Set sin_len to sizeof( freertos_sockaddr )
+	 * Set sin_family FREERTOS_AF_INET
+	 */
 	uint8_t sin_len;		/* length of this structure. */
 	uint8_t sin_family;		/* FREERTOS_AF_INET. */
 	uint16_t sin_port;
 	uint32_t sin_addr;
 };
+
+#if( ipconfigUSE_IPv6 != 0 )
+	struct freertos_sockaddr6 {
+		uint8_t sin6_len;			/* length of this structure. */
+		uint8_t sin6_family;		/* Set to FREERTOS_AF_INET6. */
+		uint16_t sin6_port;
+	    uint32_t  sin6_flowinfo;	/* IPv6 flow information. */
+		IPv6_Address_t sin_addrv6;
+	};
+#endif
 
 #if ipconfigBYTE_ORDER == pdFREERTOS_LITTLE_ENDIAN
 
@@ -366,7 +379,18 @@ typedef union xTCP_UDP_HANDLER
 BaseType_t FreeRTOS_setsockopt( Socket_t xSocket, int32_t lLevel, int32_t lOptionName, const void *pvOptionValue, size_t xOptionLength );
 BaseType_t FreeRTOS_closesocket( Socket_t xSocket );
 uint32_t FreeRTOS_gethostbyname( const char *pcHostName );
-uint32_t FreeRTOS_inet_addr( const char * pcIPAddress );
+#if ipconfigINCLUDE_FULL_INET_ADDR == 1
+	uint32_t FreeRTOS_inet_addr( const char * pcIPAddress );
+	BaseType_t FreeRTOS_inet_pton4( const char *pcSource, uint8_t *pucDest );
+#endif
+
+#if( ipconfigUSE_IPv6 != 0 )
+	/*
+	 * Convert a string like 'fe80::8d11:cd9b:8b66:4a80'
+	 * to a 16-byte IPv6 address
+	 */
+	BaseType_t FreeRTOS_inet_pton6( const char *pcSource, uint8_t *pucDest );
+#endif /* ipconfigUSE_IPv6 */
 
 /*
  * For the web server: borrow the circular Rx buffer for inspection

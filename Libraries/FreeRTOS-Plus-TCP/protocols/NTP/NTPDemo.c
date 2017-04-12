@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -263,7 +263,8 @@ static void prvNTPPacketInit( )
 
 static void prvReadTime( struct SNtpPacket * pxPacket )
 {
-	FF_TimeStruct_t xTimeStruct;
+FF_TimeStruct_t xTimeStruct;
+
 	time_t uxPreviousSeconds;
 	time_t uxPreviousMS;
 

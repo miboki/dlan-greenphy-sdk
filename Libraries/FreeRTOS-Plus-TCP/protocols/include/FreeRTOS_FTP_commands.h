@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -80,6 +80,7 @@
 #define REPL_226 "226 Closing data connection.\r\n"
 #define REPL_227 "227 Entering Passive Mode (%s,%s,%s,%s,%s,%s).\r\n"
 #define REPL_227_D "227 Entering Passive Mode (%u,%u,%u,%u,%u,%u).\r\n"
+#define REPL_229_D "229 Entering Extended Passive Mode (|||%u|).\r\n"
 #define REPL_230 "230 User logged in, proceed.\r\n"
 #define REPL_250 "250 Requested file action okay, completed.\r\n"
 #define REPL_257 "257 %s created.\r\n"
@@ -118,7 +119,9 @@ enum EFTPCommand {
 	ECMD_QUIT,
 	ECMD_REIN,
 	ECMD_PORT,
+	ECMD_EPRT,
 	ECMD_PASV,
+	ECMD_EPSV,
 	ECMD_TYPE,
 	ECMD_STRU,
 	ECMD_MODE,

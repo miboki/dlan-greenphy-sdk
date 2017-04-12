@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -67,9 +67,30 @@ extern "C" {
 #include "FreeRTOSIPConfigDefaults.h"
 #include "IPTraceMacroDefaults.h"
 
+#define ipSIZE_OF_IPv6_ADDRESS	16
+
+#if( ipconfigUSE_IPv6 != 0 )
+
+	union xIPv6_Address
+	{
+		uint8_t ucBytes[ 16 ];
+		uint16_t usShorts[ 8 ];
+		uint32_t ulWords[ 4 ];
+	};
+
+	typedef union xIPv6_Address IPv6_Address_t;
+
+	/* Note that 'xCompareIPv6_Address' will also check if 'pxRight' is
+	the special unicast address: ff02::1:ffnn:nnnn, where nn:nnnn are
+	the last 3 bytes of the IPv6 address. */
+	BaseType_t xCompareIPv6_Address( const IPv6_Address_t *pxLeft, const IPv6_Address_t *pxRight );
+
+#endif /* ipconfigUSE_IPv6 */
+
 /* Some constants defining the sizes of several parts of a packet */
 #define ipSIZE_OF_ETH_HEADER			14u
-#define ipSIZE_OF_IPv4_HEADER			20u
+#define ipSIZE_OF_IP_HEADER_IPv4		20u
+#define ipSIZE_OF_IP_HEADER_IPv6		40u
 #define ipSIZE_OF_IGMP_HEADER			8u
 #define ipSIZE_OF_ICMP_HEADER			8u
 #define ipSIZE_OF_UDP_HEADER			8u
@@ -86,12 +107,23 @@ extern "C" {
 #define ipPROTOCOL_TCP			( 6 )
 #define ipPROTOCOL_UDP			( 17 )
 
+#define ipPROTOCOL_ICMP_IPv6	( 58u )
+
+#define ipTYPE_IPv4				( 0x40u )
+#define ipTYPE_IPv6				( 0x60u )
+
+/* Some IPv6 ICMP requests. */
+#define ipICMP_PING_REQUEST_IPv6			( ( uint8_t ) 128 )
+#define ipICMP_PING_REPLY_IPv6				( ( uint8_t ) 129 )
+#define ipICMP_NEIGHBOR_SOLICITATION_IPv6	( ( uint8_t ) 135 )
+#define ipICMP_NEIGHBOR_ADVERTISEMENT_IPv6	( ( uint8_t ) 136 )
+
 /* Dimensions the buffers that are filled by received Ethernet frames. */
 #define ipSIZE_OF_ETH_CRC_BYTES					( 4UL )
 #define ipSIZE_OF_ETH_OPTIONAL_802_1Q_TAG_BYTES	( 4UL )
 #define ipTOTAL_ETHERNET_FRAME_SIZE				( ( ( uint32_t ) ipconfigNETWORK_MTU ) + ( ( uint32_t ) ipSIZE_OF_ETH_HEADER ) + ipSIZE_OF_ETH_CRC_BYTES + ipSIZE_OF_ETH_OPTIONAL_802_1Q_TAG_BYTES )
 
-/*_RB_ Comment may need updating. */
+
 /* Space left at the beginning of a network buffer storage area to store a
 pointer back to the network buffer.  Should be a multiple of 8 to ensure 8 byte
 alignment is maintained on architectures that require it.
@@ -109,11 +141,21 @@ buffer will have the following contents:
 	uint8_t ucVersionHeaderLength;
 	etc
  */
+
 #if( ipconfigBUFFER_PADDING != 0 )
     #define ipBUFFER_PADDING    ipconfigBUFFER_PADDING
 #else
     #define ipBUFFER_PADDING    ( 8u + ipconfigPACKET_FILLER_SIZE )
 #endif
+
+/* A forward declaration of 'struct xNetworkEndPoint' and 'xNetworkInterface'.
+The actual declaration can be found in FreeRTOS_Routing.h which is included
+as the last +TCP header file. */
+struct xNetworkEndPoint;
+struct xNetworkInterface;
+
+#define ipBUFFER_LENGTH_CHECK				( 1 )
+
 
 /* The structure used to store buffers and pass them around the network stack.
 Buffers can be in use by the stack, in use by the network interface hardware
@@ -124,6 +166,8 @@ typedef struct xNETWORK_BUFFER
 	uint32_t ulIPAddress;			/* Source or destination IP address, depending on usage scenario. */
 	uint8_t *pucEthernetBuffer; 	/* Pointer to the start of the Ethernet frame. */
 	size_t xDataLength; 			/* Starts by holding the total Ethernet frame length, then the UDP/TCP payload length. */
+	struct xNetworkInterface *pxInterface;	/* The interface on which the packet was received. */
+	struct xNetworkEndPoint *pxEndPoint;	/* The end-point through which this packet shall be sent. */
 	uint16_t usPort;				/* Source or destination port, depending on usage scenario. */
 	uint16_t usBoundPort;			/* The port to which a transmitting socket is bound. */
 	#if( ipconfigUSE_LINKED_RX_MESSAGES != 0 )
@@ -137,7 +181,6 @@ struct xMAC_ADDRESS
 	uint8_t ucBytes[ ipMAC_ADDRESS_LENGTH_BYTES ];
 }
 #include "pack_struct_end.h"
-;
 typedef struct xMAC_ADDRESS MACAddress_t;
 
 typedef enum eNETWORK_EVENTS
@@ -152,6 +195,16 @@ typedef enum ePING_REPLY_STATUS
 	eInvalidChecksum,	/* A reply was received for an outgoing ping but the checksum of the reply was incorrect. */
 	eInvalidData		/* A reply was received to an outgoing ping but the payload of the reply was not correct. */
 } ePingReplyStatus_t;
+
+typedef struct xIP_TIMER
+{
+	uint32_t
+		bActive : 1,	/* This timer is running and must be processed. */
+		bExpired : 1;	/* Timer has expired and a task must be processed. */
+	TimeOut_t xTimeOut;
+	TickType_t ulRemainingTime;
+	TickType_t ulReloadTime;
+} IPTimer_t;
 
 /* Endian related definitions. */
 #if( ipconfigBYTE_ORDER == pdFREERTOS_LITTLE_ENDIAN )
@@ -228,6 +281,7 @@ typedef enum ePING_REPLY_STATUS
 
 #endif /* ipconfigHAS_INLINE_FUNCTIONS */
 
+/*_RB_ Macro prefix is incorrect. */
 #define pdMS_TO_MIN_TICKS( xTimeInMs ) ( pdMS_TO_TICKS( ( xTimeInMs ) ) < ( ( TickType_t ) 1 ) ? ( ( TickType_t ) 1 ) : pdMS_TO_TICKS( ( xTimeInMs ) ) )
 
 #ifndef pdTRUE_SIGNED
@@ -243,19 +297,30 @@ typedef enum ePING_REPLY_STATUS
  * FUNCTIONS IS AVAILABLE ON THE FOLLOWING URL:
  * http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_TCP/FreeRTOS_TCP_API_Functions.html
  */
-BaseType_t FreeRTOS_IPInit( const uint8_t ucIPAddress[ ipIP_ADDRESS_LENGTH_BYTES ],
-	const uint8_t ucNetMask[ ipIP_ADDRESS_LENGTH_BYTES ],
-	const uint8_t ucGatewayAddress[ ipIP_ADDRESS_LENGTH_BYTES ],
-	const uint8_t ucDNSServerAddress[ ipIP_ADDRESS_LENGTH_BYTES ],
-	const uint8_t ucMACAddress[ ipMAC_ADDRESS_LENGTH_BYTES ] );
 
-void * FreeRTOS_GetUDPPayloadBuffer( size_t xRequestedSizeBytes, TickType_t xBlockTimeTicks );
-void FreeRTOS_GetAddressConfiguration( uint32_t *pulIPAddress, uint32_t *pulNetMask, uint32_t *pulGatewayAddress, uint32_t *pulDNSServerAddress );
+/* FreeRTOS_IPStart() replaces the earlier FreeRTOS_IPInit().  It assumes
+that network interfaces and IP-addresses have been added using the functions
+from FreeRTOS_Routing.h. */
+BaseType_t FreeRTOS_IPStart( void );
+
+#if( ipconfigUSE_IPv6 != 0 )
+	/* The last parameter is either ipTYPE_IPv4 or ipTYPE_IPv6. */
+	void * FreeRTOS_GetUDPPayloadBuffer( size_t xRequestedSizeBytes, TickType_t xBlockTimeTicks, uint8_t ucIPType );
+#else
+	void * FreeRTOS_GetUDPPayloadBuffer( size_t xRequestedSizeBytes, TickType_t xBlockTimeTicks );
+#endif
+/*
+ * Calculates the starting offset of the UDP payload.
+ * If IPv6 enabled, checks for ( usFrameType == ipIPv6_FRAME_TYPE )
+ */
+uint8_t *pcNetworkBuffer_to_UDPPayloadBuffer( NetworkBufferDescriptor_t *pxNetworkBuffer );
+
 void FreeRTOS_SetAddressConfiguration( const uint32_t *pulIPAddress, const uint32_t *pulNetMask, const uint32_t *pulGatewayAddress, const uint32_t *pulDNSServerAddress );
 BaseType_t FreeRTOS_SendPingRequest( uint32_t ulIPAddress, size_t xNumberOfBytesToSend, TickType_t xBlockTimeTicks );
 void FreeRTOS_ReleaseUDPPayloadBuffer( void *pvBuffer );
+/* _HT_ FreeRTOS_GetMACAddress() can not continue to exist with multiple interfaces.*/
 const uint8_t * FreeRTOS_GetMACAddress( void );
-void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent );
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint *pxEndPoint );
 void vApplicationPingReplyHook( ePingReplyStatus_t eStatus, uint16_t usIdentifier );
 uint32_t FreeRTOS_GetIPAddress( void );
 void FreeRTOS_SetIPAddress( uint32_t ulIPAddress );
@@ -265,7 +330,11 @@ uint32_t FreeRTOS_GetGatewayAddress( void );
 uint32_t FreeRTOS_GetDNSServerAddress( void );
 uint32_t FreeRTOS_GetNetmask( void );
 void FreeRTOS_OutputARPRequest( uint32_t ulIPAddress );
-BaseType_t FreeRTOS_IsNetworkUp( void );
+
+/* Return true if a given end-point is up and running.
+When FreeRTOS_IsNetworkUp() is called with NULL as a parameter,
+it will return pdTRUE when all end-points are up. */
+BaseType_t FreeRTOS_IsNetworkUp( struct xNetworkEndPoint *pxEndPoint );
 
 #if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
 	UBaseType_t uxGetMinimumIPQueueSpace( void );

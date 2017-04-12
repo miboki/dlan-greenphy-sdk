@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -91,7 +91,8 @@ extern "C" {
  * The following function should be provided by the user and return true if it
  * matches the domain name.
  */
-extern BaseType_t xApplicationDNSQueryHook( const char *pcName );
+struct xNetworkEndPoint;
+extern BaseType_t xApplicationDNSQueryHook( struct xNetworkEndPoint *pxEndPoint, const char *pcName );
 
 /*
  * LLMNR is very similar to DNS, so is handled by the DNS routines.
@@ -99,7 +100,17 @@ extern BaseType_t xApplicationDNSQueryHook( const char *pcName );
 uint32_t ulDNSHandlePacket( NetworkBufferDescriptor_t *pxNetworkBuffer );
 
 #if( ipconfigUSE_LLMNR == 1 )
+	/* The LLMNR MAC address is 01:00:5e:00:00:fc */
 	extern const MACAddress_t xLLMNR_MacAdress;
+#endif /* ipconfigUSE_LLMNR */
+
+#if( ipconfigUSE_LLMNR == 1 ) && ( ipconfigUSE_IPv6 != 0 )
+
+	/* The LLMNR IPv6 address is ff02::1:3 */
+	extern const IPv6_Address_t ipLLMNR_IP_ADDR_IPv6;
+
+	/* The LLMNR IPv6 MAC address is 33:33:00:01:00:03 */
+	extern const MACAddress_t xLLMNR_MacAdressIPv6;
 #endif /* ipconfigUSE_LLMNR */
 
 #if( ipconfigUSE_NBNS != 0 )

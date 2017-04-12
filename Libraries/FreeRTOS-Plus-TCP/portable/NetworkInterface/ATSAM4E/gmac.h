@@ -640,7 +640,7 @@ static inline void gmac_enable_big_frame(Gmac* p_gmac, uint8_t uc_enable)
 static inline uint8_t gmac_set_mdc_clock(Gmac* p_gmac, uint32_t ul_mck)
 {
 	uint32_t ul_clk;
-	
+
 	if (ul_mck > GMAC_MCK_SPEED_240MHZ) {
 		return GMAC_INVALID;
 	} else if (ul_mck > GMAC_MCK_SPEED_160MHZ) {
@@ -953,7 +953,7 @@ static inline void gmac_maintain_phy(Gmac* p_gmac,
 	while ((p_gmac->GMAC_NSR & GMAC_NSR_IDLE) == 0);
 	/* Write maintain register */
 	p_gmac->GMAC_MAN = GMAC_MAN_WTN(GMAC_MAN_CODE_VALUE)
-			| GMAC_MAN_CLTTO 
+			| GMAC_MAN_CLTTO
 			| GMAC_MAN_PHYA(uc_phy_addr)
 			| GMAC_MAN_REGA(uc_reg_addr)
 			| GMAC_MAN_OP((uc_rw ? GMAC_MAN_RW_TYPE : GMAC_MAN_READ_ONLY))
@@ -1184,7 +1184,7 @@ void gmac_handler(gmac_device_t* p_gmac_dev);
  *       NVIC_EnableIRQ(GMAC_IRQn);
  *
  *       ethernet_phy_init(GMAC, BOARD_GMAC_PHY_ADDR, sysclk_get_cpu_hz());
- * 
+ *
  *       ethernet_phy_auto_negotiate(GMAC, BOARD_GMAC_PHY_ADDR);
  *
  *       ethernet_phy_set_link(GMAC, BOARD_GMAC_PHY_ADDR, 1);
@@ -1198,7 +1198,7 @@ void gmac_handler(gmac_device_t* p_gmac_dev);
  * The buffer size used for RX is GMAC_RX_BUFFERS * 128.
  * If it was supposed receiving a large number of frame, the
  * GMAC_RX_BUFFERS should be set higher. E.g., the application wants to accept
- * a ping echo test of 2048, the GMAC_RX_BUFFERS should be set at least 
+ * a ping echo test of 2048, the GMAC_RX_BUFFERS should be set at least
  * (2048/128)=16, and as there are additional frames coming, a preferred
  * number is 24 depending on a normal Ethernet throughput.
  *   - \code

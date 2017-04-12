@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -71,8 +71,10 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_IP_Private.h"
+#include "FreeRTOS_DNS.h"
 #include "NetworkBufferManagement.h"
 #include "NetworkInterface.h"
+#include "FreeRTOS_Routing.h"
 
 #include "sam4e_xplained_pro.h"
 #include "hr_gettime.h"
@@ -328,6 +330,12 @@ static TaskHandle_t xTransmitHandle;
  */
 static BaseType_t xGMACWaitLS( TickType_t xMaxTime );
 
+#define	RX_LOGGING	1
+#define	TX_LOGGING	2
+unsigned logFlags = RX_LOGGING | TX_LOGGING;
+
+void dbg_add_line( const char *pcFormat, ... );
+
 /*
  * A deferred interrupt handler task that processes GMAC interrupts.
  */
@@ -343,6 +351,10 @@ static inline unsigned long ulReadMDIO( unsigned uAddress );
 static void ksz8851snl_low_level_init( void );
 
 static NetworkBufferDescriptor_t *ksz8851snl_low_level_input( void );
+
+static BaseType_t xMicrelNetworkInterfaceInitialise( NetworkInterface_t *pxInterface );
+static BaseType_t xMicrelGetPhyLinkStatus( NetworkInterface_t *pxInterface );
+static BaseType_t xMicrelNetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend );
 
 /*-----------------------------------------------------------*/
 
@@ -364,17 +376,19 @@ static void ksz8851snl_tx_init( void );
 /* Holds the handle of the task used as a deferred interrupt processor.  The
 handle is used so direct notifications can be sent to the task for all EMAC/DMA
 related interrupts. */
-TaskHandle_t xEMACTaskHandle = NULL;
+static TaskHandle_t xMicrelTaskHandle = NULL;
 
+static NetworkInterface_t *pxMyInterface = NULL;
 
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+static BaseType_t xMicrelNetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 const TickType_t x5_Seconds = 5000UL;
 
-	if( xEMACTaskHandle == NULL )
+	if( xMicrelTaskHandle == NULL )
 	{
+		pxMyInterface = pxInterface;
 		ksz8851snl_low_level_init();
 
 		/* Wait at most 5 seconds for a Link Status in the PHY. */
@@ -382,8 +396,13 @@ const TickType_t x5_Seconds = 5000UL;
 
 		/* The handler task is created at the highest possible priority to
 		ensure the interrupt handler can return directly to it. */
-		xTaskCreate( prvEMACHandlerTask, "KSZ8851", configEMAC_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
-		configASSERT( xEMACTaskHandle );
+		xTaskCreate( prvEMACHandlerTask, "KSZ8851", configEMAC_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &xMicrelTaskHandle );
+		configASSERT( xMicrelTaskHandle );
+#warning Using for debugging with scope
+		gpio_configure_pin( PIO_PA24_IDX, PIO_OUTPUT_1 );
+		gpio_set_pin_low(PIO_PA24_IDX);
+		gpio_configure_pin( PIO_PA15_IDX, PIO_OUTPUT_1 );
+		gpio_set_pin_low(PIO_PA15_IDX);
 	}
 
 	/* When returning non-zero, the stack will become active and
@@ -394,7 +413,26 @@ const TickType_t x5_Seconds = 5000UL;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xGetPhyLinkStatus( void )
+/* pxMicrel_FillInterfaceDescriptor() goes into the NetworkInterface.c of the Micrel driver. */
+
+NetworkInterface_t *pxMicrel_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+{
+/* This function pxMicrel_FillInterfaceDescriptor() adds a network-interface.
+Make sure that the object pointed to by 'pxInterface'
+is declared static or global, and that it will remain to exist. */
+
+	memset( pxInterface, '\0', sizeof( *pxInterface ) );
+	pxInterface->pcName				= "Micrel";	/* Just for logging, debugging. */
+	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pfInitialise		= xMicrelNetworkInterfaceInitialise;
+	pxInterface->pfOutput			= xMicrelNetworkInterfaceOutput;
+	pxInterface->pfGetPhyLinkStatus = xMicrelGetPhyLinkStatus;
+
+	return pxInterface;
+}
+/*-----------------------------------------------------------*/
+
+static BaseType_t xMicrelGetPhyLinkStatus( NetworkInterface_t *pxInterface )
 {
 BaseType_t xResult;
 
@@ -412,7 +450,7 @@ BaseType_t xResult;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend )
+static BaseType_t xMicrelNetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend )
 {
 BaseType_t xResult = pdFALSE;
 int txHead = xMicrelDevice.us_tx_head;
@@ -420,14 +458,18 @@ int txHead = xMicrelDevice.us_tx_head;
 	/* Make sure the next descriptor is free. */
 	if( xMicrelDevice.tx_busy[ txHead ] != pdFALSE )
 	{
-		/* All TX buffers busy. */
+//		dbg_add_line( "Output: tail=%u head=%u", xMicrelDevice.us_tx_tail, txHead );
 	}
 	else if( ( ulPHYLinkStatus & BMSR_LINK_STATUS ) == 0 )
 	{
-		/* Output: LS low. */
+		dbg_add_line( "Output: LS low" );
 	}
 	else
 	{
+		if( logFlags & TX_LOGGING )
+		{
+			dbg_add_line( "[T1] Output[%d]: %d byte", txHead, pxNetworkBuffer->xDataLength );
+		}
 		/* Pass the packet. */
 		xMicrelDevice.tx_buffers[ txHead ] = pxNetworkBuffer;
 		/* The descriptor is now owned by Micrel. */
@@ -439,9 +481,9 @@ int txHead = xMicrelDevice.us_tx_head;
 			txHead = 0;
 		}
 		xMicrelDevice.us_tx_head = txHead;
-		if( xEMACTaskHandle != NULL )
+		if( xMicrelTaskHandle != NULL )
 		{
-			xTaskNotifyGive( xEMACTaskHandle );
+			xTaskNotifyGive( xMicrelTaskHandle );
 		}
 
 	#if( ipconfigZERO_COPY_TX_DRIVER != 1 )
@@ -548,6 +590,9 @@ static void vPioSetPinHigh(uint32_t ul_pin)
 	p_pio->PIO_SODR = 1 << (ul_pin & 0x1F);
 }
 
+extern uint32_t ff_write_status;
+int tx_error_count, rx_error_count;
+int spi_hand_stop;
 /**
  * \brief Handler for SPI interrupt.
  */
@@ -558,11 +603,18 @@ BaseType_t xKSZTaskWoken = pdFALSE;
 uint32_t ulCurrentSPIStatus;
 uint32_t ulEnabledSPIStatus;
 
+gpio_set_pin_high( PIO_PA15_IDX );
+pio_get_pin_value( PIO_PA15_IDX );
+if( spi_hand_stop != 0 )
+{
+	spi_hand_stop = 0;
+}
 	ulCurrentSPIStatus = spi_read_status( KSZ8851SNL_SPI );
 	ulEnabledSPIStatus = spi_read_interrupt_mask( KSZ8851SNL_SPI );
 	ulCurrentSPIStatus &= ulEnabledSPIStatus;
 	spi_disable_interrupt( KSZ8851SNL_SPI, ulCurrentSPIStatus );
 
+//dbg_add_line( "SPI %X (%X)", ulCurrentSPIStatus, ulEnabledSPIStatus);
 
 	switch( xMicrelDevice.ul_spi_pdc_status )
 	{
@@ -570,16 +622,31 @@ uint32_t ulEnabledSPIStatus;
 		{
 			if( ( ulCurrentSPIStatus & SPI_SR_OVRES ) != 0 )
 			{
-				pdc_disable_transfer(g_p_spi_pdc, PERIPH_PTCR_RXTDIS | PERIPH_PTCR_TXTDIS);
+				pdc_disable_transfer( g_p_spi_pdc, PERIPH_PTCR_RXTDIS | PERIPH_PTCR_TXTDIS );
+gpio_set_pin_high(PIO_PA24_IDX);
+				dbg_add_line( "[R3] RX OVRES %X", ff_write_status );
 				xMicrelDevice.ul_spi_pdc_status = SPI_PDC_RX_ERROR;
+rx_error_count++;
 				xDoWakeup = pdTRUE;
 			}
 			else
 			{
 				if( ( ulCurrentSPIStatus & SPI_SR_RXBUFF ) != 0 )
 				{
+					if( logFlags & RX_LOGGING )
+					{
+						dbg_add_line( "[R3] SPI_Hand RX_COMPLETE" );
+					}
+					//gpio_set_pin_high( KSZ8851SNL_CSN_GPIO );
 					xMicrelDevice.ul_spi_pdc_status = SPI_PDC_RX_COMPLETE;
 					xDoWakeup = pdTRUE;
+				}
+				else
+				{
+					if( ulCurrentSPIStatus != SPI_SR_ENDRX )
+					{
+						dbg_add_line( "SPI_Hand status 0x%02X", ulCurrentSPIStatus );
+					}
 				}
 			}
 		}
@@ -590,8 +657,12 @@ uint32_t ulEnabledSPIStatus;
 			/* Middle of TX. */
 			if( ( ulCurrentSPIStatus & SPI_SR_OVRES ) != 0 )
 			{
-				pdc_disable_transfer(g_p_spi_pdc, PERIPH_PTCR_RXTDIS | PERIPH_PTCR_TXTDIS);
+				pdc_disable_transfer( g_p_spi_pdc, PERIPH_PTCR_RXTDIS | PERIPH_PTCR_TXTDIS );
+gpio_set_pin_high(PIO_PA24_IDX);
+				dbg_add_line( "[T3] TX OVRES %X", ff_write_status );
+
 				xMicrelDevice.ul_spi_pdc_status = SPI_PDC_TX_ERROR;
+tx_error_count++;
 				xDoWakeup = pdTRUE;
 			}
 			else
@@ -604,8 +675,17 @@ uint32_t ulEnabledSPIStatus;
 				/* End of TX. */
 				if( ( ulCurrentSPIStatus & SPI_END_OF_TX ) != 0 )
 				{
+					//gpio_set_pin_high( KSZ8851SNL_CSN_GPIO );
+					if( logFlags & TX_LOGGING )
+					{
+						dbg_add_line( "[T3] SPI_Hand TX_COMPLETE %d", xMicrelDevice.us_tx_tail);
+					}
 					xMicrelDevice.ul_spi_pdc_status = SPI_PDC_TX_COMPLETE;
 					xDoWakeup = pdTRUE;
+				}
+				else if( ulCurrentSPIStatus != SPI_SR_ENDRX )
+				{
+					dbg_add_line( "SPI_Hand status 0x%X", ulCurrentSPIStatus );
 				}
 			}
 		}
@@ -614,14 +694,16 @@ uint32_t ulEnabledSPIStatus;
 
 	if( xDoWakeup != pdFALSE )
 	{
-		if( xEMACTaskHandle != NULL )
+		if( xMicrelTaskHandle != NULL )
 		{
-			vTaskNotifyGiveFromISR( xEMACTaskHandle, ( BaseType_t * ) &xKSZTaskWoken );
+			vTaskNotifyGiveFromISR( xMicrelTaskHandle, ( BaseType_t * ) &xKSZTaskWoken );
 		}
 	}
 	else
 	{
 	}
+gpio_set_pin_low( PIO_PA15_IDX );
+pio_get_pin_value( PIO_PA15_IDX );
 	portEND_SWITCHING_ISR( xKSZTaskWoken );
 }
 /*-----------------------------------------------------------*/
@@ -629,6 +711,12 @@ uint32_t ulEnabledSPIStatus;
 static void INTN_Handler(uint32_t id, uint32_t mask)
 {
 BaseType_t xKSZTaskWoken = pdFALSE;
+
+	if( logFlags & RX_LOGGING )
+	{
+		dbg_add_line( "[R1] INTN_Hand %d %d %d",
+			xMicrelDevice.ul_had_intn_interrupt, xMicrelDevice.ul_spi_pdc_status, xMicrelDevice.us_pending_frame);
+	}
 
 	if( ( id == INTN_ID ) &&
 		( mask == INTN_PIN_MSK ) )
@@ -638,9 +726,9 @@ BaseType_t xKSZTaskWoken = pdFALSE;
 
 		/* Set the INTN flag. */
 		xMicrelDevice.ul_had_intn_interrupt++;
-		if( xEMACTaskHandle != NULL )
+		if( xMicrelTaskHandle != NULL )
 		{
-			vTaskNotifyGiveFromISR( xEMACTaskHandle, &( xKSZTaskWoken ) );
+			vTaskNotifyGiveFromISR( xMicrelTaskHandle, &( xKSZTaskWoken ) );
 		}
 	}
 	portEND_SWITCHING_ISR( xKSZTaskWoken );
@@ -680,6 +768,8 @@ static void ksz8851snl_rx_populate_queue( void )
 	}
 }
 
+static int stopCount = -1;
+
 unsigned tx_space, wait_tx_space, tx_status, fhr_status;
 unsigned rx_debug = 0;
 /**
@@ -691,6 +781,7 @@ static void ksz8851snl_update()
 {
 	uint16_t txmir = 0;
 
+gpio_set_pin_low( PIO_PA15_IDX );
 /* Check for free PDC. */
 	switch( xMicrelDevice.ul_spi_pdc_status )
 	{
@@ -713,8 +804,10 @@ static void ksz8851snl_update()
 			ulValue = ksz8851snl_reset_tx();
 
 			xMicrelDevice.tx_space = ksz8851_reg_read( REG_TX_MEM_INFO ) & TX_MEM_AVAILABLE_MASK;
-
+			dbg_add_line("SPI_PDC_TX_ERROR %02X", ulValue );
 			FreeRTOS_printf( ("SPI_PDC_TX_ERROR %02X\n", ulValue ) );
+			if (stopCount == -1)
+				stopCount = 6;
 		}
 		break;
 
@@ -739,9 +832,21 @@ static void ksz8851snl_update()
 
 			xGMACWaitLS( pdMS_TO_TICKS( 5000UL ) );
 
+			dbg_add_line("SPI_PDC_RX_ERROR %02X", ulValue);
 			FreeRTOS_printf( ("SPI_PDC_RX_ERROR %02X\n", ulValue ) );
+			if (stopCount == -1)
+				stopCount = 6;
 		}
 		break;
+	}
+	if( stopCount > 0 )
+	{
+		stopCount--;
+		if( stopCount == 0 )
+		{
+			dbg_add_line("Stop_debugger");
+			FreeRTOS_printf( ("SPI_PDC Stop_debugger\n" ) );
+		}
 	}
 	switch( xMicrelDevice.ul_spi_pdc_status )
 	{
@@ -765,6 +870,11 @@ static void ksz8851snl_update()
 					/* RX step1: read interrupt status for INT_RX flag. */
 					int_status = ksz8851_reg_read( REG_INT_STATUS );
 
+					if( ( int_status & INT_RX ) == 0 )
+					{
+						dbg_add_line("missed INT_RX?");
+						//return;
+					}
 
 					/* RX step2: disable all interrupts. */
 					ksz8851_reg_write( REG_INT_MASK, 0 );
@@ -841,6 +951,10 @@ static void ksz8851snl_update()
 
 						/* RX step10: start RXQ read access. */
 						ksz8851_reg_setbits(REG_RXQ_CMD, RXQ_START);
+						if( logFlags & RX_LOGGING )
+						{
+							dbg_add_line( "[R2] RX_START %d byte", xLength );
+						}
 						/* RX step11-17: start asynchronous FIFO read operation. */
 						xMicrelDevice.ul_spi_pdc_status = SPI_PDC_RX_START;
 						gpio_set_pin_low( KSZ8851SNL_CSN_GPIO );
@@ -851,6 +965,11 @@ static void ksz8851snl_update()
 
 						/* Pass the buffer minus 2 bytes, see ksz8851snl.c: RXQ_TWOBYTE_OFFSET. */
 						ksz8851_fifo_read( pxNetworkBuffer->pucEthernetBuffer - 2, xReadLength );
+						if( ( xReadLength & 0x03 ) != 0 )
+						{
+							dbg_add_line( "bad length %d", xReadLength );
+						}
+
 						/* Remove CRC and update buffer length. */
 						xLength -= 4;
 						pxNetworkBuffer->xDataLength = xLength;
@@ -869,27 +988,30 @@ static void ksz8851snl_update()
 				( xMicrelDevice.ul_had_intn_interrupt == 0 ) )
 			{
 			NetworkBufferDescriptor_t *pxNetworkBuffer = xMicrelDevice.tx_buffers[ txTail ];
-			size_t xLength = pxNetworkBuffer->xDataLength;
-			int iIndex = xLength;
+			size_t xOrgLength = pxNetworkBuffer->xDataLength;
+			size_t xFIFOLength = pxNetworkBuffer->xDataLength;
+			int iIndex = xFIFOLength;
 
-				xLength = 4 * ( ( xLength + 3 ) / 4 );
-				while( iIndex < ( int ) xLength )
+				xFIFOLength = 4 * ( ( xFIFOLength + 3 ) / 4 );
+				while( iIndex < ( int ) xFIFOLength )
 				{
 					pxNetworkBuffer->pucEthernetBuffer[ iIndex ] = '\0';
 					iIndex++;
 				}
-				pxNetworkBuffer->xDataLength = xLength;
+				pxNetworkBuffer->xDataLength = xFIFOLength;
 
 				/* TX step1: check if TXQ memory size is available for transmit. */
 				txmir = ksz8851_reg_read( REG_TX_MEM_INFO );
 				txmir = txmir & TX_MEM_AVAILABLE_MASK;
 
-				if( txmir < ( xLength + 8 ) )
+				if( txmir < ( xFIFOLength + 8 ) )
 				{
 					if( wait_tx_space == pdFALSE )
 					{
 						tx_status = ksz8851_reg_read( REG_TX_STATUS );
 						fhr_status = ksz8851_reg_read( REG_RX_FHR_STATUS );
+						dbg_add_line("[T2] space %d < %d", txmir, ( xFIFOLength + 8 ) );
+						dbg_add_line("Status %04X FHR %04X", tx_status, fhr_status );
 						wait_tx_space = pdTRUE;
 					}
 					//return;
@@ -899,14 +1021,21 @@ static void ksz8851snl_update()
 				else
 				{
 					tx_space = txmir;
-
+//gpio_set_pin_high( PIO_PA15_IDX );
 					/* TX step2: disable all interrupts. */
 					ksz8851_reg_write( REG_INT_MASK, 0 );
-
-					xMicrelDevice.tx_space -= xLength;
+if( logFlags & TX_LOGGING )
+{
+	fhr_status = ksz8851_reg_read( REG_RX_FHR_STATUS );
+}
+					xMicrelDevice.tx_space -= xFIFOLength;
 
 					/* TX step3: enable TXQ write access. */
 					ksz8851_reg_setbits( REG_RXQ_CMD, RXQ_START );
+					if( logFlags & TX_LOGGING )
+					{
+						dbg_add_line( "[T2] TX_START %d sp %d len %d", txTail, txmir, xFIFOLength );
+					}
 					/* TX step4-8: perform FIFO write operation. */
 					xMicrelDevice.ul_spi_pdc_status = SPI_PDC_TX_START;
 					xMicrelDevice.tx_cur_buffer = pxNetworkBuffer;
@@ -914,7 +1043,7 @@ static void ksz8851snl_update()
 					gpio_set_pin_low( KSZ8851SNL_CSN_GPIO );
 					xMicrelDevice.ul_total_tx++;
 
-					ksz8851_fifo_write( pxNetworkBuffer->pucEthernetBuffer, xLength, xLength );
+					ksz8851_fifo_write( pxNetworkBuffer->pucEthernetBuffer, xOrgLength, xFIFOLength );
 				}
 			}
 		}
@@ -942,6 +1071,11 @@ static void ksz8851snl_update()
 
 			/* RX step22-23: update frame count to be read. */
 			xMicrelDevice.us_pending_frame -= 1;
+			if( logFlags & RX_LOGGING )
+			{
+				dbg_add_line( "[R4] RX_COMPL %d len %d pnd %d",
+					rxHead, xMicrelDevice.rx_buffers[ rxHead ]->xDataLength, xMicrelDevice.us_pending_frame );
+			}
 
 			/* RX step24: enable INT_RX flag if transfer complete. */
 			if( xMicrelDevice.us_pending_frame == 0 )
@@ -962,6 +1096,7 @@ static void ksz8851snl_update()
 				rx_debug = 0;
 				txmir = ksz8851_reg_read( REG_TX_MEM_INFO );
 				txmir = txmir & TX_MEM_AVAILABLE_MASK;
+				dbg_add_line( "RX Done %d", txmir );
 			}
 			/* Tell prvEMACHandlerTask that RX packets are available. */
 			ulISREvents |= EMAC_IF_RX_EVENT;
@@ -995,9 +1130,11 @@ static void ksz8851snl_update()
 
 			/* TX step12.1: enqueue frame in TXQ. */
 			ksz8851_reg_setbits( REG_TXQ_CMD, TXQ_ENQUEUE );
-
+//vTaskDelay( 3 );
+#warning move this downward
 			/* RX step13: enable INT_RX flag. */
 //			ksz8851_reg_write( REG_INT_MASK, INT_RX );
+//gpio_set_pin_low( PIO_PA15_IDX );
 			/* Buffer sent, free the corresponding buffer and mark descriptor as owned by software. */
 			vReleaseNetworkBufferAndDescriptor( pxNetworkBuffer );
 
@@ -1007,12 +1144,24 @@ static void ksz8851snl_update()
 			{
 				txTail = 0;
 			}
+			if( logFlags & TX_LOGGING )
+			{
+			uint32_t spi_status = spi_read_status( KSZ8851SNL_SPI );
+				dbg_add_line( "[T4] TX_COMPLETE %d sp %d %04X", xMicrelDevice.us_tx_tail, xMicrelDevice.tx_space, spi_status );
+				if( xMicrelDevice.tx_space == 0 )
+				{
+					vTaskDelay( 20 );
+					xMicrelDevice.tx_space = ksz8851_reg_read( REG_TX_MEM_INFO ) & TX_MEM_AVAILABLE_MASK;
+					dbg_add_line( "sp %d", xMicrelDevice.us_tx_tail, xMicrelDevice.tx_space );
+				}
 
+			}
 			xMicrelDevice.us_tx_tail = txTail;
 			/* Experiment. */
 			//xMicrelDevice.ul_had_intn_interrupt = 1;
 			if( xTransmitHandle != NULL )
 			{
+				dbg_add_line("TX Notify");
 				xTaskNotifyGive( xTransmitHandle );
 			}
 #warning moved downward
@@ -1070,6 +1219,95 @@ static void ksz8851snl_tx_init()
 	}
 	xMicrelDevice.tx_space = 6144;
 }
+/*
+
+static uint32_t const ulHashPolynomial = 0x04c11db7U;
+
+static inline uint32_t prvCalcHasCrc( int length, unsigned char *data )
+{
+int32_t lCRC = -1;
+
+	while( length-- > 0 )
+	{
+	uint8_t ucByte = *data++;
+	int iBit;
+
+		for( iBit = 0; iBit < 8; iBit++, ucByte >>= 1 )
+		{
+			lCRC = ( lCRC << 1 ) ^
+				( ( lCRC < 0 ) ^ ( ucByte & 1 ) ? ulHashPolynomial : 0 );
+		}
+	}
+	return ( uint32_t ) lCRC;
+}
+
+static void prvSetHash( const uint8_t *ucMacAddress )
+{
+	uint32_t ulCRC;
+
+	// accept some multicast
+
+	ulCRC = prvCalcHasCrc( ipMAC_ADDRESS_LENGTH_BYTES, ucMacAddress );
+	ulCRC >>= (32 - 6);  // get top six bits
+
+	xMicrelDevice.pusHashTable[ ulCRC >> 4 ] |= ( 1 << ( ulCRC & 0xf ) );
+}
+*/
+static uint32_t prvGenerateCRC32( const uint8_t *ucAddress )
+{
+unsigned int j;
+const uint32_t Polynomial = 0xEDB88320;
+uint32_t crc = ~0ul;
+const uint8_t *pucCurrent = ( const uint8_t * ) ucAddress;
+const uint8_t *pucLast = pucCurrent + 6;
+
+    /* Calculate  normal CRC32 */
+    while( pucCurrent < pucLast )
+    {
+        crc ^= *( pucCurrent++ );
+        for( j = 0; j < 8; j++ )
+        {
+            if( ( crc & 1 ) != 0 )
+            {
+                crc = (crc >> 1) ^ Polynomial;
+            }
+            else
+            {
+                crc >>= 1;
+            }
+        }
+    }
+    return ~crc;
+}
+/*-----------------------------------------------------------*/
+
+static uint32_t prvGetHashIndex( const uint8_t *ucAddress )
+{
+uint32_t ulCrc = prvGenerateCRC32( ucAddress );
+uint32_t ulIndex = 0ul;
+BaseType_t xCount = 6;
+
+    /* Take the lowest 6 bits of the CRC32 and reverse them */
+    while( xCount-- )
+    {
+        ulIndex <<= 1;
+        ulIndex |= ( ulCrc & 1 );
+        ulCrc >>= 1;
+    }
+
+    /* This is the has value of 'ucAddress' */
+    return ulIndex;
+}
+/*-----------------------------------------------------------*/
+
+static void prvSetHash( const uint8_t* ucMacAddress )
+{
+BaseType_t xIndex;
+
+    xIndex = prvGetHashIndex( ucMacAddress );
+	xMicrelDevice.pusHashTable[ xIndex / 16 ] = ( 1u << ( xIndex % 16 ) );
+}
+/*-----------------------------------------------------------*/
 
 /**
  * \brief Initialize ksz8851snl ethernet controller.
@@ -1093,6 +1331,36 @@ static void ksz8851snl_low_level_init( void )
 		FreeRTOS_printf( ( "ksz8851snl_low_level_init: failed to initialize the Micrel driver!\n" ) );
 		configASSERT(0 == 1);
 	}
+	#if( ipconfigUSE_IPv6 == 0 )
+	{
+		prvSetHash( xLLMNR_MacAdress.ucBytes );
+	}
+	#else
+	{
+//		prvSetHash( xIPv6_MulticastAddress.ucBytes );
+		NetworkEndPoint_t *pxEndPoint;
+
+		for( pxEndPoint = FreeRTOS_FirstEndPoint( pxMyInterface );
+			pxEndPoint != NULL;
+			pxEndPoint = FreeRTOS_NextEndPoint( pxMyInterface, pxEndPoint ) )
+		{
+			if( pxEndPoint->bits.bIPv6 != NULL )
+			{
+			unsigned char ucMACAddress[ 6 ] = { 0x33, 0x33, 0xff, 0, 0, 0 };
+
+				ucMACAddress[ 3 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 13 ];
+				ucMACAddress[ 4 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 14 ];
+				ucMACAddress[ 5 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 15 ];
+				prvSetHash( ucMACAddress );
+			}
+		}
+		prvSetHash( xLLMNR_MacAdressIPv6.ucBytes );
+	}
+	#endif
+//	ksz8851_reg_write( REG_MAC_HASH_0, xMicrelDevice.pusHashTable[ 0 ] );
+//	ksz8851_reg_write( REG_MAC_HASH_2, xMicrelDevice.pusHashTable[ 1 ] );
+//	ksz8851_reg_write( REG_MAC_HASH_4, xMicrelDevice.pusHashTable[ 2 ] );
+//	ksz8851_reg_write( REG_MAC_HASH_6, xMicrelDevice.pusHashTable[ 3 ] );
 	memset( xMicrelDevice.pusHashTable, 255, sizeof( xMicrelDevice.pusHashTable ) );
 	ksz8851_reg_write( REG_MAC_HASH_0, FreeRTOS_htons( xMicrelDevice.pusHashTable[ 0 ] ) );
 	ksz8851_reg_write( REG_MAC_HASH_2, FreeRTOS_htons( xMicrelDevice.pusHashTable[ 1 ] ) );
@@ -1140,6 +1408,7 @@ int rxTail = xMicrelDevice.us_rx_tail;
 }
 /*-----------------------------------------------------------*/
 
+
 static uint32_t prvEMACRxPoll( void )
 {
 NetworkBufferDescriptor_t *pxNetworkBuffer;
@@ -1153,20 +1422,30 @@ uint32_t ulReturnValue = 0;
 	EthernetHeader_t *pxEthernetHeader;
 
 	pxNetworkBuffer = ksz8851snl_low_level_input();
-	
+
 		if( pxNetworkBuffer == NULL )
 		{
 			break;
 		}
-		pxEthernetHeader = ( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer );
+		pxEthernetHeader = ( EthernetHeader_t * )pxNetworkBuffer->pucEthernetBuffer;
 
 		if( ( pxEthernetHeader->usFrameType != ipIPv4_FRAME_TYPE ) &&
 			( pxEthernetHeader->usFrameType != ipARP_FRAME_TYPE	) )
 		{
-			FreeRTOS_printf( ( "Frame type %02X received\n", pxEthernetHeader->usFrameType ) );
+//			FreeRTOS_printf( ( "Frame type %02X received\n", pxEthernetHeader->usFrameType ) );
 		}
 		ulReturnValue++;
 
+		pxNetworkBuffer->pxInterface = pxMyInterface;
+		pxNetworkBuffer->pxEndPoint = NULL;
+
+		if( logFlags & RX_LOGGING )
+		{
+			unsigned char *ptr = pxNetworkBuffer->pucEthernetBuffer;
+			dbg_add_line("RX[%d]  %02X:%02X:%02X  %02X:%02X:%02X",
+				rxTail,
+				ptr[ 3 ], ptr[ 4 ], ptr[ 5 ], ptr[ 9 ], ptr[ 10 ], ptr[ 11 ]);
+		}
 		xRxEvent.pvData = ( void * )pxNetworkBuffer;
 		/* Send the descriptor to the IP task for processing. */
 		if( xSendEventStructToIPTask( &xRxEvent, 100UL ) != pdTRUE )
@@ -1198,7 +1477,7 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 	/* Remove compiler warnings about unused parameters. */
 	( void ) pvParameters;
 
-	configASSERT( xEMACTaskHandle );
+	configASSERT( xMicrelTaskHandle );
 
 	vTaskSetTimeOutState( &xPhyTime );
 	xPhyRemTime = pdMS_TO_TICKS( PHY_LS_LOW_CHECK_TIME_MS );
@@ -1229,7 +1508,6 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 		}
 		#endif /* ipconfigCHECK_IP_QUEUE_SPACE */
 
-		/* Run the state-machine of the ksz8851 driver. */
 		ksz8851snl_update();
 
 		if( ( ulISREvents & EMAC_IF_ALL_EVENT ) == 0 )
@@ -1238,11 +1516,12 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 			ulTaskNotifyTake( pdTRUE, ulMaxBlockTime );
 		}
 
+//		dbg_add_line( "Now" );
 		if( ( xTaskGetTickCount() - xLoggingTime ) > 10000 )
 		{
 			xLoggingTime += 10000;
-			FreeRTOS_printf( ( "Now Tx/Rx %7d /%7d\n",
-				xMicrelDevice.ul_total_tx, xMicrelDevice.ul_total_rx ) );
+			FreeRTOS_printf( ( "Now Tx/Rx %7d /%7d Erros %d/%d\n",
+				xMicrelDevice.ul_total_tx, xMicrelDevice.ul_total_rx, tx_error_count, rx_error_count ) );
 		}
 
 		if( ( ulISREvents & EMAC_IF_RX_EVENT ) != 0 )
@@ -1302,3 +1581,33 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 	}
 }
 /*-----------------------------------------------------------*/
+
+#define EVENT_COUNT		64
+
+char ev[ EVENT_COUNT ][ 52 ];
+char *textArray[ EVENT_COUNT ];
+
+volatile int eventHead = 0;
+
+void dbg_add_line( const char *pcFormat, ... )
+{
+int rc;
+uint64_t ullCurTime = ullGetHighResolutionTime();
+uint32_t ulSec, ulMs, ulUs;
+int head = eventHead;
+
+	if( ++eventHead == EVENT_COUNT )
+	{
+		eventHead = 0;
+	}
+	ulMs = ( uint32_t ) ( ullCurTime / 1000 );
+	ulUs = ( uint32_t ) ( ullCurTime % 1000 );
+	ulSec = ulMs / 1000;
+	ulMs = ulMs % 1000;
+	va_list args;
+	va_start( args, pcFormat );
+	rc = snprintf( ev[ head ], sizeof ev[ head ], "%4lu.%03lu.%03lu ", ulSec, ulMs, ulUs );
+	vsnprintf( ev[ head ] + rc, sizeof ev[ head ] - rc, pcFormat, args );
+	textArray[ head ] = ev[ head ];
+	va_end( args );
+}

@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -67,6 +67,7 @@
 /* FreeRTOS+TCP includes. */
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_IP_Private.h"
+#include "FreeRTOS_Routing.h"
 #include "NetworkBufferManagement.h"
 
 /* Thread-safe circular buffers are being used to pass data to and from the PCAP
@@ -136,6 +137,30 @@ static void prvCreateThreadSafeBuffers( void );
  */
 static const char *prvRemoveSpaces( char *pcBuffer, int aBuflen, const char *pcMessage );
 
+/*
+ * Initialises the WinPCap interface.
+ */
+static BaseType_t prvNetworkInterfaceInitialise( struct xNetworkInterface *pxInterface );
+
+/*
+ * Writes data to the network.
+ */
+static BaseType_t prvNetworkInterfaceOutput( void *pvNetworkInterfaceIndex, NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend );
+
+/*
+ * The WinPCap interface is not a real network interface in its own right, and
+ * has no PHY to return the status of.
+ */
+static BaseType_t prvGetLinkStatus( NetworkInterface_t *pxInterface );
+
+/*
+ * Search the array of NetworkInterface_t structures managed by this driver for
+ * one that contains the MAC address passed in the pucMACAddressBytes parameter.
+ * Return a pointer to the matching NetworkInterface_t structure if one is
+ * found, or NULL if a match is not found.
+ */
+static NetworkInterface_t *prvFindVirtualInterface( const uint8_t *pucMACAddressBytes );
+
 /*-----------------------------------------------------------*/
 
 /* Required by the WinPCap library. */
@@ -166,12 +191,25 @@ extern uint8_t ucMACAddress[ 6 ];
 /* Logs the number of WinPCAP send failures, for viewing in the debugger only. */
 static volatile uint32_t ulWinPCAPSendFailures = 0;
 
+/* This is not a 'normal' network driver, but instead creates one or more
+virtual interfaces on an existing network by accessing the raw data on the
+network.  xNetworkInterfaces[] stores a NetworkInterface_t structure for each
+virtual node on the network.  ulInterfaceOutputCalls[] just keeps a count of the
+number of times each network interface has called the output function (the
+count is for test and debug purposes only). */
+static NetworkInterface_t *pxVirtualNetworkInterefaces[ ipconfigMULTI_INTERFACE ] = { 0 };
+static uint32_t ulInterfaceOutputCalls[ ipconfigMULTI_INTERFACE ] = { 0 };
+
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+static BaseType_t prvNetworkInterfaceInitialise( struct xNetworkInterface *pxInterface )
 {
 BaseType_t xReturn = pdFALSE;
 pcap_if_t *pxAllNetworkInterfaces;
+
+	/* This driver does not use the pxInterface parameter.  Remove the compiler
+	warning. */
+	( void ) pxInterface; /*_RB_ Are any drivers going to use this parameter? */
 
 	/* Query the computer the simulation is being executed on to find the
 	network interfaces it has installed. */
@@ -220,12 +258,22 @@ static void prvCreateThreadSafeBuffers( void )
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend )
+/*_RB_ First parameter should be struct xNetworkInterface, but void * might be more convenient. */
+static BaseType_t prvNetworkInterfaceOutput( void *pvNetworkInterfaceIndex, NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t bReleaseAfterSend )
 {
 size_t xSpace;
+uint32_t ulInterfaceIndex = ( uint32_t ) pvNetworkInterfaceIndex;
 
 	iptraceNETWORK_INTERFACE_TRANSMIT();
 	configASSERT( xIsCallingFromIPTask() == pdTRUE );
+
+	/* For debugging purposes only - count the number of times each interface
+	calls the output function. */
+	configASSERT( ulInterfaceIndex < ipconfigMULTI_INTERFACE );
+	if( ulInterfaceIndex < ipconfigMULTI_INTERFACE )
+	{
+		( ulInterfaceOutputCalls[ ulInterfaceIndex ] )++;
+	}
 
 	/* Both the length of the data being sent and the actual data being sent
 	are placed in the thread safe buffer used to pass data between the FreeRTOS
@@ -260,6 +308,70 @@ size_t xSpace;
 }
 /*-----------------------------------------------------------*/
 
+void vWinPCapFillInterfaceDescriptor( BaseType_t xInterfaceNumber, NetworkInterface_t *pxInterface )
+{
+static const char *pcInterfaceNames[] =
+{
+	"WinPCap_1",
+	"WinPCap_2",
+	"WinPCap_3"
+};
+BaseType_t x;
+
+	/* Check xInterfaceNumber is not going to overflow the pcInterfaceNames[]
+	array. */
+	configASSERT( xInterfaceNumber < ( sizeof( pcInterfaceNames ) / sizeof( char * ) ) );
+
+	/* Populate the NetworkInterface_t structure with the information needed to
+	send to and receive from the network interface.  The object pointed to by
+	pxInterface must be persistent (global or static, and definitely not
+	declared on the stack of a function. */
+	memset( pxInterface, '\0', sizeof( NetworkInterface_t ) );
+
+	/* The name is only used for debugging and logging. */
+	pxInterface->pcName				= pcInterfaceNames[ xInterfaceNumber ];
+
+	/* The driver can use the pvArgument member for its own purposes.  In this
+	case it is used to store an index into the pxVirtualNetworkInterfaces[]
+	array that is later used to count the number of times each virtual interface
+	calls the output function. */
+	pxInterface->pvArgument			= ( void * ) xInterfaceNumber;
+
+	/* Functions to initialise, write to, and check the link status of the
+	network interface respectively. */
+	pxInterface->pfInitialise		= prvNetworkInterfaceInitialise;
+	pxInterface->pfOutput			= prvNetworkInterfaceOutput;
+	pxInterface->pfGetPhyLinkStatus = prvGetLinkStatus;
+
+	/* As this single driver handles multiple virtual network interfaces (nodes
+	on the network) it is necessary to remember each NetworkInterface_t
+	structure so packets that arrive on the real network can be allocated to or
+	from one of the multiple virtual nodes. */
+	for( x = 0; x < ipconfigMULTI_INTERFACE; x++ )
+	{
+		if( pxVirtualNetworkInterefaces[ x ] == NULL )
+		{
+			/* Found a space in the pxVirtualNetworkInterefaces array - store a
+			pointer to the NetworkInterface_t structure currently being
+			populated. */
+			pxVirtualNetworkInterefaces[ x ] = pxInterface;
+			break;
+		}
+	}
+}
+/*-----------------------------------------------------------*/
+
+static BaseType_t prvGetLinkStatus( NetworkInterface_t *pxInterface )
+{
+	/* This driver does not use the parameter.  Remove the compiler warning. */
+	( void ) pxInterface; /*_RB_ Are any drivers going to use this parameter? */
+
+	/* The WinPCap interface is not a real network interface in its own right,
+	and has no PHY to return the status of. */
+	return pdTRUE;
+}
+/*-----------------------------------------------------------*/
+
 static pcap_if_t * prvPrintAvailableNetworkInterfaces( void )
 {
 pcap_if_t * pxAllNetworkInterfaces = NULL, *xInterface;
@@ -281,8 +393,8 @@ char cBuffer[ 512 ];
 			/* The descriptions of the devices can be full of spaces, clean them
 			a little.  printf() can only be used here because the network is not
 			up yet - so no other network tasks will be running. */
-			printf( "%d. %s\n", lInterfaceNumber, prvRemoveSpaces( cBuffer, sizeof( cBuffer ), xInterface->name ) );
-			printf( "   (%s)\n", prvRemoveSpaces(cBuffer, sizeof( cBuffer ), xInterface->description ? xInterface->description : "No description" ) );
+			printf( "%d. %s\n", lInterfaceNumber, prvRemoveSpaces( cBuffer, sizeof cBuffer, xInterface->name ) );
+			printf( "   (%s)\n", prvRemoveSpaces(cBuffer, sizeof cBuffer, xInterface->description ? xInterface->description : "No description" ) );
 			printf( "\n" );
 			lInterfaceNumber++;
 		}
@@ -375,17 +487,22 @@ int32_t x;
 static void prvConfigureCaptureBehaviour( void )
 {
 struct bpf_program xFilterCode;
-uint32_t ulNetMask;
+
+	/* As is, the string passed to pcap_compile() assumes no more than 3
+	interfaces are being emulated. */
+	configASSERT( ipconfigMULTI_INTERFACE <= 3 );
 
 	/* Set up a filter so only the packets of interest are passed to the IP
 	stack.  cErrorBuffer is used for convenience to create the string.  Don't
-	confuse this with an error message. */
-	sprintf( cErrorBuffer, "broadcast or multicast or ether host %x:%x:%x:%x:%x:%x",
-		ucMACAddress[0], ucMACAddress[1], ucMACAddress[2], ucMACAddress[3], ucMACAddress[4], ucMACAddress[5] );
+	confuse this with an error message.  If more than one interface is used
+	then following interfaces have the MAC address of the preceding interface,
+	hence the +1 and +2 on the second and third MAC addresses. */
+	sprintf( cErrorBuffer, "broadcast or multicast or ether host %x:%x:%x:%x:%x:%x or ether host %x:%x:%x:%x:%x:%x or ether host %x:%x:%x:%x:%x:%x",
+		configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5,
+		configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 + 1,
+		configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 + 2 );
 
-	ulNetMask = ( configNET_MASK3 << 24UL ) | ( configNET_MASK2 << 16UL ) | ( configNET_MASK1 << 8L ) | configNET_MASK0;
-
-	if( pcap_compile( pxOpenedInterfaceHandle, &xFilterCode, cErrorBuffer, 1, ulNetMask ) < 0 )
+	if( pcap_compile( pxOpenedInterfaceHandle, &xFilterCode, cErrorBuffer, 1, 0 ) < 0 )
 	{
 		printf( "\nThe packet filter string is invalid\n" );
 	}
@@ -548,6 +665,20 @@ eFrameProcessingResult_t eResult;
 						memcpy( pxNetworkBuffer->pucEthernetBuffer, pucPacketData, pxHeader->len );
 						pxNetworkBuffer->xDataLength = ( size_t ) pxHeader->len;
 
+						/* This single real interface in used to create multiple
+						virtual interfaces by accessing the raw Ethernet data.
+						Use the MAC address of the received frame (which is at
+						the start of the Ethernet data) to look up which of the
+						virtual interfaces this packet is for. */
+						pxNetworkBuffer->pxInterface = prvFindVirtualInterface( pucPacketData );
+
+						/* If a broadcast or multicast MAC address was used then
+						an interface will not have been found. */
+						if( pxNetworkBuffer->pxInterface != NULL )
+						{
+							pxNetworkBuffer->pxEndPoint = pxNetworkBuffer->pxInterface->pxEndPoint; /*_RB_ I'm not sure what I'm supposed to fill in here.  The SAM driver completes pxInterface, but prvProcessEthernetPacket() checks pxEndPoint. */
+						}
+
 						#if( niDISRUPT_PACKETS == 1 )
 						{
 							pxNetworkBuffer = vRxFaultInjection( pxNetworkBuffer, pucPacketData );
@@ -602,11 +733,39 @@ eFrameProcessingResult_t eResult;
 }
 /*-----------------------------------------------------------*/
 
+static NetworkInterface_t *prvFindVirtualInterface( const uint8_t *pucMACAddressBytes )
+{
+BaseType_t x;
+NetworkInterface_t *pxReturn = NULL;
+
+	for( x = 0; x < ipconfigMULTI_INTERFACE; x++ )
+	{
+		if( pxVirtualNetworkInterefaces[ x ] == NULL )
+		{
+			/* No more interfaces are defined. */
+			break;
+		}
+
+		configASSERT( pxVirtualNetworkInterefaces[ x ]->pxEndPoint );
+
+		/* Does the MAC address of this interface match the MAC address passed
+		in pucMACAddressBytes. */
+		if( memcmp( ( void * ) pucMACAddressBytes, ( void * ) pxVirtualNetworkInterefaces[ x ]->pxEndPoint->xMACAddress.ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) == 0 )
+		{
+			pxReturn = pxVirtualNetworkInterefaces[ x ];
+			break;
+		}
+	}
+
+	return pxReturn;
+}
+/*-----------------------------------------------------------*/
+
 static const char *prvRemoveSpaces( char *pcBuffer, int aBuflen, const char *pcMessage )
 {
 	char *pcTarget = pcBuffer;
 
-	/* Utility function used to formap messages being printed only. */
+	/* Utility function used to for map messages being printed only. */
 	while( ( *pcMessage != 0 ) && ( pcTarget < ( pcBuffer + aBuflen - 1 ) ) )
 	{
 		*( pcTarget++ ) = *pcMessage;
@@ -628,4 +787,5 @@ static const char *prvRemoveSpaces( char *pcBuffer, int aBuflen, const char *pcM
 
 	return pcBuffer;
 }
+/*-----------------------------------------------------------*/
 

@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -73,7 +73,9 @@ const FTPCommand_t xFTPCommands[ FTP_CMD_COUNT ] =
 	{ 4, "QUIT",		ECMD_QUIT,	pdTRUE, pdFALSE },
 	{ 4, "REIN",		ECMD_REIN,	pdTRUE, pdFALSE },
 	{ 4, "PORT",		ECMD_PORT,	pdTRUE, pdFALSE },
+	{ 4, "EPRT",		ECMD_EPRT,	pdTRUE, pdFALSE },
 	{ 4, "PASV",		ECMD_PASV,	pdTRUE, pdFALSE },
+	{ 4, "EPSV",		ECMD_EPSV,	pdTRUE, pdFALSE },
 	{ 4, "TYPE",		ECMD_TYPE,	pdTRUE, pdFALSE },
 	{ 4, "STRU",		ECMD_STRU,	pdTRUE, pdFALSE },
 	{ 4, "MODE",		ECMD_MODE,	pdTRUE, pdFALSE },

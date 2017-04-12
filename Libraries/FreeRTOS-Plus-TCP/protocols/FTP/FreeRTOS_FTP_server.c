@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -71,6 +71,7 @@
 #include "FreeRTOS_TCP_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_Stream_Buffer.h"
+#include "FreeRTOS_Routing.h"
 
 /* FreeRTOS Protocol includes. */
 #include "FreeRTOS_FTP_commands.h"
@@ -190,9 +191,13 @@ static BaseType_t prvGetTransferType( const char *pcType );
 static UBaseType_t prvParsePortData( const char *pcCommand, uint32_t *pulIPAddress );
 
 /*
+ * EPRT<space><d><net-prt><d><net-addr><d><tcp-port><d>
+ */
+static UBaseType_t prvParseEprtData( char *pcCommand, uint32_t *pulIPAddress, uint8_t *ucIPAddress );
+
+/*
  * CWD: Change current working directory.
  */
-
 static BaseType_t prvChangeDir( FTPClient_t *pxClient, char *pcDirectory );
 
 /*
@@ -596,6 +601,7 @@ BaseType_t xResult = 0;
 			break;
 
 		case ECMD_PASV: /* Enter passive mode. */
+		case ECMD_EPSV: /* Enter extended passive mode. */
 			/* Connect passive: Server will listen() and wait for a connection.
 			Start up a new data connection with 'xDoListen' set to true. */
 			if( prvTransferConnect( pxClient, pdTRUE ) == pdFALSE )
@@ -619,27 +625,45 @@ BaseType_t xResult = 0;
 				pxClient->usClientPort = FreeRTOS_ntohs( xRemoteAddress.sin_port );
 
 				/* REPL_227_D "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d). */
-				snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_227_D,
-					( unsigned )ulIP >> 24,
-					( unsigned )( ulIP >> 16 ) & 0xFF,
-					( unsigned )( ulIP >> 8 ) & 0xFF,
-					( unsigned )ulIP & 0xFF,
-					( unsigned )ulPort >> 8,
-					( unsigned )ulPort & 0xFF );
+				if( pxFTPCommand->ucCommandType == ECMD_PASV )
+				{
+					snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_227_D,
+						( unsigned )ulIP >> 24,
+						( unsigned )( ulIP >> 16 ) & 0xFF,
+						( unsigned )( ulIP >> 8 ) & 0xFF,
+						( unsigned )ulIP & 0xFF,
+						( unsigned )ulPort >> 8,
+						( unsigned )ulPort & 0xFF );
+				}
+				else /* ECMD_EPSV */
+				{
+					/* Entering Extended Passive Mode. */
+					snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_229_D, ulPort );
+				}
 
 				pcMyReply = pcCOMMAND_BUFFER;
 			}
 			break;
 
 		case ECMD_PORT: /* Active connection to the client. */
+		case ECMD_EPRT: /* Extended active connection to the client. */
 			/* The client uses this command to tell the server to what
 			client-side port the server should contact; use of this command
 			indicates an active data transfer. e.g. PORT 192,168,1,2,4,19. */
 			{
 			uint32_t ulIPAddress = 0;
+			uint8_t ucIPAddress[ ipSIZE_OF_IPv6_ADDRESS ];
 			UBaseType_t uxPort;
 
-				uxPort = prvParsePortData( pcRestCommand, &ulIPAddress );
+				if( pxFTPCommand->ucCommandType == ECMD_PORT )
+				{
+					uxPort = prvParsePortData( pcRestCommand, &ulIPAddress );
+				}
+				else
+				{
+					uxPort = prvParseEprtData( pcRestCommand, &ulIPAddress, ucIPAddress );
+				}
+
 				FreeRTOS_printf( ("       PORT %lxip:%ld\n", ulIPAddress, uxPort ) );
 
 				if( uxPort == 0u )
@@ -874,15 +898,29 @@ BaseType_t xResult;
 	if( ( xSocket != FREERTOS_NO_SOCKET ) && ( xSocket != FREERTOS_INVALID_SOCKET ) )
 	{
 	BaseType_t xSmallTimeout = pdMS_TO_TICKS( 100 );
-	struct freertos_sockaddr xAddress;
+	struct freertos_sockaddr xAddress, xRemote, xLocal2;
+	NetworkEndPoint_t *pxEndPoint;
 
 	#if( ipconfigFTP_TX_BUFSIZE > 0 )
 		WinProperties_t xWinProps;
 	#endif
-		xAddress.sin_addr = FreeRTOS_GetIPAddress( );	/* Single NIC, currently not used */
-		xAddress.sin_port = FreeRTOS_htons( 0 );		/* Bind to any available port number */
+		FreeRTOS_GetRemoteAddress( pxClient->xSocket, &( xRemote ) );
+
+		pxEndPoint = FreeRTOS_FindEndPointOnNetMask( xRemote.sin_addr );
+		if( pxEndPoint != NULL )
+		{
+			xAddress.sin_addr = pxEndPoint->ulIPAddress;
+		}
+		else
+		{
+			xAddress.sin_addr = 0ul;
+		}
+
+		xAddress.sin_port = FreeRTOS_htons( 0 );	/* Bind to aynt available port number. */
 
 		FreeRTOS_bind( xSocket, &xAddress, sizeof( xAddress ) );
+
+		FreeRTOS_GetLocalAddress( xSocket, &( xLocal2 ) );
 
 		#if( ipconfigFTP_TX_BUFSIZE > 0 )
 		{
@@ -1274,6 +1312,105 @@ BaseType_t xResult = -1;
 	}
 	/*-----------------------------------------------------------*/
 #endif /* ipconfigHAS_PRINTF != 0 */
+
+static UBaseType_t prvParseEprtData( char *pcCommand, uint32_t *pulIPAddress, uint8_t *ucIPAddress )
+{
+char *pcType = NULL;
+char *pcIPAddress = NULL;
+char *pcPort = NULL;
+char cSeparator = 0;
+BaseType_t xStep = 0;
+
+	while( xStep < 7 )
+	{
+		char ch = *pcCommand;
+		if( ch == '\0' )
+		{
+			break;
+		}
+		switch( xStep )
+		{
+		case 0:
+			cSeparator = ch;
+			xStep++;
+			pcCommand++;
+			break;
+		case 2:
+		case 4:
+		case 6:
+			if( cSeparator != ch )
+			{
+				xStep = 7;
+				break;
+			}
+			xStep++;
+			*pcCommand = '\0';
+			pcCommand++;
+			break;
+		case 1:
+		case 3:
+		case 5:
+			/* 1: expect IP type. */
+			/* 3: Expect an IPv4 or an IPv6 address. */
+			/* 5: expect port number. */
+			{
+				switch( xStep )
+				{
+					case 1:
+						pcType = pcCommand;
+						break;
+					case 3:
+						pcIPAddress = pcCommand;
+						break;
+					case 5:
+						pcPort = pcCommand;
+						break;
+				}
+				for( ;; )
+				{
+					ch = *pcCommand;
+					if( ( ch == cSeparator ) || ( ch == '\0' ) )
+					{
+						break;
+					}
+					pcCommand++;
+				}
+				xStep++;
+			}
+			break;
+		}
+	}
+
+	if( pcType != NULL )
+	{
+		if( pcIPAddress != NULL )
+		{
+			if( pcType[ 0 ] == '1' )
+			{
+				BaseType_t rc = FreeRTOS_inet_pton4( pcIPAddress, ( uint8_t * ) pulIPAddress );
+				FreeRTOS_printf( ( "prvParseEprtData: IPv4 rc %d %lxip\n", rc, FreeRTOS_htonl( *pulIPAddress ) ) );
+			}
+			else if( pcType[ 0 ] == '2' )
+			{
+				#if( ipconfigUSE_IPv6 == 1 )
+				{
+					BaseType_t rc = FreeRTOS_inet_pton6( pcIPAddress, ( uint8_t * ) ucIPAddress );
+					FreeRTOS_printf( ( "prvParseEprtData: IPv6 rc %d %pip\n", rc, ucIPAddress ) );
+				}
+				#endif /* ipconfigUSE_IPv6 */
+			}
+		}
+		else
+		{
+			*pulIPAddress = 0ul;
+			ucIPAddress[ 0 ] = 0;
+			ucIPAddress[ 1 ] = 0;
+		}
+	}
+	FreeRTOS_printf( ( "Type '%s' IP '%s' port '%s'\n", pcType, pcIPAddress, pcPort ) );
+	return 0;
+}
+/*-----------------------------------------------------------*/
 
 static UBaseType_t prvParsePortData( const char *pcCommand, uint32_t *pulIPAddress )
 {

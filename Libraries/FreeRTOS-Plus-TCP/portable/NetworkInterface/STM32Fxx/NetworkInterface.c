@@ -4,7 +4,7 @@
  */
 
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -77,6 +77,10 @@
 #include "FreeRTOS_IP_Private.h"
 #include "NetworkBufferManagement.h"
 #include "NetworkInterface.h"
+#include "FreeRTOS_DHCP.h"
+#include "FreeRTOS_DNS.h"
+#include "FreeRTOS_Routing.h"
+
 
 /* ST includes. */
 #include "stm32f4xx_hal.h"
@@ -220,6 +224,21 @@ static BaseType_t prvNetworkInterfaceInput( void );
 	static void prvMACAddressConfig(ETH_HandleTypeDef *heth, uint32_t ulIndex, uint8_t *Addr);
 #endif
 
+/* FreeRTOS+TCP/multi :
+Each network device has 3 access functions:
+- initialise the device
+- output a network packet
+- return the PHY link-status (LS)
+They can be defined as static because their are addresses will be
+stored in struct NetworkInterfaceDescriptor_t. */
+
+static BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterfaceDescriptor_t *pxInterface );
+
+static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterfaceDescriptor_t *pxInterface, NetworkBufferDescriptor_t * const pxBuffer, BaseType_t bReleaseAfterSend );
+
+static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterfaceDescriptor_t *pxInterface );
+
+
 /*-----------------------------------------------------------*/
 
 typedef struct _PhyProperties_t
@@ -238,10 +257,6 @@ static volatile uint32_t ulISREvents;
 /* A copy of PHY register 1: 'PHY_REG_01_BMSR' */
 static uint32_t ulPHYLinkStatus = 0;
 
-#if( ipconfigUSE_LLMNR == 1 )
-	static const uint8_t xLLMNR_MACAddress[] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0xFC };
-#endif
-
 /* Ethernet handle. */
 static ETH_HandleTypeDef xETH;
 
@@ -250,9 +265,6 @@ static uint32_t ulBCRvalue;
 
 /* Value to be written into the 'Advertisement Control Register'. */
 static uint32_t ulACRValue;
-
-/* ucMACAddress as it appears in main.c */
-extern const uint8_t ucMACAddress[ 6 ];
 
 /* Holds the handle of the task used as a deferred interrupt processor.  The
 handle is used so direct notifications can be sent to the task for all EMAC/DMA
@@ -317,13 +329,17 @@ void HAL_ETH_TxCpltCallback( ETH_HandleTypeDef *heth )
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterfaceDescriptor_t *pxInterface )
 {
 HAL_StatusTypeDef hal_eth_init_status;
+NetworkEndPoint_t *pxEndPoint;
 
 	if( xEMACTaskHandle == NULL )
 	{
 		/* Initialise ETH */
+
+		pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+		configASSERT( pxEndPoint != NULL );
 
 		xETH.Instance = ETH;
 		xETH.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
@@ -331,7 +347,7 @@ HAL_StatusTypeDef hal_eth_init_status;
 		xETH.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
 		xETH.Init.PhyAddress = 1;
 
-		xETH.Init.MACAddr = ( uint8_t *) ucMACAddress;
+		xETH.Init.MACAddr = ( uint8_t *) pxEndPoint->xMACAddress.ucBytes;
 		xETH.Init.RxMode = ETH_RXINTERRUPT_MODE;
 
 		/* using the ETH_CHECKSUM_BY_HARDWARE option:
@@ -356,7 +372,7 @@ HAL_StatusTypeDef hal_eth_init_status;
 		#if( ipconfigUSE_LLMNR != 0 )
 		{
 			/* Program the LLMNR address at index 1. */
-			prvMACAddressConfig( &xETH, ETH_MAC_ADDRESS1, ( uint8_t *) xLLMNR_MACAddress );
+			prvMACAddressConfig( &xETH, ETH_MAC_ADDRESS1, ( uint8_t * )xLLMNR_MacAdress.ucBytes );
 		}
 		#endif
 
@@ -393,7 +409,7 @@ uint32_t ulTempReg;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( xNetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
+static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterfaceDescriptor_t *pxInterface, NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
 {
 BaseType_t xReturn;
 uint32_t ulTransmitSize = 0;
@@ -844,7 +860,7 @@ uint32_t ulRegValue = 0;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xGetPhyLinkStatus( void )
+static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterfaceDescriptor_t *pxInterface )
 {
 BaseType_t xReturn;
 
@@ -858,6 +874,28 @@ BaseType_t xReturn;
 	}
 
 	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+NetworkInterfaceDescriptor_t *pxSTMF40_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterfaceDescriptor_t *pxInterface )
+{
+static char pcName[ 8 ];
+/* This function pxSTMF40_FillInterfaceDescriptor() adds a network-interface.
+Make sure that the object pointed to by 'pxInterface'
+is declared static or global, and that it will remain to exist. */
+
+	snprintf( pcName, sizeof( pcName ), "eth%ld", xEMACIndex );
+
+	memset( pxInterface, '\0', sizeof( *pxInterface ) );
+	pxInterface->pcName				= pcName;					/* Just for logging, debugging. */
+	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pfInitialise		= xSTMF40_NetworkInterfaceInitialise;
+	pxInterface->pfOutput			= xSTMF40_NetworkInterfaceOutput;
+	pxInterface->pfGetPhyLinkStatus = xSTMF40_GetPhyLinkStatus;
+
+	FreeRTOS_AddNetworkInterface( pxInterface );
+
+	return pxInterface;
 }
 /*-----------------------------------------------------------*/
 

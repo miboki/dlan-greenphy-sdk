@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -100,6 +100,10 @@ typedef enum
  * a free space available.
  */
 void vARPRefreshCacheEntry( const MACAddress_t * pxMACAddress, const uint32_t ulIPAddress );
+
+#if( ipconfigUSE_IPv6 != 0 )
+	void vARPRefreshCacheEntry_IPv6( const MACAddress_t * pxMACAddress, const IPv6_Address_t *pxIPAddress );
+#endif /* ipconfigUSE_IPv6 */
 
 #if( ipconfigARP_USE_CLASH_DETECTION != 0 )
 	/* Becomes non-zero if another device responded to a gratuitos ARP message. */

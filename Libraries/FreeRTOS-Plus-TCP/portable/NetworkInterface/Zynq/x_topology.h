@@ -34,10 +34,7 @@ struct xtopology_t {
 	unsigned scugic_emac_intr; /* valid only for GEM */
 };
 
-extern int x_topology_n_emacs;
-extern struct xtopology_t x_topology[];
-
-int x_topology_find_index(unsigned base);
+extern struct xtopology_t xXTopologies[ XPAR_XEMACPS_NUM_INSTANCES ];
 
 #ifdef __cplusplus
 }

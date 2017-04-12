@@ -40,6 +40,11 @@ extern "C" {
 #include "xscugic.h"
 #include "xemacps.h"		/* defines XEmacPs API */
 
+#define XPAR_PS7_ETHERNET_1_DEVICE_ID	1
+#define XPAR_PS7_ETHERNET_1_BASEADDR	0xE000C000
+
+extern XEmacPs_Config mac_configs[ XPAR_XEMACPS_NUM_INSTANCES ];
+
 //#include "netif/xpqueue.h"
 //#include "xlwipconfig.h"
 
@@ -122,8 +127,8 @@ extern void setup_isr( xemacpsif_s *xemacpsif );
 extern XStatus init_dma( xemacpsif_s *xemacpsif );
 extern void start_emacps( xemacpsif_s *xemacpsif );
 
-void EmacEnableIntr(void);
-void EmacDisableIntr(void);
+void EmacEnableIntr( int xEMACIndex );
+void EmacDisableIntr( int xEMACIndex );
 
 XStatus init_axi_dma(xemacpsif_s *xemacpsif);
 void process_sent_bds( xemacpsif_s *xemacpsif );

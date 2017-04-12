@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -111,18 +111,10 @@ typedef struct xTCP_WINSIZE
  * each packet, and thus the message space will become smaller
  */
 /* Keep this as a multiple of 4 */
-#if( ipconfigUSE_TCP_WIN == 1 )
-	#if( ipconfigUSE_TCP_TIMESTAMPS == 1 )
-		#define ipSIZE_TCP_OPTIONS	( 16u + 12u )
-	#else
-		#define ipSIZE_TCP_OPTIONS	16u
-	#endif
+#if	ipconfigUSE_TCP_TIMESTAMPS == 1
+	#define ipSIZE_TCP_OPTIONS   ( 12u + 12u )
 #else
-	#if	ipconfigUSE_TCP_TIMESTAMPS == 1
-		#define ipSIZE_TCP_OPTIONS   ( 12u + 12u )
-	#else
-		#define ipSIZE_TCP_OPTIONS   12u
-	#endif
+	#define ipSIZE_TCP_OPTIONS   12u
 #endif
 
 /*

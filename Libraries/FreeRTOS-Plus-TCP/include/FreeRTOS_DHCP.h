@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -81,10 +81,42 @@ typedef enum eDHCP_ANSWERS
 	eDHCPStopNoChanges,		/* Stop DHCP and continue with current settings. */
 } eDHCPCallbackAnswer_t;
 
+/* DHCP state machine states. */
+typedef enum
+{
+	eWaitingSendFirstDiscover = 0,	/* Initial state.  Send a discover the first time it is called, and reset all timers. */
+	eWaitingOffer,					/* Either resend the discover, or, if the offer is forthcoming, send a request. */
+	eWaitingAcknowledge,			/* Either resend the request. */
+	#if( ipconfigDHCP_FALL_BACK_AUTO_IP != 0 )
+		eGetLinkLayerAddress,		/* When DHCP didn't respond, try to obtain a LinkLayer address 168.254.x.x. */
+	#endif
+	eLeasedAddress,					/* Resend the request at the appropriate time to renew the lease. */
+	eNotUsingLeasedAddress			/* DHCP failed, and a default IP address is being used. */
+} eDHCPState_t;
+
+/* Hold information in between steps in the DHCP state machine. */
+struct xDHCP_DATA
+{
+	uint32_t ulTransactionId;
+	uint32_t ulOfferedIPAddress;
+	uint32_t ulDHCPServerAddress;
+	uint32_t ulLeaseTime;
+	/* Hold information on the current timer state. */
+	TickType_t xDHCPTxTime;
+	TickType_t xDHCPTxPeriod;
+	/* Try both without and with the broadcast flag */
+	BaseType_t xUseBroadcast;
+	/* Maintains the DHCP state machine state. */
+	eDHCPState_t eDHCPState;
+	Socket_t xDHCPSocket;
+};
+
+typedef struct xDHCP_DATA DHCPData_t;
+
 /*
  * NOT A PUBLIC API FUNCTION.
  */
-void vDHCPProcess( BaseType_t xReset );
+void vDHCPProcess( BaseType_t xReset, struct xNetworkEndPoint *pxEndPoint );
 
 /* Internal call: returns true if socket is the current DHCP socket */
 BaseType_t xIsDHCPSocket( Socket_t xSocket );

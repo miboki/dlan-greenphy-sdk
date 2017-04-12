@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -91,7 +91,6 @@ replace the packet that was requested to be sent. */
 	#define baMINIMAL_BUFFER_SIZE		sizeof( ARPPacket_t )
 #endif /* ipconfigUSE_TCP == 1 */
 
-/*_RB_ This is too complex not to have an explanation. */
 #if defined( ipconfigETHERNET_MINIMUM_PACKET_BYTES )
 	#define ASSERT_CONCAT_(a, b) a##b
 	#define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
@@ -245,6 +244,9 @@ size_t uxCount;
 		at least large enough to hold an ARP. */
 		xRequestedSizeBytes = baMINIMAL_BUFFER_SIZE;
 	}
+
+	/* Add 2 bytes to xRequestedSizeBytes and round up xRequestedSizeBytes
+	to the nearest multiple of N bytes, where N equals 'sizeof( size_t )'. */
 	xRequestedSizeBytes += 2u;
 	if( ( xRequestedSizeBytes & ( sizeof( size_t ) - 1u ) ) != 0u )
 	{
@@ -298,6 +300,10 @@ size_t uxCount;
 				/* Store the actual size of the allocated buffer, which may be
 				greater than the original requested size. */
 				pxReturn->xDataLength = xRequestedSizeBytes;
+
+				/* Don't know which interface this is using yet. */
+				pxReturn->pxEndPoint = NULL;
+				pxReturn->pxInterface = NULL;
 
 				#if( ipconfigUSE_LINKED_RX_MESSAGES != 0 )
 				{
@@ -390,11 +396,12 @@ uint8_t *pucBuffer;
 		{
 			xNewSizeBytes = xOriginalLength;
 		}
+
 		memcpy( pucBuffer - ipBUFFER_PADDING, pxNetworkBuffer->pucEthernetBuffer - ipBUFFER_PADDING, xNewSizeBytes );
 		vReleaseNetworkBuffer( pxNetworkBuffer->pucEthernetBuffer );
 		pxNetworkBuffer->pucEthernetBuffer = pucBuffer;
 	}
-	
+
 	return pxNetworkBuffer;
 }
 
