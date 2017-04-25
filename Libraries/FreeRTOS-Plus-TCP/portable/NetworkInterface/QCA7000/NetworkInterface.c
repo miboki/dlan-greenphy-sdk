@@ -76,20 +76,10 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_IP_Private.h"
+#include "FreeRTOS_Routing.h"
 #include "NetworkBufferManagement.h"
-#include "NetworkInterface.h"
 
-/* TODO: Move buffer management into own header */
-
-#ifndef configNUM_RX_DESCRIPTORS
-	#define configNUM_RX_DESCRIPTORS 4
-#endif
-
-#ifndef configNUM_TX_DESCRIPTORS
-	#define configNUM_TX_DESCRIPTORS 4
-#endif
-
- /* If ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES is set to 1, then the Ethernet
+/* If ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES is set to 1, then the Ethernet
  driver will filter incoming packets and only pass the stack those packets it
  considers need processing. */
  #if( ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES == 0 )
@@ -97,25 +87,6 @@
  #else
  	#define ipCONSIDER_FRAME_FOR_PROCESSING( pucEthernetBuffer ) eConsiderFrameForProcessing( ( pucEthernetBuffer ) )
  #endif
-
-#define BUFFER_SIZE ( ipTOTAL_ETHERNET_FRAME_SIZE + ipBUFFER_PADDING )
-#define BUFFER_SIZE_ROUNDED_UP ( ( BUFFER_SIZE + 7 ) & ~0x07UL )
-
-/* EMAC variables located in AHB SRAM bank 1 and 2 */
-#define AHB_SRAM_BANK1_BASE  0x2007C000UL
-
-#define RX_DESC_BASE        (AHB_SRAM_BANK1_BASE)
-#define RX_STAT_BASE        (RX_DESC_BASE + configNUM_RX_DESCRIPTORS*sizeof(ENET_RXDESC_T))
-#define TX_DESC_BASE        (RX_STAT_BASE + configNUM_RX_DESCRIPTORS*sizeof(ENET_RXSTAT_T))
-#define TX_STAT_BASE        (TX_DESC_BASE + configNUM_TX_DESCRIPTORS*sizeof(ENET_TXDESC_T))
-#define ETH_BUF_BASE		(TX_STAT_BASE + configNUM_TX_DESCRIPTORS*sizeof(ENET_TXSTAT_T))
-
-/* RX and TX descriptor and status definitions. */
-#define xDMARxDescriptors   ( *(ENET_RXDESC_T (*)[configNUM_RX_DESCRIPTORS]) (RX_DESC_BASE) )
-#define xDMARxStatus        ( *(ENET_RXSTAT_T (*)[configNUM_RX_DESCRIPTORS]) (RX_STAT_BASE) )
-#define xDMATxDescriptors   ( *(ENET_TXDESC_T (*)[configNUM_TX_DESCRIPTORS]) (TX_DESC_BASE) )
-#define xDMATxStatus        ( *(ENET_TXSTAT_T (*)[configNUM_TX_DESCRIPTORS]) (TX_STAT_BASE) )
-#define ucBuffers           ( *(uint8_t (*)[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ][BUFFER_SIZE_ROUNDED_UP]) (ETH_BUF_BASE) )
 
 /*-----------------------------------------------------------*/
 void GreenPHY_GPIO_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken);
@@ -132,7 +103,7 @@ SemaphoreHandle_t xGreenPHY_DMASemaphore;
 
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+BaseType_t xQCA7000_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
 
@@ -152,43 +123,23 @@ BaseType_t xReturn = pdPASS;
 		xGreenPHY_DMASemaphore = xSemaphoreCreateBinary();
 
 		/* Interrupt pin setup */
-		Chip_GPIO_SetPinDIRInput(LPC_GPIO, GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN);
-		Chip_GPIOINT_SetIntFalling(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
-		Chip_GPIOINT_SetIntRising(LPC_GPIOINT, GREEN_PHY_INTERRUPT_PORT, (1 << GREEN_PHY_INTERRUPT_PIN));
+		Chip_GPIO_SetPinDIRInput(LPC_GPIO, GREENPHY_INT_PORT, GREENPHY_INT_PIN);
+		Chip_GPIOINT_SetIntFalling(LPC_GPIOINT, GREENPHY_INT_PORT, (1 << GREENPHY_INT_PIN));
+		Chip_GPIOINT_SetIntRising(LPC_GPIOINT, GREENPHY_INT_PORT, (1 << GREENPHY_INT_PIN));
 
 		/* QCA7000 reset pin setup */
-		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREEN_PHY_RESET_PORT, GREEN_PHY_RESET_PIN);
+		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 
 		xTaskCreate( qcaspi_spi_thread, "GreenPhyIntHandler", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
 
-		registerInterruptHandlerGPIO(GREEN_PHY_INTERRUPT_PORT, GREEN_PHY_INTERRUPT_PIN, GreenPHY_GPIO_IRQHandler);
+		registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
 	}
 
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
 
-/* Next provide the vNetworkInterfaceAllocateRAMToBuffers() function, which
-simply fills in the pucEthernetBuffer member of each descriptor. */
-void vNetworkInterfaceAllocateRAMToBuffers(
-    NetworkBufferDescriptor_t pxNetworkBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ] )
-{
-BaseType_t x;
-
-    for( x = 0; x < ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS; x++ )
-    {
-        /* pucEthernetBuffer is set to point ipBUFFER_PADDING bytes in from the
-        beginning of the allocated buffer. */
-        pxNetworkBuffers[ x ].pucEthernetBuffer = &( ucBuffers[x][ ipBUFFER_PADDING ] );
-
-        /* The following line is also required, but will not be required in
-        future versions. */
-        *( ( uint32_t * ) &ucBuffers[x][ 0 ] ) = ( uint32_t ) &( pxNetworkBuffers[ x ] );
-    }
-}
-/*-----------------------------------------------------------*/
-
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
+BaseType_t xQCA7000_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
 {
 BaseType_t xReturn = pdFAIL;
 
@@ -199,6 +150,37 @@ BaseType_t xReturn = pdFAIL;
 }
 /*-----------------------------------------------------------*/
 
+static BaseType_t xQCA7000_GetPhyLinkStatus( NetworkInterface_t *pxInterface )
+{
+BaseType_t xReturn;
+
+	// TODO: implement xQCA7000_GetPhyLinkStatus
+	xReturn = pdPASS;
+
+	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+{
+static char pcName[ 8 ];
+/* This function pxSTMF40_FillInterfaceDescriptor() adds a network-interface.
+Make sure that the object pointed to by 'pxInterface'
+is declared static or global, and that it will remain to exist. */
+
+	snprintf( pcName, sizeof( pcName ), "eth%ld", xEMACIndex );
+
+	memset( pxInterface, '\0', sizeof( *pxInterface ) );
+	pxInterface->pcName				= pcName;					/* Just for logging, debugging. */
+	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pfInitialise		= xQCA7000_NetworkInterfaceInitialise;
+	pxInterface->pfOutput			= xQCA7000_NetworkInterfaceOutput;
+	pxInterface->pfGetPhyLinkStatus = xQCA7000_GetPhyLinkStatus;
+
+	return pxInterface;
+}
+
+/*-----------------------------------------------------------*/
 void GreenPHY_GPIO_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 {
 	/* wake up the handler task */

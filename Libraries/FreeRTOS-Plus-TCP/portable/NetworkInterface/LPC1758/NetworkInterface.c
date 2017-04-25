@@ -70,12 +70,15 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_IP_Private.h"
+#include "FreeRTOS_Routing.h"
 #include "NetworkBufferManagement.h"
 #include "NetworkInterface.h"
 
 /* LPCOpen includes. */
 #include "chip.h"
 #include "lpc_phy.h"
+
+#include "../common/BufferAllocation.h"
 
 /* The size of the stack allocated to the task that handles Rx packets. */
 #define nwRX_TASK_STACK_SIZE	140
@@ -102,6 +105,17 @@
 #ifndef configNUM_TX_DESCRIPTORS
 	#define configNUM_TX_DESCRIPTORS 4
 #endif
+
+/* RX and TX descriptor and status definitions. */
+#define RX_DESC_BASE        ( NETWORK_BUFFER_END )
+#define RX_STAT_BASE        (RX_DESC_BASE + ( configNUM_RX_DESCRIPTORS * sizeof(ENET_RXDESC_T) ) )
+#define TX_DESC_BASE        (RX_STAT_BASE + ( configNUM_RX_DESCRIPTORS * sizeof(ENET_RXSTAT_T) ) )
+#define TX_STAT_BASE        (TX_DESC_BASE + ( configNUM_TX_DESCRIPTORS * sizeof(ENET_TXDESC_T) ) )
+
+#define xDMARxDescriptors   ( *(ENET_RXDESC_T (*)[configNUM_RX_DESCRIPTORS]) (RX_DESC_BASE) )
+#define xDMARxStatus        ( *(ENET_RXSTAT_T (*)[configNUM_RX_DESCRIPTORS]) (RX_STAT_BASE) )
+#define xDMATxDescriptors   ( *(ENET_TXDESC_T (*)[configNUM_TX_DESCRIPTORS]) (TX_DESC_BASE) )
+#define xDMATxStatus        ( *(ENET_TXSTAT_T (*)[configNUM_TX_DESCRIPTORS]) (TX_STAT_BASE) )
 
 #ifndef NETWORK_IRQHandler
 	#error NETWORK_IRQHandler must be defined to the name of the function that is installed in the interrupt vector table to handle Ethernet interrupts.
@@ -132,31 +146,6 @@
 /** @brief Transmit group interrupts
  */
 #define TXINTGROUP (ENET_INT_TXUNDERRUN | ENET_INT_TXERROR | ENET_INT_TXDONE)
-
-#define BUFFER_SIZE ( ipTOTAL_ETHERNET_FRAME_SIZE + ipBUFFER_PADDING )
-#define BUFFER_SIZE_ROUNDED_UP ( ( BUFFER_SIZE + 7 ) & ~0x07UL )
-
-/* EMAC variables located in AHB SRAM bank 1 and 2 */
-#define AHB_SRAM_BANK1_BASE  0x2007C000UL
-
-#define RX_DESC_BASE        (AHB_SRAM_BANK1_BASE)
-#define RX_STAT_BASE        (RX_DESC_BASE + configNUM_RX_DESCRIPTORS*(2*4))     /* 2 * uint32_t, see RX_DESC_TypeDef */
-#define TX_DESC_BASE        (RX_STAT_BASE + configNUM_RX_DESCRIPTORS*(2*4))     /* 2 * uint32_t, see RX_STAT_TypeDef */
-#define TX_STAT_BASE        (TX_DESC_BASE + configNUM_TX_DESCRIPTORS*(2*4))     /* 2 * uint32_t, see TX_DESC_TypeDef */
-#define ETH_BUF_BASE		(TX_STAT_BASE + configNUM_TX_DESCRIPTORS*(1*4))     /* 1 * uint32_t, see TX_STAT_TypeDef */
-
-/* RX and TX descriptor and status definitions. */
-//#define RX_DESC(i)          (*(ENET_RXDESC_T *)(RX_DESC_BASE   + 8*i))
-//#define RX_STAT(i)          (*(ENET_RXSTAT_T *)(RX_STAT_BASE   + 8*i))
-//#define TX_DESC(i)          (*(ENET_TXDESC_T *)(TX_DESC_BASE   + 8*i))
-//#define TX_STAT(i)          (*(ENET_TXSTAT_T *)(TX_STAT_BASE   + 4*i))
-//#define ETH_BUF(i)          ( (uint8_t (*)[BUFFER_SIZE_ROUNDED_UP]) (ETH_BUF_BASE + BUFFER_SIZE_ROUNDED_UP*i))
-#define xDMARxDescriptors    ( *(ENET_RXDESC_T (*)[configNUM_RX_DESCRIPTORS]) (RX_DESC_BASE) )
-#define xDMARxStatus          ( *(ENET_RXSTAT_T (*)[configNUM_RX_DESCRIPTORS]) (RX_STAT_BASE) )
-#define xDMATxDescriptors    ( *(ENET_TXDESC_T (*)[configNUM_TX_DESCRIPTORS]) (TX_DESC_BASE) )
-#define xDMATxStatus          ( *(ENET_TXSTAT_T (*)[configNUM_TX_DESCRIPTORS]) (TX_STAT_BASE) )
-#define ucBuffers            ( *(uint8_t (*)[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ][BUFFER_SIZE_ROUNDED_UP]) (ETH_BUF_BASE) )
-//static uint8_t ucBuffers[ ipconfigNUM_NETWORK_BUFFERS ][ BUFFER_SIZE_ROUNDED_UP ];
 
 static UBaseType_t ulTxDMACleanupIndex = 0;
 /*-----------------------------------------------------------*/
@@ -189,7 +178,7 @@ static BaseType_t prvSetLinkSpeed( void );
 static uint32_t ulPHYLinkStatus = 0;
 
 /* Must be defined externally - the demo applications define this in main.c. */
-extern uint8_t ucMACAddress[ 6 ];
+extern uint8_t ucEth0MACAddress[ 6 ];
 
 /* The handle of the task that processes Rx packets.  The handle is required so
 the task can be notified when new packets arrive. */
@@ -211,7 +200,7 @@ static void prvDelay( uint32_t ulMilliSeconds )
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceInitialise( void )
+BaseType_t xLPC1758_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
 
@@ -245,7 +234,7 @@ BaseType_t xReturn = pdPASS;
 #endif
 
 	/* Save MAC address. */
-	Chip_ENET_SetADDR( LPC_ETHERNET, ucMACAddress );
+	Chip_ENET_SetADDR( LPC_ETHERNET, ucEth0MACAddress );
 
 	/* Guard against the task being created more than once and the
 	descriptors being initialised more than once. */
@@ -281,26 +270,6 @@ BaseType_t xReturn = pdPASS;
 	NVIC_EnableIRQ( ETHERNET_IRQn );
 
 	return xReturn;
-}
-/*-----------------------------------------------------------*/
-
-/* Next provide the vNetworkInterfaceAllocateRAMToBuffers() function, which
-simply fills in the pucEthernetBuffer member of each descriptor. */
-void vNetworkInterfaceAllocateRAMToBuffers(
-    NetworkBufferDescriptor_t pxNetworkBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ] )
-{
-BaseType_t x;
-
-    for( x = 0; x < ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS; x++ )
-    {
-        /* pucEthernetBuffer is set to point ipBUFFER_PADDING bytes in from the
-        beginning of the allocated buffer. */
-        pxNetworkBuffers[ x ].pucEthernetBuffer = &( ucBuffers[x][ ipBUFFER_PADDING ] );
-
-        /* The following line is also required, but will not be required in
-        future versions. */
-        *( ( uint32_t * ) &ucBuffers[x][ 0 ] ) = ( uint32_t ) &( pxNetworkBuffers[ x ] );
-    }
 }
 /*-----------------------------------------------------------*/
 
@@ -349,7 +318,7 @@ NetworkBufferDescriptor_t *pxBuffer;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
+BaseType_t xLPC1758_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
 {
 BaseType_t xReturn = pdFAIL, x;
 const BaseType_t xMaxAttempts = 15;
@@ -357,32 +326,35 @@ const TickType_t xTimeBetweenTxAttemtps = pdMS_TO_TICKS( 5 );
 UBaseType_t ulTxProduceIndex;
 ENET_TXDESC_T *pxDMATxDescriptor;
 
-	/* Attempt to obtain access to a Tx descriptor. */
-	for( x = 0; x < xMaxAttempts; x++ )
+	if( pxDescriptor != NULL )
 	{
-		if( !Chip_ENET_IsTxFull( LPC_ETHERNET ) )
+		/* Attempt to obtain access to a Tx descriptor. */
+		for( x = 0; x < xMaxAttempts; x++ )
 		{
-			ulTxProduceIndex = Chip_ENET_GetTXProduceIndex( LPC_ETHERNET );
-			pxDMATxDescriptor = &xDMATxDescriptors[ulTxProduceIndex];
+			if( !Chip_ENET_IsTxFull( LPC_ETHERNET ) )
+			{
+				ulTxProduceIndex = Chip_ENET_GetTXProduceIndex( LPC_ETHERNET );
+				pxDMATxDescriptor = &xDMATxDescriptors[ulTxProduceIndex];
 
-			pxDMATxDescriptor->Packet = ( uint32_t ) pxDescriptor->pucEthernetBuffer;
-			pxDMATxDescriptor->Control = ( uint32_t ) ENET_TCTRL_SIZE( pxDescriptor->xDataLength ) | ENET_TCTRL_INT | ENET_TCTRL_LAST;
+				pxDMATxDescriptor->Packet = ( uint32_t ) pxDescriptor->pucEthernetBuffer;
+				pxDMATxDescriptor->Control = ( uint32_t ) ENET_TCTRL_SIZE( pxDescriptor->xDataLength ) | ENET_TCTRL_INT | ENET_TCTRL_LAST;
 
-			iptraceNETWORK_INTERFACE_TRANSMIT();
+				iptraceNETWORK_INTERFACE_TRANSMIT();
 
-			/* Move onto the next descriptor, wrapping if necessary. */
-			Chip_ENET_IncTXProduceIndex(LPC_ETHERNET);
+				/* Move onto the next descriptor, wrapping if necessary. */
+				Chip_ENET_IncTXProduceIndex(LPC_ETHERNET);
 
-			/* The Tx has been initiated. */
-			xReturn = pdPASS;
-			break;
-		}
-		else
-		{
-			/* The next Tx descriptor is still in use - wait a while for it to
-			become free. */
-			iptraceWAITING_FOR_TX_DMA_DESCRIPTOR();
-			vTaskDelay( xTimeBetweenTxAttemtps );
+				/* The Tx has been initiated. */
+				xReturn = pdPASS;
+				break;
+			}
+			else
+			{
+				/* The next Tx descriptor is still in use - wait a while for it to
+				become free. */
+				iptraceWAITING_FOR_TX_DMA_DESCRIPTOR();
+				vTaskDelay( xTimeBetweenTxAttemtps );
+			}
 		}
 	}
 
@@ -502,9 +474,19 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 					}
 				}
 
-
 				/* Release the DMA descriptor. */
 				Chip_ENET_IncRXConsumeIndex(LPC_ETHERNET);
+			}
+
+			UBaseType_t ulTxConsumeIndex = Chip_ENET_GetTXConsumeIndex( LPC_ETHERNET );
+			while( ulTxDMACleanupIndex != ulTxConsumeIndex ) {
+				vReleaseNetworkBufferAndDescriptor( *( NetworkBufferDescriptor_t ** )
+						( xDMATxDescriptors[ulTxDMACleanupIndex].Packet - ipBUFFER_PADDING ) );
+				xDMATxDescriptors[ulTxDMACleanupIndex].Packet = 0;
+
+				++ulTxDMACleanupIndex;
+				if( ulTxDMACleanupIndex >= configNUM_TX_DESCRIPTORS )
+					ulTxDMACleanupIndex = 0;
 			}
 
 			if( ( ulPHYLinkStatus & PHY_LINK_CONNECTED ) == 0 )
@@ -553,38 +535,18 @@ uint32_t ulInterrupts;
 	/* Get pending interrupts. */
 	ulInterrupts = Chip_ENET_GetIntStatus(LPC_ETHERNET);
 
-	/* RX group interrupt(s). */
-	if( ( ulInterrupts & RXINTGROUP ) != 0x00 )
+	/* RX or TX done interrupt. */
+	if( ( ulInterrupts & ( ENET_INT_RXDONE | ENET_INT_TXDONE ) ) != 0x00 )
 	{
-		if( ( ulInterrupts & ENET_INT_RXDONE ) != 0x00 )
-		{
-			/* A packet may be waiting to be received. */
-			xHigherPriorityTaskWoken = pdFALSE;
-			vTaskNotifyGiveFromISR( xRxHanderTask, &xHigherPriorityTaskWoken );
-		}
-		// ML: TODO ENET_INT_RXOVERRUN and ENET_INT_RXERROR
+		/* A packet may be waiting to be received. */
+		xHigherPriorityTaskWoken = pdFALSE;
+		vTaskNotifyGiveFromISR( xRxHanderTask, &xHigherPriorityTaskWoken );
 	}
 
-	/* TX group interrupt(s). */
-	if( ( ulInterrupts & TXINTGROUP ) != 0x00 )
-	{
-		if( ( ulInterrupts & ENET_INT_TXDONE ) != 0x00 )
-		{
-			UBaseType_t ulTxConsumeIndex = Chip_ENET_GetTXConsumeIndex( LPC_ETHERNET );
-			while( ulTxDMACleanupIndex != ulTxConsumeIndex ) {
-				vNetworkBufferReleaseFromISR( *( NetworkBufferDescriptor_t ** )
-						( xDMATxDescriptors[ulTxDMACleanupIndex].Packet - ipBUFFER_PADDING ) );
-				xDMATxDescriptors[ulTxDMACleanupIndex].Packet = 0;
+	// ML: TODO ENET_INT_RXOVERRUN and ENET_INT_RXERROR
+	// ML: TODO ENET_INT_TXUNDERRUN and ENET_INT_TXERROR
 
-				++ulTxDMACleanupIndex;
-				if( ulTxDMACleanupIndex >= configNUM_RX_DESCRIPTORS )
-					ulTxDMACleanupIndex = 0;
-			}
-		}
-		// ML: TODO ENET_INT_TXUNDERRUN and ENET_INT_TXERROR
-	}
-
-	/* Clear pending interrupts */
+	/* Clear pending interrupts. */
 	Chip_ENET_ClearIntStatus(LPC_ETHERNET, ulInterrupts);
 
 	/* Context switch needed? */
@@ -655,4 +617,41 @@ const TickType_t xAutoNegotiateDelay = pdMS_TO_TICKS( 5000UL );
 	vTaskPrioritySet( NULL, ipconfigIP_TASK_PRIORITY );
 
 	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+static BaseType_t xLPC1758_GetPhyLinkStatus( NetworkInterface_t *pxInterface )
+{
+BaseType_t xReturn;
+
+	if( ( ulPHYLinkStatus & PHY_LINK_CONNECTED ) != 0 )
+	{
+		xReturn = pdPASS;
+	}
+	else
+	{
+		xReturn = pdFAIL;
+	}
+
+	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+{
+static char pcName[ 8 ];
+/* This function pxSTMF40_FillInterfaceDescriptor() adds a network-interface.
+Make sure that the object pointed to by 'pxInterface'
+is declared static or global, and that it will remain to exist. */
+
+	snprintf( pcName, sizeof( pcName ), "eth%ld", xEMACIndex );
+
+	memset( pxInterface, '\0', sizeof( *pxInterface ) );
+	pxInterface->pcName				= pcName;					/* Just for logging, debugging. */
+	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pfInitialise		= xLPC1758_NetworkInterfaceInitialise;
+	pxInterface->pfOutput			= xLPC1758_NetworkInterfaceOutput;
+	pxInterface->pfGetPhyLinkStatus = xLPC1758_GetPhyLinkStatus;
+
+	return pxInterface;
 }

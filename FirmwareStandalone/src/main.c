@@ -9,6 +9,7 @@
 /* FreeRTOS +TCP includes. */
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
+#include "FreeRTOS_Routing.h"
 #include "FreeRTOS_TCP_server.h"
 
 /* GreenPHY SDK includes. */
@@ -19,17 +20,40 @@
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
 1 but a DHCP server could not be contacted.  See the online documentation for
 more information. */
-static const uint8_t ucIPAddress[ 4 ] = { configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, configIP_ADDR3 };
-static const uint8_t ucNetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 };
-static const uint8_t ucGatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
-static const uint8_t ucDNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
+static const uint8_t ucEth0IPAddress[ 4 ] = { configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, configIP_ADDR3 };
+static const uint8_t ucEth0NetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 };
+static const uint8_t ucEth0GatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
+static const uint8_t ucEth0DNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
 
 /* Default MAC address configuration.  The demo creates a virtual network
 connection that uses this MAC address by accessing the raw Ethernet data
 to and from a real network connection on the host PC.  See the
 configNETWORK_INTERFACE_TO_USE definition for information on how to configure
 the real network connection to use. */
-const uint8_t ucMACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 };
+const uint8_t ucEth0MACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 };
+
+static NetworkInterface_t xEth0Interface = { 0 };
+static NetworkEndPoint_t  xEth0EndPoint =  { 0 };
+
+/* The default IP and MAC address used by the demo.  The address configuration
+defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
+1 but a DHCP server could not be contacted.  See the online documentation for
+more information. */
+static const uint8_t ucEth1IPAddress[ 4 ] = { configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, 201 };
+static const uint8_t ucEth1NetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 };
+static const uint8_t ucEth1GatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
+static const uint8_t ucEth1DNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
+
+/* Default MAC address configuration.  The demo creates a virtual network
+connection that uses this MAC address by accessing the raw Ethernet data
+to and from a real network connection on the host PC.  See the
+configNETWORK_INTERFACE_TO_USE definition for information on how to configure
+the real network connection to use. */
+const uint8_t ucEth1MACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, 0x9b };
+
+static NetworkInterface_t xEth1Interface = { 0 };
+static NetworkEndPoint_t  xEth1EndPoint =  { 0 };
+
 
 /*-----------------------------------------------------------*/
 
@@ -78,7 +102,7 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 static void prvServerWorkTask( void *pvParameters );
 
 /*-----------------------------------------------------------*/
-void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEndPoint_t *pxEndPoint  ) {
 	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
 	static BaseType_t xTasksAlreadyCreated = pdFALSE;
 	int8_t cBuffer[ 16 ];
@@ -106,7 +130,8 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 
 	        /* The network is up and configured.  Print out the configuration,
 	        which may have been obtained from a DHCP server. */
-	        FreeRTOS_GetAddressConfiguration( &ulIPAddress,
+	        FreeRTOS_GetAddressConfiguration( pxEndPoint,
+	                                          &ulIPAddress,
 	                                          &ulNetMask,
 	                                          &ulGatewayAddress,
 	                                          &ulDNSServerAddress );
@@ -135,6 +160,14 @@ const char *pcApplicationHostnameHook( void )
 	return "GreenPHY evalboard II";
 }
 /*-----------------------------------------------------------*/
+
+/*_HT_ introduced this memory-check temporarily for debugging. */
+BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
+{
+	return 0x03;
+}
+/*-----------------------------------------------------------*/
+
 
 void vConfigureTimerForRunTimeStats(void) {
 	/* This function configures a timer that is used as the time base when
@@ -227,7 +260,25 @@ int main(void) {
 
 	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
 
-	FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
+	extern NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface );
+	pxLPC1758_FillInterfaceDescriptor(0, &xEth0Interface);
+	FreeRTOS_AddNetworkInterface(&xEth0Interface);
+
+	FreeRTOS_FillEndPoint(&xEth0EndPoint, ucEth0IPAddress, ucEth0NetMask, ucEth0GatewayAddress, ucEth0DNSServerAddress, ucEth0MACAddress);
+	xEth0EndPoint.bits.bIsDefault = pdTRUE_UNSIGNED;
+	xEth0EndPoint.bits.bWantDHCP = pdTRUE_UNSIGNED;
+	FreeRTOS_AddEndPoint(&xEth0Interface, &xEth0EndPoint);
+
+	extern NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface );
+	pxQCA7000_FillInterfaceDescriptor(0, &xEth1Interface);
+	FreeRTOS_AddNetworkInterface(&xEth1Interface);
+
+	FreeRTOS_FillEndPoint(&xEth1EndPoint, ucEth1IPAddress, ucEth1NetMask, ucEth1GatewayAddress, ucEth1DNSServerAddress, ucEth1MACAddress);
+	xEth1EndPoint.bits.bIsDefault = pdFALSE_UNSIGNED;
+	xEth1EndPoint.bits.bWantDHCP = pdTRUE_UNSIGNED;
+	FreeRTOS_AddEndPoint(&xEth1Interface, &xEth1EndPoint);
+
+	FreeRTOS_IPStart();
 
 	vTaskStartScheduler();
 

@@ -130,7 +130,7 @@ task.  This setting is less important when the FreeRTOS Win32 simulator is used
 as the Win32 simulator only stores a fixed amount of information on the task
 stack.  FreeRTOS includes optional stack overflow detection, see:
 http://www.freertos.org/Stacks-and-stack-overflow-checking.html */
-#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( 200 )
+#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( 400 )
 
 /* ipconfigRAND32() is called by the IP stack to generate random numbers for
 things such as a DHCP transaction number or initial sequence number.  Random
@@ -351,5 +351,9 @@ FTP and HTTP servers both execute in the standard server task. */
 #define ipconfigTCP_FILE_BUFFER_SIZE 512
 
 #define NETWORK_IRQHandler ETH_IRQHandler
+#define configNUM_RX_DESCRIPTORS 4
+#define configNUM_TX_DESCRIPTORS 4
+
+#define ipconfigENDPOINT_DNS_ADDRESS_COUNT 1
 
 #endif /* FREERTOS_IP_CONFIG_H */
