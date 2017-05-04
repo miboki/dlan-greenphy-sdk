@@ -35,3 +35,6 @@ Release/
 
 #don't ignore debug.c
 !HardwareSupport/src/debug/
+
+#FreeRTOS Task aware debugger
+FreeRTOS_TAD_logs/
