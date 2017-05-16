@@ -122,7 +122,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
-	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
+	    		// xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
 
 	            xTasksAlreadyCreated = pdTRUE;
