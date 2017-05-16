@@ -48,6 +48,7 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_IP_Private.h"
 #include "NetworkBufferManagement.h"
+#include "FreeRTOS_Routing.h"
 
 /*====================================================================*
  *   custom header files;
@@ -57,6 +58,10 @@
 #include "qca_spi.h"
 #include "qca_framing.h"
 #include "qca_7k.h"
+
+#if configREAD_MAC_FROM_GREENPHY
+	#include "mme_handler.h"
+#endif
 
 /*====================================================================*
  *
@@ -196,7 +201,8 @@ qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
 						len);
 
 	Chip_SSP_DMA_Enable(qca->SSPx);
-	/* wait for DMA to complete */
+	/* wait for DMA to complete, take one semaphore for RX and TX each */
+	xSemaphoreTake( xGreenPHY_DMASemaphore, portMAX_DELAY );
 	xSemaphoreTake( xGreenPHY_DMASemaphore, portMAX_DELAY );
 	Chip_SSP_DMA_Disable(qca->SSPx);
 
@@ -222,12 +228,12 @@ qcaspi_tx_frame(struct qcaspi *qca, NetworkBufferDescriptor_t * txBuffer)
 {
 	uint16_t writtenBytes = 0;
 
-	uint8_t* pData = txBuffer->pucEthernetBuffer;
+	uint8_t* pucData = txBuffer->pucEthernetBuffer;
 	uint16_t len = txBuffer->xDataLength;
 	uint16_t pad_len;
 	if (len < QCAFRM_ETHMINLEN) {
 		pad_len = QCAFRM_ETHMINLEN - len;
-		memset(pData+len, 0, pad_len);
+		memset(pucData+len, 0, pad_len);
 		len += pad_len;
 	}
 
@@ -238,7 +244,7 @@ qcaspi_tx_frame(struct qcaspi *qca, NetworkBufferDescriptor_t * txBuffer)
 	status = Board_SSP_AssertSSEL(qca->SSPx);
 
 	/* send ethernet packet via DMA to SPI */
-	writtenBytes = qcaspi_write_burst(qca, pData, len);
+	writtenBytes = qcaspi_write_burst(qca, pucData, len);
 
 	if (status) Board_SSP_DeassertSSEL(qca->SSPx);
 
@@ -367,14 +373,25 @@ qcaspi_receive(struct qcaspi *qca)
 				/* Data was received and stored.  Send a message to the IP
 				task to let it know. */
 				qca->rx_desc->xDataLength = retcode;
-				xRxEvent.pvData = ( void * ) qca->rx_desc;
-				if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+
+			#if configREAD_MAC_FROM_GREENPHY
+				if( filter_rx_mme( qca->rx_desc ) )
 				{
-					/* Could not send the descriptor into the TCP/IP
-					stack, it must be released. */
-					vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-					qca->stats.rx_dropped++;
-					iptraceETHERNET_RX_EVENT_LOST();
+					/* Data was a MME which is handled elsewhere */
+				}
+				else
+			#endif
+				{
+					/* Pass data up to the IP Task */
+					xRxEvent.pvData = ( void * ) qca->rx_desc;
+					if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+					{
+						/* Could not send the descriptor into the TCP/IP
+						stack, it must be released. */
+						vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+						qca->stats.rx_dropped++;
+						iptraceETHERNET_RX_EVENT_LOST();
+					}
 				}
 
 				iptraceNETWORK_INTERFACE_RECEIVE();

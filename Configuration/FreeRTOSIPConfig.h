@@ -354,6 +354,8 @@ FTP and HTTP servers both execute in the standard server task. */
 #define configNUM_RX_DESCRIPTORS 4
 #define configNUM_TX_DESCRIPTORS 4
 
+#define configREAD_MAC_FROM_GREENPHY 1
+
 #define ipconfigENDPOINT_DNS_ADDRESS_COUNT 1
 
 #endif /* FREERTOS_IP_CONFIG_H */
