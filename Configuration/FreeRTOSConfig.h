@@ -214,5 +214,10 @@ extern void vConfigureTimerForRunTimeStats( void );
 
 /* A header file that defines trace macro can be included here. */
 
+/* MCUXpresso FreeRTOS Task Aware Debugger header.
+See "MCUXpresso_IDE_FreeRTOS_Debug_Guide.pdf". */
+#define configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H 1
+#define configFRTOS_MEMORY_SCHEME 4
+#define configRECORD_STACK_HIGH_ADDRESS 1
 
 #endif /* FREERTOS_CONFIG_H */
