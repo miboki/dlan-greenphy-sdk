@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -305,6 +305,10 @@ from the FreeRTOSIPConfig.h configuration header file. */
 
 #ifndef ipconfigARP_CACHE_ENTRIES
 	#define ipconfigARP_CACHE_ENTRIES		10
+#endif
+
+#ifndef ipconfigND_CACHE_ENTRIES
+	#define ipconfigND_CACHE_ENTRIES		24
 #endif
 
 #ifndef ipconfigMAX_ARP_RETRANSMISSIONS

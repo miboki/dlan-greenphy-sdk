@@ -221,8 +221,10 @@ typedef struct gmac_options {
 	uint8_t uc_mac_addr[GMAC_ADDR_LENGTH];
 } gmac_options_t;
 
+/** TX callback */
+typedef void (*gmac_dev_tx_cb_t) (uint32_t ul_status, uint8_t *puc_buffer);
 /** RX callback */
-typedef void (*gmac_dev_tx_cb_t) (uint32_t ul_status);
+typedef void (*gmac_dev_rx_cb_t) (uint32_t ul_status);
 /** Wakeup callback */
 typedef void (*gmac_dev_wakeup_cb_t) (void);
 
@@ -248,7 +250,7 @@ typedef struct gmac_device {
 	/** Pointer to Tx TDs (must be 8-byte aligned) */
 	gmac_tx_descriptor_t *p_tx_dscr;
 	/** Optional callback to be invoked once a frame has been received */
-	gmac_dev_tx_cb_t func_rx_cb;
+	gmac_dev_rx_cb_t func_rx_cb;
 #if( GMAC_USES_WAKEUP_CALLBACK )
 	/** Optional callback to be invoked once several TDs have been released */
 	gmac_dev_wakeup_cb_t func_wakeup_cb;
@@ -1081,7 +1083,7 @@ uint32_t gmac_dev_write(gmac_device_t* p_gmac_dev, void *p_buffer,
 		uint32_t ul_size, gmac_dev_tx_cb_t func_tx_cb);
 uint32_t gmac_dev_get_tx_load(gmac_device_t* p_gmac_dev);
 void gmac_dev_set_rx_callback(gmac_device_t* p_gmac_dev,
-		gmac_dev_tx_cb_t func_rx_cb);
+		gmac_dev_rx_cb_t func_rx_cb);
 uint8_t gmac_dev_set_tx_wakeup_callback(gmac_device_t* p_gmac_dev,
 		gmac_dev_wakeup_cb_t func_wakeup, uint8_t uc_threshold);
 void gmac_dev_reset(gmac_device_t* p_gmac_dev);

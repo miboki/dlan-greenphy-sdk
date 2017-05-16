@@ -45,9 +45,8 @@ Changes between 150825 and 160111 releases
 	+ Minor updates to the Zynq network driver.
 	+ Update the Zynq project to use version 2015.4 of the Xilinx SDK.
 	+ Introduce FreeRTOS_SignalSocket(), which can be used to interrupt a task
-	  that is blocked on a socket.
-	+ Make use of FreeRTOS_SignalSocket() to improve performance of FTP and HTTP
-	  servers.
+	  that is blocked while reading from a socket ( FreeRTOS_recv[from] ).
+	+ Make use of FreeRTOS_SignalSocket() in the FTP and HTTP servers.
 	+ Major updates to the NTP client, although this is not included in any of
 	  the pre-configured demo applications yet.
 	+ Added support for DHCP zero pad option.

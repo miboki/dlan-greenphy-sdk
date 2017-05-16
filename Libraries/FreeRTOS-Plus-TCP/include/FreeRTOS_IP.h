@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -181,6 +181,7 @@ struct xMAC_ADDRESS
 	uint8_t ucBytes[ ipMAC_ADDRESS_LENGTH_BYTES ];
 }
 #include "pack_struct_end.h"
+
 typedef struct xMAC_ADDRESS MACAddress_t;
 
 typedef enum eNETWORK_EVENTS
@@ -248,9 +249,8 @@ typedef struct xIP_TIMER
 	static portINLINE uint32_t FreeRTOS_round_down (uint32_t a, uint32_t d);
 	static portINLINE BaseType_t  FreeRTOS_min_BaseType  (BaseType_t  a, BaseType_t  b);
 	static portINLINE BaseType_t  FreeRTOS_max_BaseType  (BaseType_t  a, BaseType_t  b);
-	static portINLINE UBaseType_t FreeRTOS_max_UBaseTyp (UBaseType_t a, UBaseType_t b);
-	static portINLINE BaseType_t  	FreeRTOS_min_BaseType  (BaseType_t  a, BaseType_t  b);
-	static portINLINE UBaseType_t  	FreeRTOS_min_UBaseType (UBaseType_t  a, UBaseType_t  b);
+	static portINLINE UBaseType_t FreeRTOS_max_UBaseType (UBaseType_t a, UBaseType_t b);
+	static portINLINE UBaseType_t FreeRTOS_min_UBaseType (UBaseType_t a, UBaseType_t  b);
 
 
 	static portINLINE int32_t  FreeRTOS_max_int32  (int32_t  a, int32_t  b) { return a >= b ? a : b; }
@@ -261,7 +261,7 @@ typedef struct xIP_TIMER
 	static portINLINE uint32_t FreeRTOS_round_down (uint32_t a, uint32_t d) { return d * ( a / d ); }
 
 	static portINLINE BaseType_t  FreeRTOS_max_BaseType  (BaseType_t  a, BaseType_t  b) { return a >= b ? a : b; }
-	static portINLINE UBaseType_t FreeRTOS_max_UBaseTyp (UBaseType_t a, UBaseType_t b) { return a >= b ? a : b; }
+	static portINLINE UBaseType_t FreeRTOS_max_UBaseType (UBaseType_t a, UBaseType_t b) { return a >= b ? a : b; }
 	static portINLINE BaseType_t  	FreeRTOS_min_BaseType  (BaseType_t  a, BaseType_t  b) { return a <= b ? a : b; }
 	static portINLINE UBaseType_t  	FreeRTOS_min_UBaseType (UBaseType_t  a, UBaseType_t  b) { return a <= b ? a : b; }
 
@@ -277,7 +277,10 @@ typedef struct xIP_TIMER
 	#define FreeRTOS_round_up(a,d)   ( ( ( uint32_t ) ( d ) ) * ( ( ( ( uint32_t ) ( a ) ) + ( ( uint32_t ) ( d ) ) - 1UL ) / ( ( uint32_t ) ( d ) ) ) )
 	#define FreeRTOS_round_down(a,d) ( ( ( uint32_t ) ( d ) ) * ( ( ( uint32_t ) ( a ) ) / ( ( uint32_t ) ( d ) ) ) )
 
-	#define FreeRTOS_ms_to_tick(ms)  ( ( ms * configTICK_RATE_HZ + 500 ) / 1000 )
+	#define FreeRTOS_max_BaseType(a, b)  ( ( ( BaseType_t  ) ( a ) ) >= ( ( BaseType_t  ) ( b ) ) ? ( ( BaseType_t  ) ( a ) ) : ( ( BaseType_t  ) ( b ) ) )
+	#define FreeRTOS_max_UBaseType(a, b) ( ( ( UBaseType_t ) ( a ) ) >= ( ( UBaseType_t ) ( b ) ) ? ( ( UBaseType_t ) ( a ) ) : ( ( UBaseType_t ) ( b ) ) )
+	#define FreeRTOS_min_BaseType(a, b)  ( ( ( BaseType_t  ) ( a ) ) <= ( ( BaseType_t  ) ( b ) ) ? ( ( BaseType_t  ) ( a ) ) : ( ( BaseType_t  ) ( b ) ) )
+	#define FreeRTOS_min_UBaseType(a, b) ( ( ( UBaseType_t ) ( a ) ) <= ( ( UBaseType_t ) ( b ) ) ? ( ( UBaseType_t ) ( a ) ) : ( ( UBaseType_t ) ( b ) ) )
 
 #endif /* ipconfigHAS_INLINE_FUNCTIONS */
 
@@ -352,6 +355,10 @@ const char *FreeRTOS_GetTCPStateName( UBaseType_t ulState);
  */
 void FreeRTOS_PrintARPCache( void );
 void FreeRTOS_ClearARP( void );
+#if( ipconfigUSE_IPv6 != 0 )
+	void FreeRTOS_ClearND( void );
+#endif
+
 
 #if( ipconfigDHCP_REGISTER_HOSTNAME == 1 )
 

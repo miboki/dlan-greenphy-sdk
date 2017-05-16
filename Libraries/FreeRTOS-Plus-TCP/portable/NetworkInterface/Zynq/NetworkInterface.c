@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -293,7 +293,7 @@ BaseType_t xEMACIndex = ( BaseType_t )pxInterface->pvArgument;
 					pxEndPoint != NULL;
 					pxEndPoint = FreeRTOS_NextEndPoint( pxMyInterface, pxEndPoint ) )
 				{
-					if( pxEndPoint->bits.bIPv6 != NULL )
+					if( pxEndPoint->bits.bIPv6 != pdFALSE_UNSIGNED )
 					{
 						unsigned char ucMACAddress[ 6 ] = { 0x33, 0x33, 0xff, 0, 0, 0 };
 						ucMACAddress[ 3 ] = pxEndPoint->ulIPAddress_IPv6.ucBytes[ 13 ];

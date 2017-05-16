@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -161,13 +161,12 @@ FreeRTOS_setsockopt(). */
 #define FREERTOS_NOT_LAST_IN_FRAGMENTED_PACKET 	( 0x80 )  /* For internal use only, but also part of an 8-bit bitwise value. */
 #define FREERTOS_FRAGMENTED_PACKET				( 0x40 )  /* For internal use only, but also part of an 8-bit bitwise value. */
 
-/* values for flag for FreeRTOS_shutdown() */
+/* Values for flag for FreeRTOS_shutdown(). */
 #define FREERTOS_SHUT_RD				( 0 )		/* Not really at this moment, just for compatibility of the interface */
 #define FREERTOS_SHUT_WR				( 1 )
 #define FREERTOS_SHUT_RDWR				( 2 )
 
-/* values for flag for FreeRTOS_recv() */
-
+/* Values for flag for FreeRTOS_recv(). */
 #define FREERTOS_MSG_OOB				( 2 )		/* process out-of-band data */
 #define FREERTOS_MSG_PEEK				( 4 )		/* peek at incoming message */
 #define FREERTOS_MSG_DONTROUTE			( 8 )		/* send without using routing tables */
@@ -205,10 +204,10 @@ struct freertos_sockaddr
 
 #if( ipconfigUSE_IPv6 != 0 )
 	struct freertos_sockaddr6 {
-		uint8_t sin6_len;			/* length of this structure. */
-		uint8_t sin6_family;		/* Set to FREERTOS_AF_INET6. */
-		uint16_t sin6_port;
-	    uint32_t  sin6_flowinfo;	/* IPv6 flow information. */
+		uint8_t sin_len;			/* length of this structure. */
+		uint8_t sin_family;		/* Set to FREERTOS_AF_INET6. */
+		uint16_t sin_port;
+	    uint32_t  sin_flowinfo;	/* IPv6 flow information. */
 		IPv6_Address_t sin_addrv6;
 	};
 #endif
@@ -263,6 +262,7 @@ int32_t FreeRTOS_sendto( Socket_t xSocket, const void *pvBuffer, size_t xTotalDa
 BaseType_t FreeRTOS_bind( Socket_t xSocket, struct freertos_sockaddr *pxAddress, socklen_t xAddressLength );
 
 /* function to get the local address and IP port */
+/* Note that when 'ipconfigUSE_IPv6 != 0', freertos_sockaddr can be intepreted as a freertos_sockaddr6. */
 size_t FreeRTOS_GetLocalAddress( Socket_t xSocket, struct freertos_sockaddr *pxAddress );
 
 /* Made available when ipconfigETHERNET_DRIVER_FILTERS_PACKETS is set to 1. */
@@ -287,6 +287,8 @@ BaseType_t FreeRTOS_shutdown (Socket_t xSocket, BaseType_t xHow);
 #endif /* ipconfigSUPPORT_SIGNALS */
 
 /* Return the remote address and IP port. */
+
+/* Note that when 'ipconfigUSE_IPv6 != 0', freertos_sockaddr can be intepreted as a freertos_sockaddr6. */
 BaseType_t FreeRTOS_GetRemoteAddress( Socket_t xSocket, struct freertos_sockaddr *pxAddress );
 
 /* returns pdTRUE if TCP socket is connected */

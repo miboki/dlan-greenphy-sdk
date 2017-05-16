@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -283,7 +283,6 @@ FreeRTOS_Socket_t *pxSocket;
 
 		/* Check if the UDP socket-list has been initialised. */
 		configASSERT( listLIST_IS_INITIALISED( &xBoundUDPSocketsList ) );
-
 		#if( ipconfigUSE_TCP == 1 )
 		{
 			/* Check if the TCP socket-list has been initialised. */
@@ -297,9 +296,7 @@ FreeRTOS_Socket_t *pxSocket;
 			{
 				xReturn = pdFAIL;
 			}
-
-			/* Do not allocate space for TCP data if a UDP socket it being
-			created. */
+			/* In case a UDP socket is created, do not allocate space for TCP data. */
 			*pxSocketSize = ( sizeof( *pxSocket ) - sizeof( pxSocket->u ) ) + sizeof( pxSocket->u.xUDP );
 		}
 #if( ipconfigUSE_TCP == 1 )
@@ -318,10 +315,8 @@ FreeRTOS_Socket_t *pxSocket;
 			xReturn = pdFAIL;
 		}
 	}
-
-	/* Remove compiler warnings in case configASSERT() is not defined. */
-	( void ) xDomain;
-
+	/* In case configASSERT() is not used */
+	( void )xDomain;
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
@@ -390,13 +385,12 @@ Socket_t xReturn;
 			{
 				if( xProtocol == FREERTOS_IPPROTO_TCP )
 				{
-					/* StreamSize is expressed in number of bytes.  Round up
-					buffer sizes to nearest multiple of MSS. */
+					/* StreamSize is expressed in number of bytes */
+					/* Round up buffer sizes to nearest multiple of MSS */
 					pxSocket->u.xTCP.usInitMSS    = pxSocket->u.xTCP.usCurMSS = ipconfigTCP_MSS;
 					pxSocket->u.xTCP.uxRxStreamSize = ( size_t ) ipconfigTCP_RX_BUFFER_LENGTH;
 					pxSocket->u.xTCP.uxTxStreamSize = ( size_t ) FreeRTOS_round_up( ipconfigTCP_TX_BUFFER_LENGTH, ipconfigTCP_MSS );
-
-					/* Use half of the buffer size of the TCP windows. */
+					/* Use half of the buffer size of the TCP windows */
 					#if ( ipconfigUSE_TCP_WIN == 1 )
 					{
 						pxSocket->u.xTCP.uxRxWinSize  = FreeRTOS_max_uint32( 1UL, ( uint32_t ) ( pxSocket->u.xTCP.uxRxStreamSize / 2 ) / ipconfigTCP_MSS );
@@ -671,7 +665,7 @@ EventBits_t xEventBits = ( EventBits_t ) 0;
 		return -pdFREERTOS_ERRNO_EINVAL;
 	}
 
-	lPacketCount = ( BaseType_t )listCURRENT_LIST_LENGTH( &( pxSocket->u.xUDP.xWaitingPacketsList ) );
+	lPacketCount = ( BaseType_t ) listCURRENT_LIST_LENGTH( &( pxSocket->u.xUDP.xWaitingPacketsList ) );
 
 	/* The function prototype is designed to maintain the expected Berkeley
 	sockets standard, but this implementation does not use all the parameters. */
@@ -681,7 +675,8 @@ EventBits_t xEventBits = ( EventBits_t ) 0;
 	{
 		if( xTimed == pdFALSE )
 		{
-			/* Only in the first round, check for non-blocking */
+			/* Check to see if the socket is non blocking on the first
+			iteration.  */
 			xRemainingTime = pxSocket->xReceiveBlockTime;
 
 			if( xRemainingTime == ( TickType_t ) 0 )
@@ -701,10 +696,10 @@ EventBits_t xEventBits = ( EventBits_t ) 0;
 				break;
 			}
 
-			/* Don't get here a second time. */
+			/* To ensure this part only executes once. */
 			xTimed = pdTRUE;
 
-			/* Fetch the current time */
+			/* Fetch the current time. */
 			vTaskSetTimeOutState( &xTimeOut );
 		}
 
@@ -801,14 +796,13 @@ EventBits_t xEventBits = ( EventBits_t ) 0;
 		}
 
 	}
-
-	#if( ipconfigSUPPORT_SIGNALS != 0 )
-		else if( ( xEventBits & eSOCKET_INTR ) != 0 )
-		{
-			lReturn = -pdFREERTOS_ERRNO_EINTR;
-			iptraceRECVFROM_INTERRUPTED();
-		}
-	#endif /* ipconfigSUPPORT_SIGNALS */
+#if( ipconfigSUPPORT_SIGNALS != 0 )
+	else if( ( xEventBits & eSOCKET_INTR ) != 0 )
+	{
+		lReturn = -pdFREERTOS_ERRNO_EINTR;
+		iptraceRECVFROM_INTERRUPTED();
+	}
+#endif /* ipconfigSUPPORT_SIGNALS */
 	else
 	{
 		lReturn = -pdFREERTOS_ERRNO_EWOULDBLOCK;
@@ -962,7 +956,6 @@ FreeRTOS_Socket_t *pxSocket;
  * by the IP-task to avoid mutual access to the bound-socket-lists
  * (xBoundUDPSocketsList or xBoundTCPSocketsList).
  */
-/*_RB_ Question - would storing the interface in the socket as soon as the socket knows its IP address prevent having to look it up potentially multiple times later? */
 BaseType_t FreeRTOS_bind( Socket_t xSocket, struct freertos_sockaddr * pxAddress, socklen_t xAddressLength )
 {
 IPStackEvent_t xBindEvent;
@@ -975,10 +968,11 @@ BaseType_t xReturn = 0;
 	{
 		xReturn = -pdFREERTOS_ERRNO_EINVAL;
 	}
+	/* Once a socket is bound to a port, it can not be bound to a different
+	port number */
 	else if( socketSOCKET_IS_BOUND( pxSocket) != pdFALSE )
 	{
-		/* Once a socket is bound to a port, it can not be bound to a different
-		port number.  The socket is already bound. */
+		/* The socket is already bound. */
 		FreeRTOS_debug_printf( ( "vSocketBind: Socket already bound to %d\n", pxSocket->usLocalPort ) );
 		xReturn = -pdFREERTOS_ERRNO_EINVAL;
 	}
@@ -988,11 +982,28 @@ BaseType_t xReturn = 0;
 		The desired port number will be passed in usLocalPort. */
 		xBindEvent.eEventType = eSocketBindEvent;
 		xBindEvent.pvData = ( void * ) xSocket;
+		#if( ipconfigUSE_IPv6 != 0 )
+		{
+			pxSocket->bits.bIsIPv6 = pdFALSE_UNSIGNED;
+		}
+		#endif /* ipconfigUSE_IPv6 */
 
 		if( pxAddress != NULL )
 		{
+			#if( ipconfigUSE_IPv6 != 0 )
+			if( pxAddress->sin_family == FREERTOS_AF_INET6 )
+			{
+			struct freertos_sockaddr6 *pxAddress_IPv6 = ( struct freertos_sockaddr6 * )pxAddress;
+
+				memcpy( pxSocket->xLocalAddress_IPv6.ucBytes, pxAddress_IPv6->sin_addrv6.ucBytes, sizeof( pxSocket->xLocalAddress_IPv6.ucBytes ) );
+				pxSocket->bits.bIsIPv6 = pdTRUE_UNSIGNED;
+			}
+			else
+			#endif
+			{
+				pxSocket->ulLocalAddress = FreeRTOS_ntohl( pxAddress->sin_addr );
+			}
 			pxSocket->usLocalPort = FreeRTOS_ntohs( pxAddress->sin_port );
-			pxSocket->ulLocalAddress = FreeRTOS_ntohl( pxAddress->sin_addr );
 		}
 		else
 		{
@@ -1001,14 +1012,12 @@ BaseType_t xReturn = 0;
 			pxSocket->ulLocalAddress = 0ul;
 		}
 
-		/* portMAX_DELAY is used as the time-out parameter, as binding *must*
-		succeed before the socket can be used. */
+		/* portMAX_DELAY is used as a the time-out parameter, as binding *must*
+		succeed before the socket can be used.  _RB_ The use of an infinite
+		block time needs be changed as it could result in the task hanging. */
 		if( xSendEventStructToIPTask( &xBindEvent, ( TickType_t ) portMAX_DELAY ) == pdFAIL )
 		{
-			/*_RB_ Use of portMAX_DELAY above is undesirable as it does not
-			allow for error recovery.  In any case, if portMAX_DELAY is used,
-			this path cannot be reached. */
-			/* Failed to wake-up the IP-task, no use to wait for it. */
+			/* Failed to wake-up the IP-task, no use to wait for it */
 			FreeRTOS_debug_printf( ( "FreeRTOS_bind: send event failed\n" ) );
 			xReturn = -pdFREERTOS_ERRNO_ECANCELED;
 		}
@@ -1017,7 +1026,6 @@ BaseType_t xReturn = 0;
 			/* The IP-task will set the 'eSOCKET_BOUND' bit when it has done its
 			job. */
 			xEventGroupWaitBits( pxSocket->xEventGroup, eSOCKET_BOUND, pdTRUE /*xClearOnExit*/, pdFALSE /*xWaitAllBits*/, portMAX_DELAY );
-
 			if( socketSOCKET_IS_BOUND( pxSocket ) == pdFALSE )
 			{
 				xReturn = -pdFREERTOS_ERRNO_EINVAL;
@@ -1042,7 +1050,7 @@ List_t *pxSocketList;
 #endif /* ipconfigALLOW_SOCKET_SEND_WITHOUT_BIND */
 
 #if( ipconfigUSE_TCP == 1 )
-	if( pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP )
+	if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_TCP )
 	{
 		pxSocketList = &xBoundTCPSocketsList;
 	}
@@ -1092,11 +1100,11 @@ List_t *pxSocketList;
 
 		/* Check to ensure the port is not already in use.  If the bind is
 		called internally, a port MAY be used by more than one socket. */
-		if( ( ( xInternal == pdFALSE ) || ( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP ) ) &&
+		if( ( ( xInternal == pdFALSE ) || ( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP ) ) &&
 			( pxListFindListItemWithValue( pxSocketList, ( TickType_t ) pxAddress->sin_port ) != NULL ) )
 		{
 			FreeRTOS_debug_printf( ( "vSocketBind: %sP port %d in use\n",
-				pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP ? "TC" : "UD",
+				pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_TCP ? "TC" : "UD",
 				FreeRTOS_ntohs( pxAddress->sin_port ) ) );
 			xReturn = -pdFREERTOS_ERRNO_EADDRINUSE;
 		}
@@ -1109,9 +1117,18 @@ List_t *pxSocketList;
 			/* And also store it in a socket field 'usLocalPort' in host-byte-order,
 			mostly used for logging and debugging purposes */
 			pxSocket->usLocalPort = FreeRTOS_ntohs( pxAddress->sin_port );
+			#if( ipconfigUSE_IPv6 != 0 )
+			if( pxAddress->sin_family == FREERTOS_AF_INET6 )
+			{
+			struct freertos_sockaddr6 * pxAddress_IPv6 = ( struct freertos_sockaddr6 * )pxAddress;
+				pxSocket->ulLocalAddress = 0ul;
+				memcpy( pxSocket->xLocalAddress_IPv6.ucBytes, pxAddress_IPv6->sin_addrv6.ucBytes, sizeof( pxSocket->xLocalAddress_IPv6.ucBytes ) );
+			}
+			else
+			#else
 			if( pxAddress->sin_addr != FREERTOS_INADDR_ANY )
 			{
-				pxSocket->pxEndPoint = FreeRTOS_FindEndPointOnIP( pxAddress->sin_addr );
+				pxSocket->pxEndPoint = FreeRTOS_FindEndPointOnIP( pxAddress->sin_addr, 7 );
 			}
 			if( pxSocket->pxEndPoint != NULL )
 			{
@@ -1121,6 +1138,7 @@ List_t *pxSocketList;
 			{
 				pxSocket->ulLocalAddress = 0ul;
 			}
+			#endif /* ipconfigUSE_IPv6 */
 
 			/* Add the socket to the list of bound ports. */
 			{
@@ -1190,10 +1208,9 @@ xCloseEvent.pvData = ( void * ) xSocket;
 		}
 		#if( ( ipconfigUSE_TCP == 1 ) && ( ipconfigUSE_CALLBACKS == 1 ) )
 		{
-			if( pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP )
+			if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_TCP )
 			{
-				/* Make sure that IP-task won't call the user callback's
-				anymore. */
+				/* Make sure that IP-task won't call the user callback's anymore */
 				pxSocket->u.xTCP.pxHandleConnected = NULL;
 				pxSocket->u.xTCP.pxHandleReceive = NULL;
 				pxSocket->u.xTCP.pxHandleSent = NULL;
@@ -1204,10 +1221,9 @@ xCloseEvent.pvData = ( void * ) xSocket;
 		/* Let the IP task close the socket to keep it synchronised	with the
 		packet handling. */
 
-		/* Note when changing the time-out value below, it must be checked what
-		is calling this function. If it is called by the IP-task, a deadlock
-		could occur.  The IP-task would only call it in case of a user
-		call-back. */
+		/* Note when changing the time-out value below, it must be checked who is calling
+		this function. If it is called by the IP-task, a deadlock could occur.
+		The IP-task would only call it in case of a user call-back */
 		if( xSendEventStructToIPTask( &xCloseEvent, ( TickType_t ) 0 ) == pdFAIL )
 		{
 			FreeRTOS_debug_printf( ( "FreeRTOS_closesocket: failed\n" ) );
@@ -1238,7 +1254,7 @@ NetworkBufferDescriptor_t *pxNetworkBuffer;
 	#if( ipconfigUSE_TCP == 1 )
 	{
 		/* For TCP: clean up a little more. */
-		if( pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			#if( ipconfigUSE_TCP_WIN == 1 )
 			{
@@ -1310,7 +1326,7 @@ NetworkBufferDescriptor_t *pxNetworkBuffer;
 
 	#if( ipconfigUSE_TCP == 1 ) && ( ipconfigHAS_DEBUG_PRINTF != 0 )
 	{
-		if( pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			FreeRTOS_debug_printf( ( "FreeRTOS_closesocket[%s]: buffers %lu socks %lu\n",
 				prvSocketProps( pxSocket ),
@@ -1337,7 +1353,7 @@ NetworkBufferDescriptor_t *pxNetworkBuffer;
 		if( pxSocket->ucProtocol == FREERTOS_IPPROTO_TCP )
 		{
 			#if( ipconfigUSE_IPv6 != 0 )
-			if( pxSocket->u.xTCP.bits.bIsIPv6 != pdFALSE_UNSIGNED )
+			if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED )
 			{
 				snprintf( ucReturn, sizeof( ucReturn ), "%pip port %u to %pip port %u",
 					pxSocket->xLocalAddress_IPv6.ucBytes,
@@ -1360,7 +1376,7 @@ NetworkBufferDescriptor_t *pxNetworkBuffer;
 		if( pxSocket->ucProtocol == FREERTOS_IPPROTO_UDP )
 		{
 			#if( ipconfigUSE_IPv6 != 0 )
-			if( pxSocket->u.xTCP.bits.bIsIPv6 != pdFALSE_UNSIGNED )
+			if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED )
 			{
 				snprintf( ucReturn, sizeof( ucReturn ), "%pip port %u",
 					pxSocket->xLocalAddress_IPv6.ucBytes,
@@ -1443,7 +1459,7 @@ FreeRTOS_Socket_t *pxSocket;
 
 		case FREERTOS_SO_SNDTIMEO	:
 			pxSocket->xSendBlockTime = *( ( TickType_t * ) pvOptionValue );
-			if( pxSocket->ucProtocol == FREERTOS_IPPROTO_UDP )
+			if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_UDP )
 			{
 				/* The send time out is capped for the reason stated in the
 				comments where ipconfigUDP_MAX_SEND_BLOCK_TIME_TICKS is defined
@@ -1464,7 +1480,7 @@ FreeRTOS_Socket_t *pxSocket;
 			break;
 		#if( ipconfigUDP_MAX_RX_PACKETS > 0 )
 			case FREERTOS_SO_UDP_MAX_RX_PACKETS:
-				if( pxSocket->ucProtocol != FREERTOS_IPPROTO_UDP )
+				if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_UDP )
 				{
 					break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
 				}
@@ -1566,7 +1582,7 @@ FreeRTOS_Socket_t *pxSocket;
 				{
 					uint32_t ulNewValue;
 
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						FreeRTOS_debug_printf( ( "Set SO_%sBUF: wrong socket type\n",
 							( lOptionName == FREERTOS_SO_SNDBUF ) ? "SND" : "RCV" ) );
@@ -1601,7 +1617,7 @@ FreeRTOS_Socket_t *pxSocket;
 				{
 					WinProperties_t* pxProps;
 
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						FreeRTOS_debug_printf( ( "Set SO_WIN_PROP: wrong socket type\n" ) );
 						break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
@@ -1642,7 +1658,7 @@ FreeRTOS_Socket_t *pxSocket;
 
 			case FREERTOS_SO_REUSE_LISTEN_SOCKET:	/* If true, the server-socket will turn into a connected socket */
 				{
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
 					}
@@ -1660,7 +1676,7 @@ FreeRTOS_Socket_t *pxSocket;
 
 			case FREERTOS_SO_CLOSE_AFTER_SEND:		/* As soon as the last byte has been transmitted, finalise the connection */
 				{
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
 					}
@@ -1679,7 +1695,7 @@ FreeRTOS_Socket_t *pxSocket;
 
 			case FREERTOS_SO_SET_FULL_SIZE:		/* Refuse to send packets smaller than MSS  */
 				{
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
 					}
@@ -1706,7 +1722,7 @@ FreeRTOS_Socket_t *pxSocket;
 
 			case FREERTOS_SO_STOP_RX:		/* Refuse to receive more packts */
 				{
-					if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+					if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 					{
 						break;	/* will return -pdFREERTOS_ERRNO_EINVAL */
 					}
@@ -1764,9 +1780,13 @@ const List_t *pxList;
 	( void ) xProtocol;
 
 	/* Assign the next port in the range.  Has it overflowed? */
+	/*_RB_ This needs to be randomised rather than sequential. */
+	/* _HT_ Agreed, although many OS's use sequential port numbers, see
+	https://www.cymru.com/jtk/misc/ephemeralports.html  */
 	for ( ;; )
 	{
-		usNextPortToUse[ xIndex ]++;
+		++( usNextPortToUse[ xIndex ] );
+
 		if( usNextPortToUse[ xIndex ] >= socketAUTO_PORT_ALLOCATION_MAX_NUMBER )
 		{
 			/* Don't go right back to the start of the dynamic/private port
@@ -1830,7 +1850,6 @@ FreeRTOS_Socket_t *pxSocket = NULL;
 		pxSocket = ( FreeRTOS_Socket_t * ) listGET_LIST_ITEM_OWNER( pxListItem );
 		configASSERT( pxSocket != NULL );
 	}
-
 	return pxSocket;
 }
 
@@ -2093,13 +2112,32 @@ FreeRTOS_Socket_t *pxSocket = NULL;
 size_t FreeRTOS_GetLocalAddress( Socket_t xSocket, struct freertos_sockaddr *pxAddress )
 {
 FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
+#if( ipconfigUSE_IPv6 != 0 )
+	struct freertos_sockaddr6 *pxAddressIPv6 = ( struct freertos_sockaddr6 * )pxAddress;
+#endif /* ipconfigUSE_IPv6 */
 
-	/* IP address of local machine. */
-	pxAddress->sin_addr = FreeRTOS_htonl( pxSocket->ulLocalAddress );
+	#if( ipconfigUSE_IPv6 != 0 )
+	if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED )
+	{
+		configASSERT( pxAddressIPv6->sin_len == sizeof( *pxAddressIPv6 ) );
 
-	/* Local port on this machine. */
-	pxAddress->sin_port = FreeRTOS_htons( pxSocket->usLocalPort );
+		pxAddressIPv6->sin_family = FREERTOS_AF_INET6;
+		/* IP address of local machine. */
+		memcpy( pxAddressIPv6->sin_addrv6.ucBytes, pxSocket->xLocalAddress_IPv6.ucBytes, sizeof( pxAddressIPv6->sin_addrv6.ucBytes ) );
+		/* Local port on this machine. */
+		pxAddressIPv6->sin_port = FreeRTOS_htons( pxSocket->usLocalPort );
+	}
+	else
+	#endif
+	{
+		pxAddress->sin_family = FREERTOS_AF_INET;
+		pxAddress->sin_len = sizeof( *pxAddress );
+		/* IP address of local machine. */
+		pxAddress->sin_addr = FreeRTOS_htonl( pxSocket->ulLocalAddress );
 
+		/* Local port on this machine. */
+		pxAddress->sin_port = FreeRTOS_htons( pxSocket->usLocalPort );
+	}
 	return sizeof( *pxAddress );
 }
 
@@ -2149,18 +2187,22 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	/* This define makes it possible for network-card drivers to inspect
 	 * UDP message and see if there is any UDP socket bound to a given port
 	 * number.
-	 * This is probably only usefull in systems with a minimum of RAM and
+	 * This is probably only useful in systems with a minimum of RAM and
 	 * when lots of anonymous broadcast messages come in
 	 */
 	BaseType_t xPortHasUDPSocket( uint16_t usPortNr )
 	{
-	BaseType_t xFound;
+	BaseType_t xFound = pdFALSE;
 
 		vTaskSuspendAll();
 		{
-			xFound = pxListFindListItemWithValue( &xBoundUDPSocketsList, ( TickType_t ) usPortNr ) != NULL;
+			if( ( pxListFindListItemWithValue( &xBoundUDPSocketsList, ( TickType_t ) usPortNr ) != NULL ) )
+			{
+				xFound = pdTRUE;
+			}
 		}
 		xTaskResumeAll();
+
 		return xFound;
 	}
 
@@ -2210,9 +2252,8 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 
 		if( xResult == 0 )
 		{
-			/* Check if it makes any sense to wait for a connect event, this
-			condition might change while sleeping, so it must be checked within
-			each loop. */
+			/* Check if it makes any sense to wait for a connect event, this condition
+			might change while sleeping, so it must be checked within each loop */
 			xResult = bMayConnect( pxSocket ); /* -EINPROGRESS, -EAGAIN, or 0 for OK */
 
 			/* Start the connect procedure, kernel will start working on it */
@@ -2224,14 +2265,16 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 #if( ipconfigUSE_IPv6 != 0 )
 				if( pxAddress->sin_family == FREERTOS_AF_INET6 )
 				{
-				struct freertos_sockaddr6 *pxAddressv6 = ( struct freertos_sockaddr6 * ) pxAddress;
-					FreeRTOS_debug_printf( ( "FreeRTOS_connect: %u to %pip port %u\n",
-						pxSocket->usLocalPort, FreeRTOS_ntohl( pxAddressv6->sin_addrv6.ucBytes ), FreeRTOS_ntohs( pxAddressv6->sin6_port ) ) );
+				struct freertos_sockaddr6 *pxAddress_IPv6 = ( struct freertos_sockaddr6 * ) pxAddress;
+
+					FreeRTOS_printf( ( "FreeRTOS_connect: %u to %pip port %u\n",
+						pxSocket->usLocalPort, pxAddress_IPv6->sin_addrv6.ucBytes, FreeRTOS_ntohs( pxAddress_IPv6->sin_port ) ) );
+					memcpy( pxSocket->u.xTCP.xRemoteIP_IPv6.ucBytes, pxAddress_IPv6->sin_addrv6.ucBytes, sizeof( pxSocket->xLocalAddress_IPv6.ucBytes ) );
 				}
 				else
 #endif /* ipconfigUSE_IPv6 */
 				{
-					FreeRTOS_debug_printf( ( "FreeRTOS_connect: %u to %lxip:%u\n",
+					FreeRTOS_printf( ( "FreeRTOS_connect: %u to %lxip:%u\n",
 						pxSocket->usLocalPort, FreeRTOS_ntohl( pxAddress->sin_addr ), FreeRTOS_ntohs( pxAddress->sin_port ) ) );
 				}
 
@@ -2930,6 +2973,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 				{
 					vStreamBufferClear( pxSocket->u.xTCP.txStream );
 				}
+
 				memset( pxSocket->u.xTCP.xPacket.u.ucLastPacket, '\0', sizeof( pxSocket->u.xTCP.xPacket.u.ucLastPacket ) );
 				memset( &pxSocket->u.xTCP.xTCPWindow, '\0', sizeof( pxSocket->u.xTCP.xTCPWindow ) );
 				memset( &pxSocket->u.xTCP.bits, '\0', sizeof( pxSocket->u.xTCP.bits ) );
@@ -3029,11 +3073,13 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 			}
 			else
 			{
+			int rc ;
 				pxSocket->u.xTCP.usTimeout = 0u;
+				rc = xTCPSocketCheck( pxSocket );
 
 				/* Within this function, the socket might want to send a delayed
-				ack, or send out data, or whatever it needs to do. */
-				if( xTCPSocketCheck( pxSocket ) < 0 )
+				ack or send out data or whatever it needs to do. */
+				if( rc < 0 )
 				{
 					/* Continue because the socket was deleted. */
 					continue;
@@ -3107,7 +3153,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 				{
 					#if( ipconfigUSE_IPv6 != 0 )
 					{
-						if( pxSocket->u.xTCP.bits.bIsIPv6 != pdFALSE_UNSIGNED)
+						if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED)
 						{
 							if( ( pxAddress_IPv6 != NULL ) && ( xCompareIPv6_Address( &( pxSocket->u.xTCP.xRemoteIP_IPv6 ), pxAddress_IPv6 ) == 0 ) )
 							{
@@ -3295,7 +3341,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 		}
 		#endif /* ipconfigHAS_DEBUG_PRINTF */
 
-		if( uxOffset == 0 )
+		if( uxOffset == 0u )
 		{
 			/* Data is being added to rxStream at the head (offs = 0) */
 			#if( ipconfigUSE_CALLBACKS == 1 )
@@ -3323,8 +3369,10 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 							break;
 						}
 
-						pxSocket->u.xTCP.pxHandleReceive( (Socket_t *)pxSocket, ( void* )ucReadPtr, ( size_t ) ulCount );
-						uxStreamBufferGet( pxStream, 0ul, NULL, ( size_t ) ulCount, pdFALSE );
+						if( pxSocket->u.xTCP.pxHandleReceive( (Socket_t *)pxSocket, ( void* )ucReadPtr, ( size_t ) ulCount ) != pdFALSE )
+						{
+							uxStreamBufferGet( pxStream, 0ul, NULL, ( size_t ) ulCount, pdFALSE );
+						}
 					}
 				} else
 			#endif /* ipconfigUSE_CALLBACKS */
@@ -3372,8 +3420,11 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	{
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xResult;
+	#if( ipconfigUSE_IPv6 != 0 )
+		struct freertos_sockaddr6 *pxAddressIPv6 = ( struct freertos_sockaddr6 * )pxAddress;
+	#endif /* ipconfigUSE_IPv6 */
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xResult = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3381,14 +3432,34 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 		{
 			/* BSD style sockets communicate IP and port addresses in network
 			byte order.
-
 			IP address of remote machine. */
-			pxAddress->sin_addr = FreeRTOS_htonl ( pxSocket->u.xTCP.ulRemoteIP );
+			#if( ipconfigUSE_IPv6 != 0 )
+			if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED )
+			{
+				configASSERT( pxAddressIPv6->sin_len == sizeof( *pxAddressIPv6 ) );
 
-			/* Port on remote machine. */
-			pxAddress->sin_port = FreeRTOS_htons ( pxSocket->u.xTCP.usRemotePort );
+				pxAddressIPv6->sin_family = FREERTOS_AF_INET6;
 
-			xResult = ( BaseType_t ) sizeof( ( *pxAddress ) );
+				/* IP address of remote machine. */
+				memcpy( pxAddressIPv6->sin_addrv6.ucBytes, pxSocket->u.xTCP.xRemoteIP_IPv6.ucBytes, sizeof( pxAddressIPv6->sin_addrv6.ucBytes ) );
+
+				/* Port of remote machine. */
+				pxAddressIPv6->sin_port = FreeRTOS_htons ( pxSocket->u.xTCP.usRemotePort );
+			}
+			else
+			#endif /* ipconfigUSE_IPv6 */
+			{
+				pxAddress->sin_len = sizeof( *pxAddress );
+				pxAddress->sin_family = FREERTOS_AF_INET;
+
+				/* IP address of remote machine. */
+				pxAddress->sin_addr = FreeRTOS_htonl ( pxSocket->u.xTCP.ulRemoteIP );
+
+				/* Port on remote machine. */
+				pxAddress->sin_port = FreeRTOS_htons ( pxSocket->u.xTCP.usRemotePort );
+			}
+
+			xResult = ( BaseType_t ) pxAddress->sin_len;
 		}
 
 		return xResult;
@@ -3406,7 +3477,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xResult;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xResult = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3443,7 +3514,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3472,7 +3543,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3502,7 +3573,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn = pdFALSE;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3531,7 +3602,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3557,7 +3628,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3583,7 +3654,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 	FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
 	BaseType_t xReturn;
 
-		if( pxSocket->ucProtocol != FREERTOS_IPPROTO_TCP )
+		if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
 		{
 			xReturn = -pdFREERTOS_ERRNO_EINVAL;
 		}
@@ -3673,7 +3744,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 				if( age > 999999 )
 					age = 999999;
 				#if( ipconfigUSE_IPv6 != 0 )
-				if( pxSocket->u.xTCP.bits.bIsIPv6 != pdFALSE_UNSIGNED )
+				if( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED )
 				{
 					snprintf( pcRemoteIp, sizeof( pcRemoteIp ), "%pip", pxSocket->u.xTCP.xRemoteIP_IPv6.ucBytes );
 				}
@@ -3786,6 +3857,12 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t *pxSocket )
 								{
 									xSocketBits |= eSELECT_READ;
 								}
+							}
+							else if( ( pxSocket->u.xTCP.bits.bReuseSocket != pdFALSE_UNSIGNED ) && ( pxSocket->u.xTCP.bits.bPassAccept != pdFALSE_UNSIGNED ) )
+							{
+								/* This socket has the re-use flag. After connecting it turns into
+								aconnected socket. Set the READ event, so that accept() will be called. */
+								xSocketBits |= eSELECT_READ;
 							}
 							else if( ( bAccepted != 0 ) && ( FreeRTOS_recvcount( pxSocket ) > 0 ) )
 							{

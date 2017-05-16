@@ -93,12 +93,15 @@ static gmac_dev_tx_cb_t gs_tx_callback[ GMAC_TX_BUFFERS ];
 /** RX descriptors lists */
 COMPILER_ALIGNED(8)
 static gmac_rx_descriptor_t gs_rx_desc[ GMAC_RX_BUFFERS ];
-/** Send Buffer. Section 3.6 of AMBA 2.0 spec states that burst should not cross the
- * 1K Boundaries. Receive buffer manager write operations are burst of 2 words => 3 lsb bits
- * of the address shall be set to 0.
- */
-COMPILER_ALIGNED(8)
-static uint8_t gs_uc_tx_buffer[ GMAC_TX_BUFFERS * GMAC_TX_UNITSIZE ];
+
+#if( ipconfigZERO_COPY_TX_DRIVER == 0 )
+	/** Send Buffer. Section 3.6 of AMBA 2.0 spec states that burst should not cross the
+	 * 1K Boundaries. Receive buffer manager write operations are burst of 2 words => 3 lsb bits
+	 * of the address shall be set to 0.
+	 */
+	COMPILER_ALIGNED(8)
+	static uint8_t gs_uc_tx_buffer[ GMAC_TX_BUFFERS * GMAC_TX_UNITSIZE ];
+#endif /* ipconfigZERO_COPY_TX_DRIVER */
 
 /** Receive Buffer */
 COMPILER_ALIGNED(8)
@@ -203,7 +206,15 @@ static void gmac_reset_tx_mem(gmac_device_t* p_dev)
 	CIRC_CLEAR(p_dev->l_tx_head, p_dev->l_tx_tail);
 	for( ul_index = 0; ul_index < p_dev->ul_tx_list_size; ul_index++ )
 	{
-		ul_address = (uint32_t) (&(p_tx_buff[ul_index * GMAC_TX_UNITSIZE]));
+		#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+		{
+			ul_address = (uint32_t) 0u;
+		}
+		#else
+		{
+			ul_address = (uint32_t) (&(p_tx_buff[ul_index * GMAC_TX_UNITSIZE]));
+		}
+		#endif /* ipconfigZERO_COPY_TX_DRIVER */
 		p_td[ul_index].addr = ul_address;
 		p_td[ul_index].status.val = GMAC_TXD_USED;
 	}
@@ -418,6 +429,7 @@ void gmac_dev_init(Gmac* p_gmac, gmac_device_t* p_gmac_dev,
 	 * GMAC_DCFGR_TXCOEN: (GMAC_DCFGR) Transmitter Checksum Generation Offload Enable.
 	 * Note: tha SAM4E does have RX checksum offloading
 	 * but TX checksum offloading has NOT been implemented.
+	 * http://community.atmel.com/forum/sam4e-gmac-transmit-checksum-offload-enablesolved
 	 */
 
 	gmac_set_dma(p_gmac,
@@ -431,7 +443,15 @@ void gmac_dev_init(Gmac* p_gmac, gmac_device_t* p_gmac_dev,
 	gmac_dev_mm.p_rx_dscr = gs_rx_desc;
 	gmac_dev_mm.us_rx_size = GMAC_RX_BUFFERS;
 
-	gmac_dev_mm.p_tx_buffer = gs_uc_tx_buffer;
+	#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+	{
+		gmac_dev_mm.p_tx_buffer = NULL;
+	}
+	#else
+	{
+		gmac_dev_mm.p_tx_buffer = gs_uc_tx_buffer;
+	}
+	#endif
 	gmac_dev_mm.p_tx_dscr = gs_tx_desc;
 	gmac_dev_mm.us_tx_size = GMAC_TX_BUFFERS;
 
@@ -631,7 +651,17 @@ uint32_t gmac_dev_write(gmac_device_t* p_gmac_dev, void *p_buffer,
 		/* Driver manages the ring buffer */
 		/* Calculating the checksum here is faster than calculating it from the GMAC buffer
 		 * because withing p_buffer, it is well aligned */
-		memcpy((void *)p_tx_td->addr, p_buffer, ul_size);
+		#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+		{
+			/* Zero-copy... */
+			p_tx_td->addr = ( uint32_t ) p_buffer;
+		}
+		#else
+		{
+			/* Or memcopy... */
+			memcpy((void *)p_tx_td->addr, p_buffer, ul_size);
+		}
+		#endif /* ipconfigZERO_COPY_TX_DRIVER */
 		vGMACGenerateChecksum( ( uint8_t * ) p_tx_td->addr );
 	}
 
@@ -696,7 +726,7 @@ uint32_t gmac_dev_get_tx_load(gmac_device_t* p_gmac_dev)
  * \param func_tx_cb  Receive callback function.
  */
 void gmac_dev_set_rx_callback(gmac_device_t* p_gmac_dev,
-		gmac_dev_tx_cb_t func_rx_cb)
+		gmac_dev_rx_cb_t func_rx_cb)
 {
 	Gmac *p_hw = p_gmac_dev->p_hw;
 
@@ -871,7 +901,12 @@ void gmac_handler(gmac_device_t* p_gmac_dev)
 
 				/* Notify upper layer that a packet has been sent */
 				if (*p_tx_cb) {
-					(*p_tx_cb) (ul_tx_status_flag);
+					(*p_tx_cb) (ul_tx_status_flag, (void*)p_tx_td->addr);
+					#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+					{
+						p_tx_td->addr = 0ul;
+					}
+					#endif /* ipconfigZERO_COPY_TX_DRIVER */
 				}
 
 				circ_inc32(&p_gmac_dev->l_tx_tail, p_gmac_dev->ul_tx_list_size);
@@ -882,7 +917,7 @@ void gmac_handler(gmac_device_t* p_gmac_dev)
 		if (ul_tsr & GMAC_TSR_RLE) {
 			/* Notify upper layer RLE */
 			if (*p_tx_cb) {
-				(*p_tx_cb) (ul_tx_status_flag);
+				(*p_tx_cb) (ul_tx_status_flag, NULL);
 			}
 		}
 #endif /* GMAC_USES_TX_CALLBACK */

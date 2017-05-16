@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -143,25 +143,25 @@ eFrameProcessingResult_t eARPProcessPacket( NetworkBufferDescriptor_t * const px
 ARPPacket_t * const pxARPFrame = ( ARPPacket_t * const ) pxNetworkBuffer->pucEthernetBuffer;
 eFrameProcessingResult_t eReturn = eReleaseBuffer;
 ARPHeader_t *pxARPHeader = &( pxARPFrame->xARPHeader );
+uint32_t ulTargetProtocolAddress, ulSenderProtocolAddress;
 /*_RB_ I think this was determined before eARPProcessPacket was called so perhaps could just be passed in as a parameter. */
-NetworkEndPoint_t *pxTargetEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ulTargetProtocolAddress );
-NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ulSenderProtocolAddress );
+NetworkEndPoint_t *pxTargetEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ulTargetProtocolAddress, 1 );
+#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
+	NetworkEndPoint_t *pxSourceEndPoint;
+#endif
+
+	/* The field ulSenderProtocolAddress is badly aligned, copy byte-by-byte. */
+	memcpy( ( void *)&( ulSenderProtocolAddress ), ( void * )pxARPHeader->ucSenderProtocolAddress, sizeof( ulSenderProtocolAddress ) );
+	/* The field ulTargetProtocolAddress is well-aligned, a 32-bits copy. */
+	ulTargetProtocolAddress = pxARPHeader->ulTargetProtocolAddress;
+
+	#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
+	{
+		pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( ulSenderProtocolAddress, 2 );
+	}
+	#endif
 
 	traceARP_PACKET_RECEIVED();
-
-	if( pxARPHeader->ulSenderProtocolAddress != pxARPHeader->ulTargetProtocolAddress )
-	{
-//		FreeRTOS_printf( ( "eARPProcessPacket: from %lxip (%sfound) to %lxip (%sfound)\n",
-//			FreeRTOS_ntohl( pxARPHeader->ulSenderProtocolAddress ),
-//			( pxSourceEndPoint != NULL ) ? "" : "not ",
-//			FreeRTOS_ntohl( pxARPHeader->ulTargetProtocolAddress ),
-//			( pxTargetEndPoint != NULL ) ? "" : "not " ) );
-	}
-	else
-	{
-		/* This is a gratuitous ARP message, less interesting
-		for logging. */
-	}
 
 	/* Don't do anything if the local IP address is zero because
 	that means a DHCP request has not completed. */
@@ -175,16 +175,16 @@ NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ul
 				address of one of the end-points? */
 				if( pxTargetEndPoint != NULL )
 				{
-					iptraceSENDING_ARP_REPLY( pxARPHeader->ulSenderProtocolAddress );
+					iptraceSENDING_ARP_REPLY( ulSenderProtocolAddress );
 
 					/* The request is for the address of this node.  Add the
 					entry into the ARP cache, or refresh the entry if it
 					already exists. */
-					vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), pxARPHeader->ulSenderProtocolAddress );
+					vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), ulSenderProtocolAddress );
 
 					/* Generate a reply payload in the same buffer. */
 					pxARPHeader->usOperation = ( uint16_t ) ipARP_REPLY;
-					if( pxARPHeader->ulTargetProtocolAddress == pxARPHeader->ulSenderProtocolAddress )
+					if( pxARPHeader->ulTargetProtocolAddress == ulSenderProtocolAddress )
 					{
 						/* The same IP address!  Give the sources MAC address 
 						the value of the broadcast address, will be swapped 
@@ -196,11 +196,10 @@ NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ul
 					else
 					{
 						memcpy( pxARPHeader->xTargetHardwareAddress.ucBytes, pxARPHeader->xSenderHardwareAddress.ucBytes, sizeof( MACAddress_t ) );
-						pxARPHeader->ulTargetProtocolAddress = pxARPHeader->ulSenderProtocolAddress;
+						pxARPHeader->ulTargetProtocolAddress = ulSenderProtocolAddress;
 					}
-
 					memcpy( pxARPHeader->xSenderHardwareAddress.ucBytes, pxTargetEndPoint->xMACAddress.ucBytes, sizeof( MACAddress_t ) );
-					pxARPHeader->ulSenderProtocolAddress = pxTargetEndPoint->ulIPAddress;
+					memcpy( ( void* )pxARPHeader->ucSenderProtocolAddress, ( void* ) & pxTargetEndPoint->ulIPAddress, sizeof( pxARPHeader->ucSenderProtocolAddress ) );
 					pxNetworkBuffer->pxEndPoint = pxTargetEndPoint;
 
 					eReturn = eReturnEthernetFrame;
@@ -208,9 +207,9 @@ NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ul
 				break;
 
 			case ipARP_REPLY :
-				iptracePROCESSING_RECEIVED_ARP_REPLY( pxARPHeader->ulTargetProtocolAddress );
-				vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), pxARPHeader->ulSenderProtocolAddress );
-				/* process received ARP frame to see if there is a clash. */
+				iptracePROCESSING_RECEIVED_ARP_REPLY( ulTargetProtocolAddress );
+				vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), ulSenderProtocolAddress );
+				/* Process received ARP frame to see if there is a clash. */
 				#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
 				{
 					if( pxSourceEndPoint != NULL )
@@ -231,10 +230,10 @@ NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ul
 
 	return eReturn;
 }
-
 /*-----------------------------------------------------------*/
 
 #if( ipconfigUSE_ARP_REMOVE_ENTRY != 0 )
+
 	uint32_t ulARPRemoveCacheEntryByMac( const MACAddress_t * pxMACAddress )
 	{
 	BaseType_t x;
@@ -250,21 +249,25 @@ NetworkEndPoint_t *pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ul
 				break;
 			}
 		}
+
 		return lResult;
 	}
-#endif	/* ipconfigUSE_ARP_REMOVE_ENTRY != 0 */
 
+#endif	/* ipconfigUSE_ARP_REMOVE_ENTRY != 0 */
 /*-----------------------------------------------------------*/
 
 void vARPRefreshCacheEntry( const MACAddress_t * pxMACAddress, const uint32_t ulIPAddress )
 {
 BaseType_t x, xIpEntry = -1, xMacEntry = -1, xUseEntry = 0;
 uint8_t ucMinAgeFound = 0U;
+#if( ipconfigARP_STORES_REMOTE_ADDRESSES != 0 )
+	BaseType_t xAddressIsLocal = ( BaseType_t ) -1;
+#endif
 
 	#if( ipconfigARP_STORES_REMOTE_ADDRESSES == 0 )
 		/* Only process the IP address if it matches with one of the end-points,
 		or as long as not all end-points are up. */
-		if( ( FreeRTOS_FindEndPointOnNetMask( ulIPAddress ) ) ||
+		if( ( FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 1 ) != NULL ) ||
 			( FreeRTOS_AllEndPointsUp( NULL ) == pdFALSE ) )
 	#else
 		/* If ipconfigARP_STORES_REMOTE_ADDRESSES is non-zero, IP addresses with
@@ -321,14 +324,14 @@ uint8_t ucMinAgeFound = 0U;
 				ulIPAddress. */
 				#if( ipconfigARP_STORES_REMOTE_ADDRESSES != 0 )
 				{
-					/* If ARP stores the MAC address of IP addresses outside the
-					network, than the MAC address of the gateway should not be
-					overwritten. */
-					BaseType_t bIsLocal[ 2 ];
+				BaseType_t xOtherIsLocal = FreeRTOS_FindEndPointOnNetMask( xARPCache[ x ].ulIPAddress, 3 ) != NULL;
 
-					bIsLocal[ 0 ] = FreeRTOS_FindEndPointOnNetMask( ulIPAddress ) != NULL;
-					bIsLocal[ 1 ] = FreeRTOS_FindEndPointOnNetMask( xARPCache[ x ].ulIPAddress ) != NULL;
-					if( bIsLocal[ 0 ] == bIsLocal[ 1 ] )
+					if( xAddressIsLocal < ( BaseType_t ) 0 )
+					{
+						/* Only look-up the address when needed. */
+						xAddressIsLocal = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 2 ) != NULL;
+					}
+					if( xAddressIsLocal == xOtherIsLocal )
 					{
 						xMacEntry = x;
 					}
@@ -391,13 +394,6 @@ uint8_t ucMinAgeFound = 0U;
 }
 /*-----------------------------------------------------------*/
 
-#if( ipconfigUSE_IPv6 != 0 )
-	void vARPRefreshCacheEntry_IPv6( const MACAddress_t * pxMACAddress, const IPv6_Address_t *pxIPAddress )
-	{
-	}
-#endif /* ipconfigUSE_IPv6 */
-/*-----------------------------------------------------------*/
-
 #if( ipconfigUSE_ARP_REVERSED_LOOKUP == 1 )
 	eARPLookupResult_t eARPGetCacheEntryByMac( MACAddress_t * const pxMACAddress, uint32_t *pulIPAddress )
 	{
@@ -445,7 +441,7 @@ uint32_t ulAddressToLookup;
 	}
 	else
 	{
-		NetworkEndPoint_t *pxEndPoint = FreeRTOS_FindEndPointOnNetMask( *pulIPAddress );
+		NetworkEndPoint_t *pxEndPoint = FreeRTOS_FindEndPointOnNetMask( *pulIPAddress, 4 );
 
 		if( ( pxEndPoint != NULL ) && ( pxEndPoint->ulIPAddress == 0UL ) )
 		{
@@ -475,13 +471,20 @@ uint32_t ulAddressToLookup;
 				{
 					/* The IP address is off the local network, so look up the
 					hardware address of the router, if any. */
-					ulAddressToLookup = xNetworkAddressing.ulGatewayAddress;
+					if( xNetworkAddressing.ulGatewayAddress != ( uint32_t )0u )
+					{
+						ulAddressToLookup = xNetworkAddressing.ulGatewayAddress;
+					}
+					else
+					{
+						ulAddressToLookup = *pulIPAddress;
+					}
 				}
 			}
 			else
 			{
-				/* The IP address is on the local network, so lookup the 
-				requested IP address directly. */
+			/* The IP address is on the local network, so lookup the requested
+			IP address directly. */
 				ulAddressToLookup = *pulIPAddress;
 			}
 
@@ -489,8 +492,8 @@ uint32_t ulAddressToLookup;
 			{
 				if( ulAddressToLookup == 0UL )
 				{
-					/* The address is not on the local network, and there is not 
-					a router. */
+				/* The address is not on the local network, and there is not a
+				router. */
 					eReturn = eCantSendPacket;
 				}
 				else
@@ -601,7 +604,6 @@ TickType_t xTimeNow;
 				{
 					FreeRTOS_OutputAdvertiseIPv6( pxEndPoint );
 				}
-//				else
 			#endif
 				if( pxEndPoint->ulIPAddress != 0 )
 				{
@@ -631,10 +633,10 @@ void FreeRTOS_OutputARPRequest( uint32_t ulIPAddress )
 NetworkBufferDescriptor_t *pxNetworkBuffer;
 NetworkEndPoint_t *pxEndPoint;
 
-	pxEndPoint = FreeRTOS_FindEndPointOnIP( ulIPAddress );
+	pxEndPoint = FreeRTOS_FindEndPointOnIP( ulIPAddress, 3 );
 	if( pxEndPoint == NULL )
 	{
-		pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress );
+		pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 5 );
 	}
 	if( pxEndPoint != NULL )
 	{
@@ -644,17 +646,32 @@ NetworkEndPoint_t *pxEndPoint;
 		must not be used. */
 		pxNetworkBuffer = pxGetNetworkBufferWithDescriptor( sizeof( ARPPacket_t ), 0 );
 
-		configASSERT( pxNetworkBuffer != NULL );
-
-		pxNetworkBuffer->ulIPAddress = ulIPAddress;
-		pxNetworkBuffer->pxEndPoint = pxEndPoint;
-
-		pxInterface = pxNetworkBuffer->pxEndPoint->pxNetworkInterface;
-
-		configASSERT( pxInterface != NULL );
-
-		vARPGenerateRequestPacket( pxNetworkBuffer );
-		pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, pdTRUE );
+		if( pxNetworkBuffer != NULL )
+		{
+			pxNetworkBuffer->ulIPAddress = ulIPAddress;
+			pxNetworkBuffer->pxEndPoint = pxEndPoint;
+	
+			pxInterface = pxNetworkBuffer->pxEndPoint->pxNetworkInterface;
+			configASSERT( pxInterface != NULL );
+			vARPGenerateRequestPacket( pxNetworkBuffer );
+			#if defined( ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+			{
+				if( pxNetworkBuffer->xDataLength < ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+				{
+				BaseType_t xIndex;
+	
+//					FreeRTOS_printf( ( "OutputARPRequest: length %lu -> %lu\n",
+//						pxNetworkBuffer->xDataLength, ipconfigETHERNET_MINIMUM_PACKET_BYTES ) );
+					for( xIndex = ( BaseType_t ) pxNetworkBuffer->xDataLength; xIndex < ( BaseType_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES; xIndex++ )
+					{
+						pxNetworkBuffer->pucEthernetBuffer[ xIndex ] = 0u;
+					}
+					pxNetworkBuffer->xDataLength = ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES;
+				}
+			}
+			#endif
+			pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, pdTRUE );
+		}
 	}
 }
 
@@ -681,7 +698,8 @@ ARPPacket_t *pxARPPacket;
 	memcpy( ( void * ) pxARPPacket->xEthernetHeader.xSourceAddress.ucBytes , ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
 	memcpy( ( void * ) pxARPPacket->xARPHeader.xSenderHardwareAddress.ucBytes, ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
 	/* HT:endian: network to network */
-	pxARPPacket->xARPHeader.ulSenderProtocolAddress = pxNetworkBuffer->pxEndPoint->ulIPAddress;
+	memcpy( ( void* )pxARPPacket->xARPHeader.ucSenderProtocolAddress, ( void* )&( pxNetworkBuffer->pxEndPoint->ulIPAddress ), sizeof( pxARPPacket->xARPHeader.ucSenderProtocolAddress ) );
+
 	pxARPPacket->xARPHeader.ulTargetProtocolAddress = pxNetworkBuffer->ulIPAddress;
 
 	pxNetworkBuffer->xDataLength = sizeof( ARPPacket_t );

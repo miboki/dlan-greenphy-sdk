@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -390,8 +390,14 @@ uint8_t *pucBuffer;
 
 	pucBuffer = pucGetNetworkBuffer( &( xNewSizeBytes ) );
 
-	if( pucBuffer != NULL )
+	if( pucBuffer == NULL )
 	{
+		/* In case the allocation fails, return NULL. */
+		pxNetworkBuffer = NULL;
+	}
+	else
+	{
+		pxNetworkBuffer->xDataLength = xNewSizeBytes;
 		if( xNewSizeBytes > xOriginalLength )
 		{
 			xNewSizeBytes = xOriginalLength;

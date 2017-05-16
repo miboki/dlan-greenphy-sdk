@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -445,6 +445,18 @@ void vListInsertGeneric( List_t * const pxList, ListItem_t * const pxNewListItem
 			pxSegment->lMaxLength = lCount;
 			pxSegment->lDataLength = lCount;
 			pxSegment->ulSequenceNumber = ulSequenceNumber;
+			#if( ipconfigHAS_DEBUG_PRINTF != 0 )
+			{
+			static UBaseType_t xLowestLength = ipconfigTCP_WIN_SEG_COUNT;
+			UBaseType_t xLength = listCURRENT_LIST_LENGTH( &xSegmentList );
+
+				if( xLowestLength > xLength )
+				{
+					xLowestLength = xLength;
+					//FreeRTOS_debug_printf( ( "xTCPWindowNew: xLowestLength = %lu\n", xLowestLength ) );
+				}
+			}
+			#endif /* ipconfigHAS_DEBUG_PRINTF */
 		}
 
 		return pxSegment;

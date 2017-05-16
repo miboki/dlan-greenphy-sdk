@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -187,19 +187,22 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 			/* The total transmit size adds on the Ethernet header. */
 			pxNetworkBuffer->xDataLength = pxIPHeader->usLength + sizeof( EthernetHeader_t );
 			pxIPHeader->usLength = FreeRTOS_htons( pxIPHeader->usLength );
-
 			pxIPHeader->ulDestinationIPAddress = pxNetworkBuffer->ulIPAddress;
 
 			/* Which end point should the ping go out on? */
 			if( pxNetworkBuffer->pxEndPoint == NULL )
 			{
-				pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxNetworkBuffer->ulIPAddress );
+				pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxNetworkBuffer->ulIPAddress, 10 );
+				if( pxNetworkBuffer->pxEndPoint == NULL )
+				{
+					FreeRTOS_printf( ( "vProcessGeneratedUDPPacket: No pxEndPoint found???\n" ) );
+				}
 			}
 
 			#if( ipconfigUSE_LLMNR == 1 )
 			{
-				/* LLMNR messages are typically used on a LAN and they're not 
-				supposed to cross routers. */
+				/* LLMNR messages are typically used on a LAN and they're
+				 * not supposed to cross routers */
 				if( pxNetworkBuffer->ulIPAddress == ipLLMNR_IP_ADDR )
 				{
 					pxIPHeader->ucTimeToLive = 0x01;
@@ -245,8 +248,8 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 		else if( eReturned == eARPCacheMiss )
 		{
 			/* Add an entry to the ARP table with a null hardware address.
-			This allows the ARP timer to know that an ARP reply is outstanding, 
-			and perform retransmissions if necessary. */
+			This allows the ARP timer to know that an ARP reply is
+			outstanding, and perform retransmissions if necessary. */
 			vARPRefreshCacheEntry( NULL, ulIPAddress );
 
 			/* Generate an ARP for the required IP address. */
@@ -255,7 +258,7 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 
 			/* 'ulIPAddress' might have become the address of the Gateway.
 			Find the route again. */
-			pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress );
+			pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 11 );
 			vARPGenerateRequestPacket( pxNetworkBuffer );
 		}
 		else
@@ -275,6 +278,21 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 		NetworkInterface_t *pxInterface = pxNetworkBuffer->pxEndPoint->pxNetworkInterface;
 
 			memcpy( ( void * ) &( pxUDPPacket->xEthernetHeader.xSourceAddress), ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
+			#if defined( ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+			{
+				if( pxNetworkBuffer->xDataLength < ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+				{
+				BaseType_t xIndex;
+	
+					FreeRTOS_printf( ( "vProcessGeneratedUDPPacket: length %lu\n", pxNetworkBuffer->xDataLength ) );
+					for( xIndex = ( BaseType_t ) pxNetworkBuffer->xDataLength; xIndex < ( BaseType_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES; xIndex++ )
+					{
+						pxNetworkBuffer->pucEthernetBuffer[ xIndex ] = 0u;
+					}
+					pxNetworkBuffer->xDataLength = ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES;
+				}
+			}
+			#endif
 
 			pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, pdTRUE );
 		}
@@ -319,16 +337,16 @@ UDPPacket_t *pxUDPPacket = (UDPPacket_t *) pxNetworkBuffer->pucEthernetBuffer;
 			{
 				struct freertos_sockaddr xSourceAddress, destinationAddress;
 				void *pcData = ( void * )( ( ( uint8_t * ) &( pxProtocolHeaders->xUDPHeader ) ) + ipSIZE_OF_UDP_HEADER );
-				FOnUdpReceive xHandler = ( FOnUdpReceive ) pxSocket->u.xUDP.pxHandleReceive;
+				FOnUDPReceive_t xHandler = ( FOnUDPReceive_t ) pxSocket->u.xUDP.pxHandleReceive;
 				xSourceAddress.sin_port = pxNetworkBuffer->usPort;
 				xSourceAddress.sin_addr = pxNetworkBuffer->ulIPAddress;
 				destinationAddress.sin_port = usPort;
 				destinationAddress.sin_addr = pxUDPPacket->xIPHeader.ulDestinationIPAddress;
 
 				if( xHandler( ( Socket_t * ) pxSocket, ( void* ) pcData, ( size_t ) pxNetworkBuffer->xDataLength,
-					&xSourceAddress, &destinationAddress ) )
+					&xSourceAddress, &destinationAddress ) != pdFALSE )
 				{
-					xReturn = pdFAIL; /* FAIL means that we did not consume or release the buffer */
+					xReturn = pdFAIL; /* xHandler has consumed the data, do not add it to .xWaitingPacketsList'. */
 				}
 			}
 		}
@@ -419,10 +437,10 @@ UDPPacket_t *pxUDPPacket = (UDPPacket_t *) pxNetworkBuffer->pucEthernetBuffer;
 			if( FreeRTOS_ntohs( pxProtocolHeaders->xUDPHeader.usSourcePort ) == ipDNS_PORT )
 			{
 				#if( ipconfigUSE_IPv6 != 0 )
-					if( pxUDPPacket->xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
-					{
-					}
-					else
+				if( pxUDPPacket->xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
+				{
+				}
+				else
 				#endif
 				{
 					vARPRefreshCacheEntry( &( pxUDPPacket->xEthernetHeader.xSourceAddress ), pxUDPPacket->xIPHeader.ulSourceIPAddress );
@@ -438,10 +456,10 @@ UDPPacket_t *pxUDPPacket = (UDPPacket_t *) pxNetworkBuffer->pucEthernetBuffer;
 				( pxProtocolHeaders->xUDPHeader.usSourcePort == FreeRTOS_ntohs( ipLLMNR_PORT ) ) )
 			{
 				#if( ipconfigUSE_IPv6 != 0 )
-					if( pxUDPPacket->xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
-					{
-					}
-					else
+				if( pxUDPPacket->xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
+				{
+				}
+				else
 				#endif
 				{
 					vARPRefreshCacheEntry( &( pxUDPPacket->xEthernetHeader.xSourceAddress ), pxUDPPacket->xIPHeader.ulSourceIPAddress );

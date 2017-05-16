@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -183,7 +183,7 @@ NetworkEndPoint_t *FreeRTOS_NextEndPoint( NetworkInterface_t *pxInterface, Netwo
 /*
  * Find the end-point with given IP-address.
  */
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnIP( uint32_t ulIPAddress );
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnIP( uint32_t ulIPAddress, uint32_t ulWhere );
 
 #if( ipconfigUSE_IPv6 != 0 )
 	/* Find the end-point with given IP-address. */
@@ -193,7 +193,7 @@ NetworkEndPoint_t *FreeRTOS_FindEndPointOnIP( uint32_t ulIPAddress );
 /*
  * Find the end-point with given MAC-address.
  */
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnMAC( const MACAddress_t *pxMACAddress );
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnMAC( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface );
 
 /*
  * Returns the addresses stored in an end point structure.
@@ -203,7 +203,7 @@ void FreeRTOS_GetAddressConfiguration( NetworkEndPoint_t *pxEndPoint, uint32_t *
 /*
  * Find the best fitting end-point to reach a given IP-address.
  */
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnNetMask( uint32_t ulIPAddress );
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnNetMask( uint32_t ulIPAddress, uint32_t ulWhere );
 
 #if( ipconfigUSE_IPv6 != 0 )
 	NetworkEndPoint_t *FreeRTOS_FindEndPointOnNetMask_IPv6( IPv6_Address_t *pxIPv6Address );
@@ -236,6 +236,22 @@ void FreeRTOS_FillEndPoint(	NetworkEndPoint_t *pxNetworkEndPoint,
 /* Return pdTRUE if all end-points are up.
 When pxInterface is null, all end-points can be iterated. */
 BaseType_t FreeRTOS_AllEndPointsUp( NetworkInterface_t *pxInterface );
+
+typedef struct xRoutingStats
+{
+	UBaseType_t ulOnIp;
+	UBaseType_t ulOnMAC;
+	UBaseType_t ulOnNetMask;
+	UBaseType_t ulDefault;
+	UBaseType_t ulMatching;
+	UBaseType_t ulLocations[ 14 ];
+	UBaseType_t ulLocationsIP[ 8 ];
+} RoutingStats_t;
+
+extern RoutingStats_t xRoutingStats;
+
+NetworkEndPoint_t *pxGetSocketEndpoint( Socket_t xSocket );
+void vSetSocketEndpoint( Socket_t xSocket, NetworkEndPoint_t *pxEndPoint );
 
 #ifdef __cplusplus
 } // extern "C"

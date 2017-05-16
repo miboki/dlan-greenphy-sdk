@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -68,7 +68,7 @@ extern "C" {
 #include "FreeRTOS_Sockets.h"
 #include "IPTraceMacroDefaults.h"
 #include "FreeRTOS_Stream_Buffer.h"
-#if ipconfigUSE_TCP == 1
+#if( ipconfigUSE_TCP == 1 )
 	#include "FreeRTOS_TCP_WIN.h"
 	#include "FreeRTOS_TCP_IP.h"
 #endif
@@ -109,7 +109,7 @@ struct xARP_HEADER
 	uint8_t ucProtocolAddressLength;		/*  5 +  1 =  6 */
 	uint16_t usOperation;					/*  6 +  2 =  8 */
 	MACAddress_t xSenderHardwareAddress;	/*  8 +  6 = 14 */
-	uint32_t ulSenderProtocolAddress;		/* 14 +  4 = 18  */
+	uint8_t ucSenderProtocolAddress[ 4 ];	/* 14 +  4 = 18  */
 	MACAddress_t xTargetHardwareAddress;	/* 18 +  6 = 24  */
 	uint32_t ulTargetProtocolAddress;		/* 24 +  4 = 28  */
 }
@@ -657,16 +657,14 @@ BaseType_t xIPIsNetworkTaskReady( void );
 				#if( ipconfigSUPPORT_SELECT_FUNCTION == 1 )
 					bConnPassed : 1,	/* Connecting socket: Socket has been passed in a successful select()  */
 				#endif /* ipconfigSUPPORT_SELECT_FUNCTION */
-				#if( ipconfigUSE_IPv6 != 0 )
-					bIsIPv6 : 1,
-				#endif /* ipconfigUSE_IPv6 */
 				bFinAccepted : 1,	/* This socket has received (or sent) a FIN and accepted it */
 				bFinSent : 1,		/* We've sent out a FIN */
 				bFinRecv : 1,		/* We've received a FIN from our peer */
 				bFinAcked : 1,		/* Our FIN packet has been acked */
 				bFinLast : 1,		/* The last ACK (after FIN and FIN+ACK) has been sent or will be sent by the peer */
 				bRxStopped : 1,		/* Application asked to temporarily stop reception */
-				bMallocError : 1;	/* There was an error allocating a stream */
+				bMallocError : 1,	/* There was an error allocating a stream */
+				bWinScaling : 1;	/* A TCP-Window Scaling option was offered and accepted in the SYN phase. */
 		} bits;
 		uint32_t ulHighestRxAllowed;
 								/* The highest sequence number that we can receive at any moment */
@@ -699,6 +697,10 @@ BaseType_t xIPIsNetworkTaskReady( void );
 		/* Buffer space to store the last TCP header received. */
 		LastTCPPacket_t xPacket;
 		uint8_t tcpflags;		/* TCP flags */
+		#if( ipconfigUSE_TCP_WIN != 0 )
+			uint8_t ucMyWinScaleFactor;
+			uint8_t ucPeerWinScaleFactor;
+		#endif
 		#if( ipconfigUSE_CALLBACKS == 1 )
 			FOnTCPReceive_t pxHandleReceive;	/*
 										 		 * In case of a TCP socket:
@@ -707,7 +709,7 @@ BaseType_t xIPIsNetworkTaskReady( void );
 			FOnTCPSent_t pxHandleSent;
 			FOnConnected_t pxHandleConnected;	/* Actually type: typedef void (* FOnConnected_t) (Socket_t xSocket, BaseType_t ulConnected ); */
 		#endif /* ipconfigUSE_CALLBACKS */
-		uint32_t wnd;			/* Current Window size advertized by peer */
+		uint32_t ulWindowSize;		/* Current Window size advertised by peer */
 		uint32_t ulRxCurWinSize;	/* Constantly changing: this is the current size available for data reception */
 		size_t uxRxWinSize;	/* Fixed value: size of the TCP reception window */
 		size_t uxTxWinSize;	/* Fixed value: size of the TCP transmit window */
@@ -747,6 +749,15 @@ typedef struct XSOCKET
 {
 	EventBits_t xEventBits;
 	EventGroupHandle_t xEventGroup;
+
+	/* Most compilers do like bit-flags */
+	struct {
+		uint32_t
+			#if( ipconfigUSE_IPv6 != 0 )
+				bIsIPv6 : 1,
+			#endif /* ipconfigUSE_IPv6 */
+			bSomeFlag : 1;
+	} bits;
 
 	ListItem_t xBoundSocketListItem; /* Used to reference the socket from a bound sockets list. */
 	TickType_t xReceiveBlockTime; /* if recv[to] is called while no data is available, wait this amount of time. Unit in clock-ticks */
@@ -831,7 +842,7 @@ void vReturnEthernetFrame( NetworkBufferDescriptor_t * pxNetworkBuffer, BaseType
  * The TCP driver needs to bind a socket at the moment a listening socket
  * creates a new connected socket
  */
-BaseType_t vSocketBind( FreeRTOS_Socket_t *pxSocket, struct freertos_sockaddr * pxAddress, size_t uxAddressLength, BaseType_t ulInternal );
+BaseType_t vSocketBind( FreeRTOS_Socket_t *pxSocket, struct freertos_sockaddr * pxAddress, size_t uxAddressLength, BaseType_t xInternal );
 
 /*
  * Internal function to add streaming data to a TCP socket. If ulIn == true,
@@ -928,7 +939,7 @@ The socket is checked for its type: IPv4 or IPv6. */
 	{
 	BaseType_t xResult;
 
-		if( ( pxSocket != NULL ) && ( pxSocket->u.xTCP.bits.bIsIPv6 != pdFALSE_UNSIGNED ) )
+		if( ( pxSocket != NULL ) && ( pxSocket->bits.bIsIPv6 != pdFALSE_UNSIGNED ) )
 		{
 			xResult = ipSIZE_OF_IP_HEADER_IPv6;
 		}
@@ -983,7 +994,7 @@ The socket is checked for its type: IPv4 or IPv6. */
 	 * descriptor, this function can be used to translate a 'network buffer' to
 	 * a 'network buffer descriptor'.
 	 */
-	NetworkBufferDescriptor_t *pxPacketBuffer_to_NetworkBuffer( void *pvBuffer );
+	NetworkBufferDescriptor_t *pxPacketBuffer_to_NetworkBuffer( const void *pvBuffer );
 #endif
 
 #if( ( ipconfigHAS_DEBUG_PRINTF != 0 ) || ( ipconfigHAS_PRINTF != 0 ) )

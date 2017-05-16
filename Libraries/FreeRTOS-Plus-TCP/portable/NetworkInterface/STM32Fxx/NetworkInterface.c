@@ -4,7 +4,7 @@
  */
 
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -230,13 +230,13 @@ Each network device has 3 access functions:
 - output a network packet
 - return the PHY link-status (LS)
 They can be defined as static because their are addresses will be
-stored in struct NetworkInterfaceDescriptor_t. */
+stored in struct NetworkInterface_t. */
 
-static BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterfaceDescriptor_t *pxInterface );
+static BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface );
 
-static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterfaceDescriptor_t *pxInterface, NetworkBufferDescriptor_t * const pxBuffer, BaseType_t bReleaseAfterSend );
+static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxBuffer, BaseType_t bReleaseAfterSend );
 
-static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterfaceDescriptor_t *pxInterface );
+static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterface_t *pxInterface );
 
 
 /*-----------------------------------------------------------*/
@@ -329,7 +329,7 @@ void HAL_ETH_TxCpltCallback( ETH_HandleTypeDef *heth )
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterfaceDescriptor_t *pxInterface )
+BaseType_t xSTMF40_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 HAL_StatusTypeDef hal_eth_init_status;
 NetworkEndPoint_t *pxEndPoint;
@@ -409,7 +409,7 @@ uint32_t ulTempReg;
 }
 /*-----------------------------------------------------------*/
 
-static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterfaceDescriptor_t *pxInterface, NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
+static BaseType_t xSTMF40_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t * const pxDescriptor, BaseType_t bReleaseAfterSend )
 {
 BaseType_t xReturn;
 uint32_t ulTransmitSize = 0;
@@ -860,7 +860,7 @@ uint32_t ulRegValue = 0;
 }
 /*-----------------------------------------------------------*/
 
-static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterfaceDescriptor_t *pxInterface )
+static BaseType_t xSTMF40_GetPhyLinkStatus( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn;
 
@@ -877,7 +877,7 @@ BaseType_t xReturn;
 }
 /*-----------------------------------------------------------*/
 
-NetworkInterfaceDescriptor_t *pxSTMF40_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterfaceDescriptor_t *pxInterface )
+NetworkInterface_t *pxSTMF40_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
 {
 static char pcName[ 8 ];
 /* This function pxSTMF40_FillInterfaceDescriptor() adds a network-interface.

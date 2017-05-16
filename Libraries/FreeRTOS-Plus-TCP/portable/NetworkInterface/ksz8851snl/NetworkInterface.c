@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -398,11 +398,13 @@ const TickType_t x5_Seconds = 5000UL;
 		ensure the interrupt handler can return directly to it. */
 		xTaskCreate( prvEMACHandlerTask, "KSZ8851", configEMAC_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &xMicrelTaskHandle );
 		configASSERT( xMicrelTaskHandle );
+/*
 #warning Using for debugging with scope
 		gpio_configure_pin( PIO_PA24_IDX, PIO_OUTPUT_1 );
 		gpio_set_pin_low(PIO_PA24_IDX);
 		gpio_configure_pin( PIO_PA15_IDX, PIO_OUTPUT_1 );
 		gpio_set_pin_low(PIO_PA15_IDX);
+*/
 	}
 
 	/* When returning non-zero, the stack will become active and
@@ -1331,11 +1333,13 @@ static void ksz8851snl_low_level_init( void )
 		FreeRTOS_printf( ( "ksz8851snl_low_level_init: failed to initialize the Micrel driver!\n" ) );
 		configASSERT(0 == 1);
 	}
-	#if( ipconfigUSE_IPv6 == 0 )
+	#if( ipconfigUSE_LLMNR == 1 )
 	{
 		prvSetHash( xLLMNR_MacAdress.ucBytes );
 	}
-	#else
+	#endif /* ipconfigUSE_LLMNR */
+
+	#if( ipconfigUSE_IPv6 != 0 )
 	{
 //		prvSetHash( xIPv6_MulticastAddress.ucBytes );
 		NetworkEndPoint_t *pxEndPoint;
@@ -1344,7 +1348,7 @@ static void ksz8851snl_low_level_init( void )
 			pxEndPoint != NULL;
 			pxEndPoint = FreeRTOS_NextEndPoint( pxMyInterface, pxEndPoint ) )
 		{
-			if( pxEndPoint->bits.bIPv6 != NULL )
+			if( pxEndPoint->bits.bIPv6 != pdFALSE_UNSIGNED )
 			{
 			unsigned char ucMACAddress[ 6 ] = { 0x33, 0x33, 0xff, 0, 0, 0 };
 
@@ -1354,7 +1358,11 @@ static void ksz8851snl_low_level_init( void )
 				prvSetHash( ucMACAddress );
 			}
 		}
-		prvSetHash( xLLMNR_MacAdressIPv6.ucBytes );
+		#if( ipconfigUSE_LLMNR == 1 )
+		{
+			prvSetHash( xLLMNR_MacAdressIPv6.ucBytes );
+		}
+		#endif /* ipconfigUSE_LLMNR */
 	}
 	#endif
 //	ksz8851_reg_write( REG_MAC_HASH_0, xMicrelDevice.pusHashTable[ 0 ] );
@@ -1408,6 +1416,17 @@ int rxTail = xMicrelDevice.us_rx_tail;
 }
 /*-----------------------------------------------------------*/
 
+static const char *pcProtocolName( uint8_t ucProtocol )
+{
+	switch( ucProtocol )
+	{
+		case ipPROTOCOL_ICMP: return "ICMP";
+		case ipPROTOCOL_IGMP: return "IGMP";
+		case ipPROTOCOL_TCP: return "TCP";
+		case ipPROTOCOL_UDP: return "UDP";
+	}
+	return "Unknown";
+}
 
 static uint32_t prvEMACRxPoll( void )
 {
@@ -1420,6 +1439,7 @@ uint32_t ulReturnValue = 0;
 	/* Only for logging. */
 	int rxTail = xMicrelDevice.us_rx_tail;
 	EthernetHeader_t *pxEthernetHeader;
+	IPPacket_t *pxIPPacket_t;
 
 	pxNetworkBuffer = ksz8851snl_low_level_input();
 
@@ -1432,12 +1452,43 @@ uint32_t ulReturnValue = 0;
 		if( ( pxEthernetHeader->usFrameType != ipIPv4_FRAME_TYPE ) &&
 			( pxEthernetHeader->usFrameType != ipARP_FRAME_TYPE	) )
 		{
-//			FreeRTOS_printf( ( "Frame type %02X received\n", pxEthernetHeader->usFrameType ) );
+			if( pxEthernetHeader->usFrameType != ipIPv6_FRAME_TYPE )
+			{
+				FreeRTOS_printf( ( "ksz8851: Frame type %02X received\n", pxEthernetHeader->usFrameType ) );
+			}
+		}
+		else
+		{
+			pxIPPacket_t = ( IPPacket_t * )pxNetworkBuffer->pucEthernetBuffer;
+			//if( pxIPPacket_t->xIPHeader.ucProtocol == ipPROTOCOL_ICMP )
+			if( /* ( pxEthernetHeader->usFrameType == ipIPv4_FRAME_TYPE ) && */ ( pxIPPacket_t->xIPHeader.ucProtocol == ipPROTOCOL_TCP ) )
+			{
+				//FreeRTOS_printf( ( "ksz8851: TCP\n" ) );
+			}
+			if( ( pxEthernetHeader->usFrameType != ipIPv4_FRAME_TYPE ) ||
+				( ( pxIPPacket_t->xIPHeader.ucProtocol != ipPROTOCOL_UDP ) && ( pxIPPacket_t->xIPHeader.ucProtocol != ipPROTOCOL_TCP ) ) )
+			{
+				if( pxEthernetHeader->usFrameType != ipARP_FRAME_TYPE )
+				{
+/*
+					FreeRTOS_printf( ( "ksz8851: Recv frame %04X prot %02X  (%s)\n",
+						( unsigned )pxEthernetHeader->usFrameType,
+						( unsigned )pxIPPacket_t->xIPHeader.ucProtocol,
+						pcProtocolName( pxIPPacket_t->xIPHeader.ucProtocol ) ) );
+*/
+				}
+			}
 		}
 		ulReturnValue++;
 
 		pxNetworkBuffer->pxInterface = pxMyInterface;
-		pxNetworkBuffer->pxEndPoint = NULL;
+/*		pxNetworkBuffer->pxEndPoint = FreeRTOS_FirstEndPoint( pxMyInterface ); */
+
+		pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnMAC( &( pxEthernetHeader->xDestinationAddress ), pxMyInterface );
+		if( pxNetworkBuffer->pxEndPoint == NULL )
+		{
+			pxNetworkBuffer->pxEndPoint = FreeRTOS_FirstEndPoint( pxMyInterface );
+		}
 
 		if( logFlags & RX_LOGGING )
 		{
@@ -1491,8 +1542,11 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 			/* The logging produced below may be helpful
 			while tuning +TCP: see how many buffers are in use. */
 			uxLastMinBufferCount = uxCurrentCount;
-			FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
-				uxGetNumberOfFreeNetworkBuffers(), uxCurrentCount ) );
+			if( uxCurrentCount < 10 )
+			{
+				FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
+					uxGetNumberOfFreeNetworkBuffers(), uxCurrentCount ) );
+			}
 		}
 
 		#if( ipconfigCHECK_IP_QUEUE_SPACE != 0 )
@@ -1520,8 +1574,8 @@ const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( EMAC_MAX_BLOCK_TIME_MS );
 		if( ( xTaskGetTickCount() - xLoggingTime ) > 10000 )
 		{
 			xLoggingTime += 10000;
-			FreeRTOS_printf( ( "Now Tx/Rx %7d /%7d Erros %d/%d\n",
-				xMicrelDevice.ul_total_tx, xMicrelDevice.ul_total_rx, tx_error_count, rx_error_count ) );
+//			FreeRTOS_printf( ( "Now Tx/Rx %7d /%7d Errors %d/%d\n",
+//				xMicrelDevice.ul_total_tx, xMicrelDevice.ul_total_rx, tx_error_count, rx_error_count ) );
 		}
 
 		if( ( ulISREvents & EMAC_IF_RX_EVENT ) != 0 )

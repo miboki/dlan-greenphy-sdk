@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -86,7 +86,7 @@ be at least this number of buffers available. */
 static List_t xFreeBuffersList;
 
 /* Some statistics about the use of buffers. */
-static UBaseType_t uxMinimumFreeNetworkBuffers = 0;
+static UBaseType_t uxMinimumFreeNetworkBuffers = 0u;
 
 /* Declares the pool of NetworkBufferDescriptor_t structures that are available
 to the system.  All the network buffers referenced from xFreeBuffersList exist
@@ -332,8 +332,8 @@ NetworkBufferDescriptor_t *pxNetworkBufferGetFromISR( size_t xRequestedSizeBytes
 {
 NetworkBufferDescriptor_t *pxReturn = NULL;
 
-	/* The current implementation only has a single size memory block, so the
-	requested size parameter is not used (yet). */
+	/* The current implementation only has a single size memory block, so
+	the requested size parameter is not used (yet). */
 	( void ) xRequestedSizeBytes;
 
 	/* If there is a semaphore available then there is a buffer available, but,

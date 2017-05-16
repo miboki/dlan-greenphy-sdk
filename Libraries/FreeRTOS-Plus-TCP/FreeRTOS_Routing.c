@@ -1,5 +1,5 @@
 /*
- * FreeRTOS+TCP Labs Build 160916 (C) 2016 Real Time Engineers ltd.
+ * FreeRTOS+TCP Labs Build 160919 (C) 2016 Real Time Engineers ltd.
  * Authors include Hein Tibosch and Richard Barry
  *
  *******************************************************************************
@@ -90,6 +90,8 @@ NetworkEndPoint_t *pxNetworkEndPoints = NULL;
 
 /* A list of all network interfaces: */
 NetworkInterface_t *pxNetworkInterfaces = NULL;
+
+RoutingStats_t xRoutingStats;
 
 /*-----------------------------------------------------------*/
 
@@ -239,10 +241,15 @@ NetworkEndPoint_t *FreeRTOS_NextEndPoint( NetworkInterface_t *pxInterface, Netwo
 /*-----------------------------------------------------------*/
 
 /* Find the end-point with given IP-address. */
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnIP( uint32_t ulIPAddress )
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnIP( uint32_t ulIPAddress, uint32_t ulWhere )
 {
 NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
 
+	xRoutingStats.ulOnIp++;
+	if( ulWhere < ARRAY_SIZE( xRoutingStats.ulLocationsIP ) )
+	{
+		xRoutingStats.ulLocationsIP[ ulWhere ]++;
+	}
 	while( pxEndPoint != NULL )
 	{
 		if( pxEndPoint->ulIPAddress == ulIPAddress )
@@ -306,11 +313,12 @@ void FreeRTOS_GetAddressConfiguration( NetworkEndPoint_t *pxEndPoint, uint32_t *
 #endif /* ipconfigUSE_IPv6 */
 /*-----------------------------------------------------------*/
 
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnMAC( const MACAddress_t *pxMACAddress )
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnMAC( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface )
 {
 NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
 static const MACAddress_t xIPv6_MulticastAddress = { { 0x33, 0x33, 0xff, 0x00, 0x00, 0x00 } };
 
+	xRoutingStats.ulOnMAC++;
 	/*_RB_ Question - would it be more efficient to store the mac addresses in
 	uin64_t variables for direct comparison instead of using memcmp()?  [don't
 	know if there is a quick way of creating a 64-bit number from the 48-byte
@@ -319,14 +327,8 @@ static const MACAddress_t xIPv6_MulticastAddress = { { 0x33, 0x33, 0xff, 0x00, 0
 	/* Find the end-point with given MAC-address. */
 	while( pxEndPoint != NULL )
 	{
-		if( memcmp( pxEndPoint->xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) == 0 )
-		{
-			break;
-		}
-
-		/*_RB_ What is this second test doing?  Is it supposed to be checking
-		xIPv6_MulticastAddress? */
-		if( memcmp( pxEndPoint->xMACAddress.ucBytes, pxMACAddress->ucBytes, 3 ) == 0 )
+		if( ( ( pxInterface == NULL ) || ( pxInterface == pxEndPoint->pxNetworkInterface ) ) &&
+			( memcmp( pxEndPoint->xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) == 0 ) )
 		{
 			break;
 		}
@@ -338,11 +340,16 @@ static const MACAddress_t xIPv6_MulticastAddress = { { 0x33, 0x33, 0xff, 0x00, 0
 }
 /*-----------------------------------------------------------*/
 
-NetworkEndPoint_t *FreeRTOS_FindEndPointOnNetMask( uint32_t ulIPAddress )
+NetworkEndPoint_t *FreeRTOS_FindEndPointOnNetMask( uint32_t ulIPAddress, uint32_t ulWhere )
 {
 NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
 NetworkEndPoint_t *pxDefault = NULL;
 
+	xRoutingStats.ulOnNetMask++;
+	if( ulWhere < ARRAY_SIZE( xRoutingStats.ulLocations ) )
+	{
+		xRoutingStats.ulLocations[ ulWhere ]++;
+	}
 	/* Find the best fitting end-point to reach a given IP-address. */
 	/*_RB_ Presumably then a broadcast reply could go out on a different end point to that on which the broadcast was received - although that should not be an issue if the nodes are on the same LAN it could be an issue if the nodes are on separate LANs. */
 
@@ -384,6 +391,7 @@ NetworkEndPoint_t *FreeRTOS_FindDefaultEndPoint()
 {
 NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
 
+	xRoutingStats.ulDefault++;
 	while( pxEndPoint != NULL )
 	{
 		if( pxEndPoint->bits.bIsDefault != pdFALSE_UNSIGNED )
@@ -476,12 +484,13 @@ NetworkEndPoint_t *FreeRTOS_MatchingEndpoint( NetworkInterface_t *pxNetworkInter
 NetworkEndPoint_t *pxEndPoint;
 ProtocolPacket_t *pxPacket;
 
+	xRoutingStats.ulMatching++;
 	/* Remove compiler warning when ipconfigUSE_IPv6 is not set. */
 	( void ) pxNetworkInterface;
 
 	pxPacket = ( ProtocolPacket_t * ) pucEthernetBuffer;
 
-	pxEndPoint = FreeRTOS_FindEndPointOnMAC( &( pxPacket->xUDPPacket.xEthernetHeader.xDestinationAddress ) );
+	pxEndPoint = FreeRTOS_FindEndPointOnMAC( &( pxPacket->xUDPPacket.xEthernetHeader.xDestinationAddress ), NULL );
 
 	if( pxEndPoint != NULL )
 	{
@@ -490,7 +499,7 @@ ProtocolPacket_t *pxPacket;
 	}
 	else if( pxPacket->xUDPPacket.xEthernetHeader.usFrameType == ipARP_FRAME_TYPE )
 	{
-		pxEndPoint = FreeRTOS_FindEndPointOnIP( pxPacket->xARPPacket.xARPHeader.ulTargetProtocolAddress );
+		pxEndPoint = FreeRTOS_FindEndPointOnIP( pxPacket->xARPPacket.xARPHeader.ulTargetProtocolAddress, 5 );
 	}
 #if( ipconfigUSE_IPv6 != 0 )
 	else if( pxPacket->xUDPPacket.xEthernetHeader.usFrameType == ipIPv6_FRAME_TYPE )
@@ -517,7 +526,7 @@ ProtocolPacket_t *pxPacket;
 	else
 	{
 		/* An IPv4 UDP or TCP packet. */
-		pxEndPoint = FreeRTOS_FindEndPointOnIP( pxPacket->xUDPPacket.xIPHeader.ulDestinationIPAddress );
+		pxEndPoint = FreeRTOS_FindEndPointOnIP( pxPacket->xUDPPacket.xIPHeader.ulDestinationIPAddress, 6 );
 	}
 
 	return pxEndPoint;
@@ -580,17 +589,17 @@ FreeRTOS_printf( ( "ICMPv6 return %d bytes\n", pxNetworkBuffer->xDataLength ) );
 	NetworkEndPoint_t *pxEndPoint = pxNetworkBuffer->pxEndPoint;
 	size_t xNeededSize;
 
-		if( ICMPHeader_IPv6->ucTypeOfMessage != ipICMP_PING_REQUEST_IPv6 )
-		{
-			FreeRTOS_printf( ( "ICMPv6 message %d from %02x:%02x:%02x:%02x:%02x:%02x\n",
-				ICMPHeader_IPv6->ucTypeOfMessage,
-				ICMPHeader_IPv6->ucOptions[ 2 ],
-				ICMPHeader_IPv6->ucOptions[ 3 ],
-				ICMPHeader_IPv6->ucOptions[ 4 ],
-				ICMPHeader_IPv6->ucOptions[ 5 ],
-				ICMPHeader_IPv6->ucOptions[ 6 ],
-				ICMPHeader_IPv6->ucOptions[ 7 ] ) );
-		}
+//		if( ICMPHeader_IPv6->ucTypeOfMessage != ipICMP_PING_REQUEST_IPv6 )
+//		{
+//			FreeRTOS_printf( ( "ICMPv6 message %d from %02x:%02x:%02x:%02x:%02x:%02x\n",
+//				ICMPHeader_IPv6->ucTypeOfMessage,
+//				ICMPHeader_IPv6->ucOptions[ 2 ],
+//				ICMPHeader_IPv6->ucOptions[ 3 ],
+//				ICMPHeader_IPv6->ucOptions[ 4 ],
+//				ICMPHeader_IPv6->ucOptions[ 5 ],
+//				ICMPHeader_IPv6->ucOptions[ 6 ],
+//				ICMPHeader_IPv6->ucOptions[ 7 ] ) );
+//		}
 		if( pxEndPoint != NULL )
 		{
 			switch( ICMPHeader_IPv6->ucTypeOfMessage )
@@ -680,7 +689,6 @@ static const uint8_t pcLOCAL_NETWORK_MULTICAST_MAC[ ipMAC_ADDRESS_LENGTH_BYTES ]
 
 		xPacketSize = ( size_t ) ( ipSIZE_OF_ETH_HEADER + ipSIZE_OF_IP_HEADER_IPv6 + sizeof( ICMPHeader_IPv6_t ) );
 
-
 		/* This is called from the context of the IP event task, so a block time
 		must not be used. */
 		pxNetworkBuffer = pxGetNetworkBufferWithDescriptor( xPacketSize, 0 );
@@ -735,3 +743,31 @@ static const uint8_t pcLOCAL_NETWORK_MULTICAST_MAC[ ipMAC_ADDRESS_LENGTH_BYTES ]
 	}
 #endif
 /*-----------------------------------------------------------*/
+
+
+NetworkEndPoint_t *pxGetSocketEndpoint( Socket_t xSocket )
+{
+FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
+NetworkEndPoint_t *pxResult;
+
+	if( pxSocket )
+	{
+		pxResult = pxSocket->pxEndPoint;
+	}
+	else
+	{
+		pxResult = NULL;
+	}
+
+	return pxResult;	
+}
+/*-----------------------------------------------------------*/
+
+void vSetSocketEndpoint( Socket_t xSocket, NetworkEndPoint_t *pxEndPoint )
+{
+FreeRTOS_Socket_t *pxSocket = ( FreeRTOS_Socket_t * ) xSocket;
+
+	pxSocket->pxEndPoint = pxEndPoint;
+}
+/*-----------------------------------------------------------*/
+
