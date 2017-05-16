@@ -86,7 +86,6 @@ static uint32_t physts, olddphysts;
 /* Pointer to delay function used for this driver */
 static p_msDelay_func_t pDelayMs;
 
-
 /*
  * Apply NXP AN10859
  * LPC1700 Ethernet MII Management (MDIO) via software
@@ -250,10 +249,9 @@ uint32_t lpc_phy_init(bool rmii, p_msDelay_func_t pDelayMsFunc)
 	uint16_t tmp;
 	int32_t i;
 
-
 	pDelayMs = pDelayMsFunc;
 
-	/* Initial states for PHY status and state machine */
+	/* Initial states for PHY status */
 	olddphysts = physts = 0;
 
 	Chip_GPIO_SetPinDIROutput(LPC_GPIO, MDC_GPIO_PORT_NUM, MDC_GPIO_BIT_NUM);
@@ -281,17 +279,26 @@ uint32_t lpc_phy_init(bool rmii, p_msDelay_func_t pDelayMsFunc)
 	/* Setup link */
 	prvWritePHY(LAN8_BCR_REG, LAN8_AUTONEG);
 
-
 	/* The link is not set active at this point, but will be detected
 	   later */
 
 	return SUCCESS;
 }
 
-/* Phy status update state machine */
+/* Phy status update; state machine not needed, as registers are read
+ * with software MDIO in blocking mode */
 uint32_t lpcPHYStsPoll(void)
 {
+uint16_t linksts, sdsts;
+
+    /* clear link changed flag */
 	physts &= ~PHY_LINK_CHANGED;
-	smsc_update_phy_sts(prvReadPHY(LAN8_BSR_REG), prvReadPHY(LAN8_PHYSPLCTL_REG));
+
+	/* read link and speed status */
+	linksts = prvReadPHY(LAN8_BSR_REG);
+	sdsts = prvReadPHY(LAN8_PHYSPLCTL_REG);
+
+	/* update physts */
+	smsc_update_phy_sts(linksts, sdsts);
 	return physts;
 }
