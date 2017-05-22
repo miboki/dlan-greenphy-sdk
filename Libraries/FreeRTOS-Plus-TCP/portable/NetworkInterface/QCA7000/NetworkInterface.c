@@ -119,8 +119,6 @@ NetworkEndPoint_t *pxEndPoint;
 	struct CCMMEFrame *pxMMEFrame;
 #endif
 
-	pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
-
 	if( xGreenPHYTaskHandle == NULL )
 	{
 		Chip_GPDMA_Init(LPC_GPDMA);
@@ -166,6 +164,7 @@ NetworkEndPoint_t *pxEndPoint;
 				if( pxDescriptor != NULL ) {
 					/* Received MME, extract MAC. */
 					pxMMEFrame = (struct CCMMEFrame *) pxDescriptor->pucEthernetBuffer;
+					pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
 					memcpy( pxEndPoint->xMACAddress.ucBytes, pxMMEFrame->mOSA, sizeof( MACAddress_t ) );
 
 					/* Release the Network Buffer, as we are responsible for it. */
@@ -204,18 +203,18 @@ BaseType_t xReturn = pdPASS;
 }
 /*-----------------------------------------------------------*/
 
-NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface )
 {
 static char pcName[ 8 ];
 /* This function pxQCA7000_FillInterfaceDescriptor() adds a network-interface.
 Make sure that the object pointed to by 'pxInterface'
 is declared static or global, and that it will remain to exist. */
 
-	snprintf( pcName, sizeof( pcName ), "eth%ld", xEMACIndex );
+	snprintf( pcName, sizeof( pcName ), "plc%ld", xIndex );
 
 	memset( pxInterface, '\0', sizeof( *pxInterface ) );
 	pxInterface->pcName				= pcName;					/* Just for logging, debugging. */
-	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pvArgument			= (void*) pxInterface;		/* Has only meaning for the driver functions. */
 	pxInterface->pfInitialise		= xQCA7000_NetworkInterfaceInitialise;
 	pxInterface->pfOutput			= xQCA7000_NetworkInterfaceOutput;
 	pxInterface->pfGetPhyLinkStatus = xQCA7000_GetPhyLinkStatus;

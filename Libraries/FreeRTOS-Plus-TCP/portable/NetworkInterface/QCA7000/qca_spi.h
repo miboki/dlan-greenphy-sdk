@@ -46,6 +46,11 @@
 
 /* FreeRTOS+TCP includes. */
 #include "FreeRTOS_IP.h"
+#include "FreeRTOS_IP_Private.h"
+#include "NetworkBufferManagement.h"
+#include "FreeRTOS_Routing.h"
+#include "FreeRTOS_Bridge.h"
+
 
 /*====================================================================*
  *   custom header files;
@@ -120,6 +125,7 @@ struct qcaspi {
 	QcaFrmHdl lFrmHdl;
 
 	struct stats stats;
+	NetworkInterface_t *pxInterface;
 };
 
 void qcaspi_spi_thread(void *data);

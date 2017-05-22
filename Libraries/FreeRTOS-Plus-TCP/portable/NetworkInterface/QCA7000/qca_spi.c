@@ -49,6 +49,7 @@
 #include "FreeRTOS_IP_Private.h"
 #include "NetworkBufferManagement.h"
 #include "FreeRTOS_Routing.h"
+#include "FreeRTOS_Bridge.h"
 
 /*====================================================================*
  *   custom header files;
@@ -382,15 +383,37 @@ qcaspi_receive(struct qcaspi *qca)
 				else
 			#endif
 				{
-					/* Pass data up to the IP Task */
-					xRxEvent.pvData = ( void * ) qca->rx_desc;
-					if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+					/* Set the receiving interface */
+					qca->rx_desc->pxInterface = qca->pxInterface;
+				#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+					if( qca->pxInterface->bits.bIsBridged )
 					{
-						/* Could not send the descriptor into the TCP/IP
-						stack, it must be released. */
-						vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-						qca->stats.rx_dropped++;
-						iptraceETHERNET_RX_EVENT_LOST();
+						xReturn = xBridge_Process( qca->rx_desc );
+						if( xReturn == pdFAIL )
+						{
+							if( bReleaseAfterSend == pdTRUE )
+							{
+								/* The Bridge could not process the descriptor,
+								it must be released. */
+								vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+								qca->stats.rx_dropped++;
+								iptraceETHERNET_RX_EVENT_LOST();
+							}
+						}
+					}
+					else
+				#endif
+					{
+						/* Pass data up to the IP Task */
+						xRxEvent.pvData = ( void * ) qca->rx_desc;
+						if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+						{
+							/* Could not send the descriptor into the TCP/IP
+							stack, it must be released. */
+							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+							qca->stats.rx_dropped++;
+							iptraceETHERNET_RX_EVENT_LOST();
+						}
 					}
 				}
 

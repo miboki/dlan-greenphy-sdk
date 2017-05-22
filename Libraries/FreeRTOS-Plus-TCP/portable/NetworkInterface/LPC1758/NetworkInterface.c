@@ -71,6 +71,7 @@
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_IP_Private.h"
 #include "FreeRTOS_Routing.h"
+#include "FreeRTOS_Bridge.h"
 #include "NetworkBufferManagement.h"
 #include "NetworkInterface.h"
 
@@ -369,6 +370,7 @@ TickType_t xTimeBetweenAttempts = pdMS_TO_TICKS( 50UL );
 
 	return xReturn;
 }
+/*-----------------------------------------------------------*/
 
 BaseType_t xLPC1758_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
@@ -383,9 +385,6 @@ NetworkEndPoint_t *pxEndPoint;
 	Chip_ENET_RXDisable(LPC_ETHERNET);
 	Chip_ENET_TXDisable(LPC_ETHERNET);
 
-	pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
-	configASSERT( pxEndPoint != NULL );
-
 	/* Call the LPCOpen function to initialise the hardware. */
 	#if( configUSE_RMII == 1 )
 	{
@@ -397,12 +396,21 @@ NetworkEndPoint_t *pxEndPoint;
 	}
 	#endif
 
-	/* Save MAC address. */
-	Chip_ENET_SetADDR( LPC_ETHERNET, pxEndPoint->xMACAddress.ucBytes );
+#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+	/* If interface is bridged run in promiscuous mode and
+	do not activate RX filters */
+	if( pxInterface->bits.bIsBridged == 0 )
+#endif
+	{
+		pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+		configASSERT( pxEndPoint != NULL );
 
-	/* Enable packet reception */
-	/* Perfect match and Broadcast enabled */
-	Chip_ENET_EnableRXFilter(LPC_ETHERNET, ENET_RXFILTERCTRL_APE | ENET_RXFILTERCTRL_ABE);
+		/* Save MAC address. */
+		Chip_ENET_SetADDR( LPC_ETHERNET, pxEndPoint->xMACAddress.ucBytes );
+
+		/* Perfect match and Broadcast enabled */
+		Chip_ENET_EnableRXFilter(LPC_ETHERNET, ENET_RXFILTERCTRL_APE | ENET_RXFILTERCTRL_ABE);
+	}
 
 	/* Initialize the PHY */
 	#define LPC_PHYDEF_PHYADDR 1
@@ -432,7 +440,7 @@ NetworkEndPoint_t *pxEndPoint;
 		descriptors being initialised more than once. */
 		if( xEMACTaskHandle == NULL )
 		{
-			xTaskCreate( prvEMACHandlerTask, "EMAC", configEMAC_TASK_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
+			xTaskCreate( prvEMACHandlerTask, "EMAC", configEMAC_TASK_STACK_SIZE, pxInterface, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
 			configASSERT( xEMACTaskHandle );
 
 			/* Initialise the descriptors. */
@@ -549,21 +557,20 @@ static void prvEMACHandlerTask( void *pvParameters )
 const TickType_t xDescriptorWaitTime = pdMS_TO_TICKS( 250 );
 const UBaseType_t uxMinimumBuffersRemaining = 2UL;
 
+NetworkInterface_t *pxInterface;
 TickType_t xPhyPollTime = pdMS_TO_TICKS( PHY_LS_LOW_CHECK_TIME_MS );
 uint32_t ulNotificationValue;
-
 eFrameProcessingResult_t eResult;
-
 UBaseType_t ulRxConsumeIndex, ulTxConsumeIndex;
-size_t xDataLength;
 NetworkBufferDescriptor_t *pxDescriptor;
 #if( ipconfigZERO_COPY_RX_DRIVER != 0 )
 	NetworkBufferDescriptor_t *pxNewDescriptor;
 #endif /* ipconfigZERO_COPY_RX_DRIVER */
+size_t xDataLength;
 IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 
 	/* Remove compiler warning about unused parameter. */
-	( void ) pvParameters;
+	pxInterface = ( NetworkInterface_t *) pvParameters;
 
 	for( ;; )
 	{
@@ -666,23 +673,44 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 							}
 							#endif /* ipconfigZERO_COPY_RX_DRIVER */
 
-							/* Pass the data to the TCP/IP task for processing. */
-							xRxEvent.pvData = ( void * ) pxDescriptor;
-							if( xSendEventStructToIPTask( &xRxEvent, xDescriptorWaitTime ) == pdFALSE )
+							/* Set the receiving interface in the network buffer descriptor */
+							pxDescriptor->pxInterface = pxInterface;
+
+						#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+							if( pxInterface->bits.bIsBridged )
 							{
-								/* Could not send the descriptor into the TCP/IP
-								stack, it must be released. */
-								vReleaseNetworkBufferAndDescriptor( pxDescriptor );
-								iptraceETHERNET_RX_EVENT_LOST();
+								xReturn = xBridge_Process( pxDescriptor );
+								if( xReturn == pdFAIL )
+								{
+									if( bReleaseAfterSend == pdTRUE )
+									{
+										/* The Bridge could not process the descriptor,
+										it must be released. */
+										vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+										iptraceETHERNET_RX_EVENT_LOST();
+									}
+								}
 							}
 							else
+						#endif
 							{
-								iptraceNETWORK_INTERFACE_RECEIVE();
+								/* Pass the data to the TCP/IP task for processing. */
+								xRxEvent.pvData = ( void * ) pxDescriptor;
+								if( xSendEventStructToIPTask( &xRxEvent, xDescriptorWaitTime ) == pdFALSE )
+								{
+									/* Could not send the descriptor into the TCP/IP
+									stack, it must be released. */
+									vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+									iptraceETHERNET_RX_EVENT_LOST();
+								}
+								else
+								{
+									iptraceNETWORK_INTERFACE_RECEIVE();
 
-								/* The data that was available at the top of this
-								loop has been sent, so is no longer available. */
+									/* The data that was available at the top of this
+									loop has been sent, so is no longer available. */
+								}
 							}
-
 						}
 					}
 					else
@@ -775,18 +803,18 @@ BaseType_t xReturn;
 }
 /*-----------------------------------------------------------*/
 
-NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xEMACIndex, NetworkInterface_t *pxInterface )
+NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface )
 {
 static char pcName[ 8 ];
 /* This function pxLPC1758_FillInterfaceDescriptor() adds a network-interface.
 Make sure that the object pointed to by 'pxInterface'
 is declared static or global, and that it will remain to exist. */
 
-	snprintf( pcName, sizeof( pcName ), "eth%ld", xEMACIndex );
+	snprintf( pcName, sizeof( pcName ), "eth%ld", xIndex );
 
 	memset( pxInterface, '\0', sizeof( *pxInterface ) );
 	pxInterface->pcName				= pcName;					/* Just for logging, debugging. */
-	pxInterface->pvArgument			= (void*)xEMACIndex;		/* Has only meaning for the driver functions. */
+	pxInterface->pvArgument			= (void*) pxInterface;		/* Has only meaning for the driver functions. */
 	pxInterface->pfInitialise		= xLPC1758_NetworkInterfaceInitialise;
 	pxInterface->pfOutput			= xLPC1758_NetworkInterfaceOutput;
 	pxInterface->pfGetPhyLinkStatus = xLPC1758_GetPhyLinkStatus;
