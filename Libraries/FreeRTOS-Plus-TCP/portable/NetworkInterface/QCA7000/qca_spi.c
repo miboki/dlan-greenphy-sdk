@@ -385,20 +385,16 @@ qcaspi_receive(struct qcaspi *qca)
 				{
 					/* Set the receiving interface */
 					qca->rx_desc->pxInterface = qca->pxInterface;
-				#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+				#if( ipconfig_USE_BRIDGE != 0 )
 					if( qca->pxInterface->bits.bIsBridged )
 					{
-						xReturn = xBridge_Process( qca->rx_desc );
-						if( xReturn == pdFAIL )
+						if( xBridge_Process( qca->rx_desc ) == pdFAIL )
 						{
-							if( bReleaseAfterSend == pdTRUE )
-							{
-								/* The Bridge could not process the descriptor,
-								it must be released. */
-								vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-								qca->stats.rx_dropped++;
-								iptraceETHERNET_RX_EVENT_LOST();
-							}
+							/* The Bridge could not process the descriptor,
+							it must be released. */
+							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+							qca->stats.rx_dropped++;
+							iptraceETHERNET_RX_EVENT_LOST();
 						}
 					}
 					else

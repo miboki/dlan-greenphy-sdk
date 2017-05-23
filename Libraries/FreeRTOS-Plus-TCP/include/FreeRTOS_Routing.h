@@ -95,7 +95,7 @@ typedef struct xNetworkInterface
 	struct
 	{
 		uint32_t
-			#if( ipconfigUSE_NETWORK_BRIDGE )
+			#if( ipconfigUSE_BRIDGE )
 				bIsBridged : 1,
 			#endif
 			bInterfaceUp : 1;

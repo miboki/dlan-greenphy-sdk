@@ -76,6 +76,9 @@
 
 /*-----------------------------------------------------------*/
 
+/* Exclude the entire file if bridge support is not enabled. */
+#if( ipconfigUSE_BRIDGE != 0 )
+
 static BaseType_t xBridge_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
@@ -162,3 +165,5 @@ is declared static or global, and that it will remain to exist. */
 	return pxInterface;
 }
 /*-----------------------------------------------------------*/
+
+#endif /* ipconfigUSE_BRIDGE != 0 */

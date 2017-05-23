@@ -64,6 +64,18 @@ extern "C" {
 
 #include "FreeRTOS_Routing.h"
 
+/*
+ * Reduce the age count in each entry within the forwarding table.  An entry is
+ * no longer considered valid and is deleted if its age reaches zero.
+ */
+void vAgeForwardingTable( void );
+
+/*
+ * Forward a frame to the bridged interfaces. Returns pdTRUE if the frame was
+ * successfully forwarded to one or multiple interfaces and pdFALSE if not. If
+ * the frame could not be forwarded it is the caller's responsibility to return
+ * the network buffer.
+ */
 BaseType_t xBridge_Process( NetworkBufferDescriptor_t * const pxNetworkBuffer );
 
 #ifdef __cplusplus

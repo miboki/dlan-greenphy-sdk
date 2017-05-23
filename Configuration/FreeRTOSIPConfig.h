@@ -355,7 +355,34 @@ FTP and HTTP servers both execute in the standard server task. */
 #define configNUM_TX_DESCRIPTORS 4
 
 #define configREAD_MAC_FROM_GREENPHY 0
-#define ipconfigUSE_NETWORK_BRIDGE 1
+
+/* If ipconfigUSE_BRIDGE is set to 1 multiple interfaces can be bridged.
+Ethernet frames arriving on one interface are forwarded to the other bridged
+interfaces. The NetworkInterface implementation needs to support this by
+passing the received frame to xBridge_Process() instead of the IP task. */
+#define ipconfigUSE_BRIDGE 1
+
+/* If multiple interfaces are bridged the forwarding table is used to determine
+which interface can reach a specific MAC, so frames do not need to be
+duplicated every time. If the forwarding table is not used, the bridge behaves
+like a hub. */
+#define ipconfigUSE_FORWARDING_TABLE 1
+
+/* The forwarding table maps to MAC addresses to interfaces. When a frame
+arrives the forwarding table is updated with the source MAC and the receiving
+interface. ipconfigFORWARDING_TABLE_ENTRIES defines the maximum number of
+entries that can exist in the forwarding table at any one time. */
+#define ipconfigFORWARDING_TABLE_ENTRIES    32
+
+/* ipconfigMAX_FORWARDING_TABLE_AGE defines the maximum time between an entry
+in the forwarding table being created or refreshed and the entry being removed
+because it is stale. ipconfigUSE_FORWARDING_TABLE is specified in tens of
+seconds, so a value of 30 is equal to 300 seconds (or 5 minutes). */
+#define ipconfigMAX_FORWARDING_TABLE_AGE 30
+
+/* Defines how often the forwarding table timer callback function is executed.  The time is
+shorted in the Windows simulator as simulated time is not real time. */
+#define ipFORWARDING_TABLE_TIMER_PERIOD_MS 10000
 
 #define ipconfigENDPOINT_DNS_ADDRESS_COUNT 1
 

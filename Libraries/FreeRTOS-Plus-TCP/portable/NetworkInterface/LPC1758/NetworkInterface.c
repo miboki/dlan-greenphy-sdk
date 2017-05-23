@@ -396,7 +396,7 @@ NetworkEndPoint_t *pxEndPoint;
 	}
 	#endif
 
-#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+#if( ipconfigUSE_BRIDGE != 0 )
 	/* If interface is bridged run in promiscuous mode and
 	do not activate RX filters */
 	if( pxInterface->bits.bIsBridged == 0 )
@@ -676,19 +676,15 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 							/* Set the receiving interface in the network buffer descriptor */
 							pxDescriptor->pxInterface = pxInterface;
 
-						#if( ipconfig_USE_NETWORK_BRIDGE != 0 )
+						#if( ipconfigUSE_BRIDGE != 0 )
 							if( pxInterface->bits.bIsBridged )
 							{
-								xReturn = xBridge_Process( pxDescriptor );
-								if( xReturn == pdFAIL )
+								if( xBridge_Process( pxDescriptor ) == pdFAIL )
 								{
-									if( bReleaseAfterSend == pdTRUE )
-									{
-										/* The Bridge could not process the descriptor,
-										it must be released. */
-										vReleaseNetworkBufferAndDescriptor( pxDescriptor );
-										iptraceETHERNET_RX_EVENT_LOST();
-									}
+									/* The Bridge could not process the descriptor,
+									it must be released. */
+									vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+									iptraceETHERNET_RX_EVENT_LOST();
 								}
 							}
 							else
@@ -696,7 +692,7 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 							{
 								/* Pass the data to the TCP/IP task for processing. */
 								xRxEvent.pvData = ( void * ) pxDescriptor;
-								if( xSendEventStructToIPTask( &xRxEvent, xDescriptorWaitTime ) == pdFALSE )
+								if( xSendEventStructToIPTask( &xRxEvent, xDescriptorWaitTime ) == pdFAIL )
 								{
 									/* Could not send the descriptor into the TCP/IP
 									stack, it must be released. */

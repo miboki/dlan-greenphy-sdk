@@ -79,6 +79,7 @@
 #include "NetworkBufferManagement.h"
 #include "FreeRTOS_DNS.h"
 #include "FreeRTOS_Routing.h"
+#include "FreeRTOS_Bridge.h"
 
 /* Used to ensure the structure packing is having the desired effect.  The
 'volatile' is used to prevent compiler warnings about comparing a constant with
@@ -327,7 +328,8 @@ regular basis:
 	1. ARP, to check its table entries
 	2. DPHC, to send requests and to renew a reservation
 	3. TCP, to check for timeouts, resends
-	4. DNS, to check for timeouts when looking-up a domain.
+	4. DNS, to check for timeouts when looking-up a domain
+	5. Bridge Forwarding Table, to check its table entries.
  */
 static IPTimer_t xARPTimer;
 #if( ipconfigUSE_TCP != 0 )
@@ -336,7 +338,9 @@ static IPTimer_t xARPTimer;
 #if( ipconfigDNS_USE_CALLBACKS != 0 )
 	static IPTimer_t xDNSTimer;
 #endif
-
+#if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0 ) )
+	static IPTimer_t xForwardingTableTimer;
+#endif
 /* Set to pdTRUE when the IP task is ready to start processing packets. */
 static BaseType_t xIPTaskInitialised = pdFALSE;
 
@@ -441,6 +445,11 @@ NetworkInterface_t *pxInterface;
 			case eARPTimerEvent :
 				/* The ARP timer has expired, process the ARP cache. */
 				vARPAgeCache();
+				break;
+
+			case eForwardingTableTimerEvent :
+				/* The forwarding table timer has expired, age the forwarding table. */
+				vAgeForwardingTable();
 				break;
 
 			case eSocketBindEvent:
@@ -685,6 +694,18 @@ TickType_t xMaximumSleepTime;
 	}
 	#endif
 
+	#if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0) )
+	{
+		if( xForwardingTableTimer.bActive != pdFALSE_UNSIGNED )
+		{
+			if( xForwardingTableTimer.ulRemainingTime < xMaximumSleepTime )
+			{
+				xMaximumSleepTime = xForwardingTableTimer.ulRemainingTime;
+			}
+		}
+	}
+	#endif
+
 	return xMaximumSleepTime;
 }
 /*-----------------------------------------------------------*/
@@ -698,6 +719,16 @@ NetworkInterface_t *pxInterface;
 	{
 		xSendEventToIPTask( eARPTimerEvent );
 	}
+
+	/* Is it time to age the forwarding table? */
+	#if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0 ) )
+	{
+		if( prvIPTimerCheck( &xForwardingTableTimer ) != pdFALSE )
+		{
+			xSendEventToIPTask( eForwardingTableTimerEvent );
+		}
+	}
+	#endif
 
 	#if( ipconfigUSE_DHCP == 1 )
 	{
@@ -1607,6 +1638,7 @@ void vIPNetworkUpCalls( NetworkEndPoint_t *pxEndPoint )
 
 	/* Set remaining time to 0 so it will become active immediately. */
 	prvIPTimerReload( &xARPTimer, pdMS_TO_TICKS( ipARP_TIMER_PERIOD_MS ) );
+	prvIPTimerReload( &xForwardingTableTimer, pdMS_TO_TICKS( ipFORWARDING_TABLE_TIMER_PERIOD_MS ) );
 }
 /*-----------------------------------------------------------*/
 

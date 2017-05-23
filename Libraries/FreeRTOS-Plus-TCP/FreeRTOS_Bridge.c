@@ -74,9 +74,124 @@
 #include "FreeRTOS_Bridge.h"
 #include "NetworkBufferManagement.h"
 
+/* Exclude the entire file if bridge support is not enabled. */
+#if( ipconfigUSE_BRIDGE != 0 )
+
+#if( ipconfigUSE_FORWARDING_TABLE != 0 )
+
+typedef struct xFORWARDING_TABLE_ROW
+{
+	struct xNetworkInterface *pxInterface;		/* The Network Interface of a forwarding table entry. */
+	MACAddress_t xMACAddress;                   /* The MAC address of a forwarding table entry. */
+	uint8_t ucAge;				                /* A value that is periodically decremented but can also be refreshed by active communication. */
+} ForwardingTableRow_t;
+
+static UBaseType_t uxForwardTableMaxUse = 0;
+static ForwardingTableRow_t xForwardingTable[ipconfigFORWARDING_TABLE_ENTRIES];
+
+NetworkInterface_t *pxFindInterfaceOnMAC( const MACAddress_t *pxMACAddress )
+{
+BaseType_t x;
+NetworkInterface_t *pxInterface = NULL;
+
+	for( x = 0; x < uxForwardTableMaxUse; x++ )
+	{
+		if( ( pxInterface != NULL )
+			&& ( memcmp( xForwardingTable[x].xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) ) == 0 )
+		{
+			/* Found. */
+			pxInterface =  xForwardingTable[x].pxInterface;
+			break;
+		}
+	}
+
+	return pxInterface;
+}
+/*-----------------------------------------------------------*/
+
+void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface )
+{
+BaseType_t xUseEntry, xOldestEntry;
+uint8_t ucMinAgeFound;
+
+	/* Start with the maximum possible number. */
+	ucMinAgeFound--;
+
+	/* Find the first unused entry or one with the same MAC. */
+	for( xUseEntry = 0; xUseEntry < uxForwardTableMaxUse; xUseEntry++ )
+	{
+		if( xForwardingTable[xUseEntry].pxInterface == NULL )
+		{
+			/* Unused entry, save MAC here so the table stays compact.
+			A previously used entry of this MAC may be left for time out. */
+			break;
+		}
+		if( memcmp( xForwardingTable[xUseEntry].xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) == 0 )
+		{
+			/* Found MAC, no need to copy it. */
+			pxMACAddress = NULL;
+			break;
+		}
+
+		/* Look for the oldest entry, in case the table is full */
+		if( xForwardingTable[xUseEntry].ucAge < ucMinAgeFound )
+		{
+			ucMinAgeFound = xForwardingTable[xUseEntry].ucAge;
+			xOldestEntry = xUseEntry;
+		}
+	}
+
+	if( xUseEntry == uxForwardTableMaxUse )
+	{
+		if( xUseEntry == sizeof( xForwardingTable ) )
+		{
+			/* The table is full, replace the oldest entry */
+			xUseEntry = xOldestEntry;
+		}
+		else
+		{
+			/* A new row is used, increase the usage counter. */
+			uxForwardTableMaxUse++;
+		}
+	}
+
+	if( pxMACAddress != NULL )
+	{
+		memcpy( xForwardingTable[xUseEntry].xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES );
+	}
+	xForwardingTable[xUseEntry].pxInterface = pxInterface;
+	xForwardingTable[xUseEntry].ucAge = ipconfigMAX_FORWARDING_TABLE_AGE;
+}
+/*-----------------------------------------------------------*/
+
+void vAgeForwardingTable( void )
+{
+BaseType_t x;
+
+	/* Loop through each entry in the ARP cache. */
+	for( x = 0; x < uxForwardTableMaxUse; x++ )
+	{
+		/* Decrement the age value of the entry in this table row.
+		When the age reaches zero it is no longer considered valid. */
+		xForwardingTable[ x ].ucAge--;
+
+		if( xForwardingTable[ x ].ucAge == 0u )
+		{
+			/* The entry is no longer valid.  Wipe it out. */
+			xForwardingTable[ x ].pxInterface = NULL;
+		}
+	}
+}
+/*-----------------------------------------------------------*/
+
+#endif /* ipconfigUSE_FORWARDING_TABLE != 0 */
+
 BaseType_t xBridge_Process( NetworkBufferDescriptor_t * const pxNetworkBuffer )
 {
 BaseType_t xReturn = pdFAIL;
+#if( ipconfigUSE_FORWARDING_TABLE != 0)
+	EthernetHeader_t *pxEthernetHeader;
+#endif
 NetworkInterface_t *pxInterface;
 NetworkInterface_t *pxSendToInterface = NULL;
 NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
@@ -84,27 +199,48 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 	/* The receiving interface must be set */
 	configASSERT( pxNetworkBuffer->pxInterface );
 
-	/* Hub */
-	pxInterface = FreeRTOS_FirstNetworkInterface();
-	while( pxInterface != NULL )
+	#if( ipconfigUSE_FORWARDING_TABLE != 0)
 	{
-		/* Do not send back to the receiving interface */
-		if( pxInterface != pxNetworkBuffer->pxInterface )
+		pxEthernetHeader = ( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer );
+
+		/* Update the forwarding table with the source address of the
+		received frame. */
+		vRefreshForwardingTableEntry( &(pxEthernetHeader->xSourceAddress), pxNetworkBuffer->pxInterface );
+
+		if( memcmp( ( void * ) xBroadcastMACAddress.ucBytes, ( void * ) pxEthernetHeader->xDestinationAddress.ucBytes, sizeof( MACAddress_t ) ) == 0 )
 		{
-			/* Store the interface, so the NetworkBuffer is only
-			duplicated when necessary */
-			if( pxSendToInterface == NULL )
-			{
-				pxSendToInterface = pxInterface;
-			}
-			else
-			{
-				pxNetworkBufferDuplicate = pxDuplicateNetworkBufferWithDescriptor( pxNetworkBuffer, pxNetworkBuffer->xDataLength );
-				pxInterface->pfOutput( pxInterface, pxNetworkBufferDuplicate, pdTRUE );
-			}
+			/* Try to find the correct interface in the forwarding table. */
+			pxSendToInterface = pxFindInterfaceOnMAC( &(pxEthernetHeader->xDestinationAddress) );
 		}
 
-		pxInterface = pxInterface->pxNext;
+		/* _ML_ Maybe a sanity check (pxSendToInterface == pxNetworkBuffer->pxInterface) is necessary? */
+	}
+	#endif /* ipconfigUSE_FORWARDING_TABLE != 0 */
+
+	if( pxSendToInterface == NULL )
+	{
+		/* Send frame to all interfaces except the receiving one. */
+		pxInterface = FreeRTOS_FirstNetworkInterface();
+		while( pxInterface != NULL )
+		{
+			/* Do not send back to the receiving interface. */
+			if( pxInterface != pxNetworkBuffer->pxInterface )
+			{
+				/* Store the interface, so the NetworkBuffer is only
+				duplicated when necessary. */
+				if( pxSendToInterface == NULL )
+				{
+					pxSendToInterface = pxInterface;
+				}
+				else
+				{
+					pxNetworkBufferDuplicate = pxDuplicateNetworkBufferWithDescriptor( pxNetworkBuffer, pxNetworkBuffer->xDataLength );
+					pxInterface->pfOutput( pxInterface, pxNetworkBufferDuplicate, pdTRUE );
+				}
+			}
+
+			pxInterface = pxInterface->pxNext;
+		}
 	}
 
 	if( pxSendToInterface != NULL )
@@ -116,3 +252,5 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
+
+#endif /* ipconfigUSE_BRIDGE != 0 */

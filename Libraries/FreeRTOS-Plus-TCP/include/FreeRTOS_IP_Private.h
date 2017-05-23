@@ -376,6 +376,7 @@ typedef enum
 	eSocketCloseEvent,		/* 9: Send a message to the IP-task to close a socket. */
 	eSocketSelectEvent,		/*10: Send a message to the IP-task for select(). */
 	eSocketSignalEvent,		/*11: A socket must be signalled. */
+	eForwardingTableTimerEvent,  /*12: The bridge's forwarding table timer expired */
 } eIPEvent_t;
 
 typedef struct IP_TASK_COMMANDS
