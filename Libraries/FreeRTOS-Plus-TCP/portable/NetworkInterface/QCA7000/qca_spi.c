@@ -385,7 +385,7 @@ qcaspi_receive(struct qcaspi *qca)
 				{
 					/* Set the receiving interface */
 					qca->rx_desc->pxInterface = qca->pxInterface;
-				#if( ipconfig_USE_BRIDGE != 0 )
+				#if( ipconfigUSE_BRIDGE != 0 )
 					if( qca->pxInterface->bits.bIsBridged )
 					{
 						if( xBridge_Process( qca->rx_desc ) == pdFAIL )

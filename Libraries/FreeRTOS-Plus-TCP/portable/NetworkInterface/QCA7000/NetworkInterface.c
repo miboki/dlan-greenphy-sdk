@@ -131,6 +131,7 @@ NetworkEndPoint_t *pxEndPoint;
 
 		qca.rx_buffer = malloc(QCASPI_BURST_LEN);
 		qca.buffer_size = QCASPI_BURST_LEN;
+		qca.pxInterface = pxInterface;
 		QcaFrmFsmInit(&qca.lFrmHdl);
 		/* When reading data over SPI, there also needs to occur
 		a write process. To guard both DMA channels this semaphore

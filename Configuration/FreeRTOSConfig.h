@@ -121,11 +121,6 @@ standard names - or at least those used in the unmodified vector table. */
 	#define configPRIO_BITS       5        /* 32 priority levels */
 #endif
 
-/* Here is a good place to include header files that are required across
-your application. */
-#define configETHERNET_INTERRUPT_PRIORITY	10
-
-
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #define configUSE_TICKLESS_IDLE                 0

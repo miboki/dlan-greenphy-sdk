@@ -203,17 +203,17 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 	{
 		pxEthernetHeader = ( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer );
 
-		/* Update the forwarding table with the source address of the
-		received frame. */
-		vRefreshForwardingTableEntry( &(pxEthernetHeader->xSourceAddress), pxNetworkBuffer->pxInterface );
-
-		if( memcmp( ( void * ) xBroadcastMACAddress.ucBytes, ( void * ) pxEthernetHeader->xDestinationAddress.ucBytes, sizeof( MACAddress_t ) ) == 0 )
+		if( memcmp( ( void * ) xBroadcastMACAddress.ucBytes, ( void * ) pxEthernetHeader->xDestinationAddress.ucBytes, sizeof( MACAddress_t ) ) != 0 )
 		{
-			/* Try to find the correct interface in the forwarding table. */
+			/* No broadcast, try to find the correct interface in the forwarding table. */
 			pxSendToInterface = pxFindInterfaceOnMAC( &(pxEthernetHeader->xDestinationAddress) );
 		}
 
 		/* _ML_ Maybe a sanity check (pxSendToInterface == pxNetworkBuffer->pxInterface) is necessary? */
+
+		/* Update the forwarding table with the source address of the
+		received frame. */
+		vRefreshForwardingTableEntry( &(pxEthernetHeader->xSourceAddress), pxNetworkBuffer->pxInterface );
 	}
 	#endif /* ipconfigUSE_FORWARDING_TABLE != 0 */
 

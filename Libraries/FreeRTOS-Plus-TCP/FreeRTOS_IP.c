@@ -448,8 +448,12 @@ NetworkInterface_t *pxInterface;
 				break;
 
 			case eForwardingTableTimerEvent :
-				/* The forwarding table timer has expired, age the forwarding table. */
-				vAgeForwardingTable();
+				#if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0 ) )
+				{
+					/* The forwarding table timer has expired, age the forwarding table. */
+					vAgeForwardingTable();
+				}
+				#endif
 				break;
 
 			case eSocketBindEvent:
@@ -1010,6 +1014,7 @@ NetworkBufferDescriptor_t * pxNewBuffer;
 		pxNewBuffer->ulIPAddress = pxNetworkBuffer->ulIPAddress;
 		pxNewBuffer->usPort = pxNetworkBuffer->usPort;
 		pxNewBuffer->usBoundPort = pxNetworkBuffer->usBoundPort;
+		pxNewBuffer->pxInterface = pxNetworkBuffer->pxInterface;
 		pxNewBuffer->pxEndPoint = pxNetworkBuffer->pxEndPoint;
 		memcpy( pxNewBuffer->pucEthernetBuffer, pxNetworkBuffer->pucEthernetBuffer, pxNetworkBuffer->xDataLength );
 	}
@@ -1638,7 +1643,11 @@ void vIPNetworkUpCalls( NetworkEndPoint_t *pxEndPoint )
 
 	/* Set remaining time to 0 so it will become active immediately. */
 	prvIPTimerReload( &xARPTimer, pdMS_TO_TICKS( ipARP_TIMER_PERIOD_MS ) );
-	prvIPTimerReload( &xForwardingTableTimer, pdMS_TO_TICKS( ipFORWARDING_TABLE_TIMER_PERIOD_MS ) );
+	#if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0 ) )
+	{
+		prvIPTimerReload( &xForwardingTableTimer, pdMS_TO_TICKS( ipFORWARDING_TABLE_TIMER_PERIOD_MS ) );
+	}
+	#endif /* ipconfigUSE_BRIDGE && ipconfigUSE_FORWARDING_TABLE */
 }
 /*-----------------------------------------------------------*/
 
