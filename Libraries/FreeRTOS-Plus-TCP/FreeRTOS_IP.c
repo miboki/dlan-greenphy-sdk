@@ -328,7 +328,7 @@ regular basis:
 	1. ARP, to check its table entries
 	2. DPHC, to send requests and to renew a reservation
 	3. TCP, to check for timeouts, resends
-	4. DNS, to check for timeouts when looking-up a domain
+	4. DNS, to check for timeouts when looking-up a domain.
 	5. Bridge Forwarding Table, to check its table entries.
  */
 static IPTimer_t xARPTimer;
@@ -341,6 +341,7 @@ static IPTimer_t xARPTimer;
 #if( ( ipconfigUSE_BRIDGE != 0 ) && ( ipconfigUSE_FORWARDING_TABLE != 0 ) )
 	static IPTimer_t xForwardingTableTimer;
 #endif
+
 /* Set to pdTRUE when the IP task is ready to start processing packets. */
 static BaseType_t xIPTaskInitialised = pdFALSE;
 

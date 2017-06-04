@@ -1125,11 +1125,14 @@ List_t *pxSocketList;
 				memcpy( pxSocket->xLocalAddress_IPv6.ucBytes, pxAddress_IPv6->sin_addrv6.ucBytes, sizeof( pxSocket->xLocalAddress_IPv6.ucBytes ) );
 			}
 			else
-			#else
-			if( pxAddress->sin_addr != FREERTOS_INADDR_ANY )
+			#endif /* ipconfigUSE_IPv6 */
 			{
-				pxSocket->pxEndPoint = FreeRTOS_FindEndPointOnIP( pxAddress->sin_addr, 7 );
+				if( pxAddress->sin_addr != FREERTOS_INADDR_ANY )
+				{
+					pxSocket->pxEndPoint = FreeRTOS_FindEndPointOnIP( pxAddress->sin_addr, 7 );
+				}
 			}
+
 			if( pxSocket->pxEndPoint != NULL )
 			{
 				pxSocket->ulLocalAddress = FreeRTOS_ntohl( pxSocket->pxEndPoint->ulIPAddress );
@@ -1138,7 +1141,6 @@ List_t *pxSocketList;
 			{
 				pxSocket->ulLocalAddress = 0ul;
 			}
-			#endif /* ipconfigUSE_IPv6 */
 
 			/* Add the socket to the list of bound ports. */
 			{

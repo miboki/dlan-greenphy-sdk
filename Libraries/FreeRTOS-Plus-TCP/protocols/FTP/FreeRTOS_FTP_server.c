@@ -618,16 +618,16 @@ BaseType_t xResult = 0;
 			#else
 				struct freertos_sockaddr xLocalAddress, xRemoteAddress;
 			#endif
-			struct freertos_sockaddr *xLocalAddressIPv4 = ( struct freertos_sockaddr * ) &xLocalAddress;
+			struct freertos_sockaddr *pxLocalAddressIPv4 = ( struct freertos_sockaddr * ) &xLocalAddress;
 			struct freertos_sockaddr *pxRemoteAddressIPv4 = ( struct freertos_sockaddr * ) &xRemoteAddress;
 
 				xLocalAddress.sin_len = sizeof( xLocalAddress );
-				FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, xLocalAddressIPv4 );
+				FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, pxLocalAddressIPv4 );
 
 				xRemoteAddress.sin_len = sizeof( xRemoteAddress );
 				FreeRTOS_GetRemoteAddress( pxClient->xSocket, pxRemoteAddressIPv4 );
 
-				ulIP = FreeRTOS_ntohl( xLocalAddressIPv4->sin_addr );
+				ulIP = FreeRTOS_ntohl( pxLocalAddressIPv4->sin_addr );
 				pxClient->ulClientIPv4 = FreeRTOS_ntohl( pxRemoteAddressIPv4->sin_addr );
 				ulPort = FreeRTOS_ntohs( xLocalAddress.sin_port );
 
@@ -647,9 +647,9 @@ BaseType_t xResult = 0;
 				else /* ECMD_EPSV */
 				{
 					/* Entering Extended Passive Mode. */
+					/* "229 Entering Extended Passive Mode (|||<port>|).\r\n" */
 					snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_229_D, ulPort );
 				}
-FreeRTOS_printf( ( "FTP: %s", pcCOMMAND_BUFFER ) );
 				pcMyReply = pcCOMMAND_BUFFER;
 			}
 			break;
@@ -912,8 +912,10 @@ BaseType_t xResult;
 	BaseType_t xSmallTimeout = pdMS_TO_TICKS( 100 );
 #if( ipconfigUSE_IPv6 != 0 )
 	struct freertos_sockaddr6 xBindAddress, xRemote, xLocal2;
+	const uint8_t sin_family = FREERTOS_AF_INET6;
 #else	
 	struct freertos_sockaddr xBindAddress, xRemote, xLocal2;
+	const uint8_t sin_family = FREERTOS_AF_INET;
 #endif
 	struct freertos_sockaddr *pxBindAddress = ( struct freertos_sockaddr * )&xBindAddress;
 	struct freertos_sockaddr *pxRemote = ( struct freertos_sockaddr * )&xRemote;
@@ -928,7 +930,7 @@ BaseType_t xResult;
 		FreeRTOS_GetRemoteAddress( pxClient->xSocket, pxRemote );
 
 		xBindAddress.sin_len = sizeof( xBindAddress );
-		xBindAddress.sin_family = pxRemote->sin_family;
+		xBindAddress.sin_family = sin_family;//pxRemote->sin_family;
 		pxEndPoint = pxGetSocketEndpoint( pxClient->xSocket );
 
 		if( pxEndPoint == NULL )

@@ -981,8 +981,10 @@ FreeRTOS_printf( ( "prvParseDNSReply: No pxEndPoint yet???\n" ) );
 			/* Make a copy of the end-point because xApplicationDNSQueryHook() is allowed
 			to write into it. */
 			memcpy( &xEndPoint, pxEndPoint, sizeof( xEndPoint ) );
+			#if( ipconfigUSE_IPv6 != 0 )
 FreeRTOS_printf( ( "prvParseDNSReply: type %04X\n", usType ) );
 			xEndPoint.bits.bIPv6 = ( usType == dnsTYPE_AAAA_HOST );
+			#endif
 
 			if( xApplicationDNSQueryHook ( &xEndPoint, pcRequestedName + 1 ) == pdFALSE )
 			{

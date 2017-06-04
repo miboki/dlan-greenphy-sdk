@@ -112,7 +112,7 @@ NetworkInterface_t *pxInterface = NULL;
 void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface )
 {
 BaseType_t xUseEntry, xOldestEntry;
-uint8_t ucMinAgeFound;
+uint8_t ucMinAgeFound = 0;
 
 	/* Start with the maximum possible number. */
 	ucMinAgeFound--;
