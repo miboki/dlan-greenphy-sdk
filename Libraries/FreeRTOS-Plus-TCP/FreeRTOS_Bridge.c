@@ -235,7 +235,15 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 				else
 				{
 					pxNetworkBufferDuplicate = pxDuplicateNetworkBufferWithDescriptor( pxNetworkBuffer, pxNetworkBuffer->xDataLength );
-					pxInterface->pfOutput( pxInterface, pxNetworkBufferDuplicate, pdTRUE );
+					if( pxNetworkBufferDuplicate != NULL )
+					{
+						pxInterface->pfOutput( pxInterface, pxNetworkBufferDuplicate, pdTRUE );
+					}
+					else
+					{
+						/* Unable to duplicate network buffer. */
+						iptraceETHERNET_RX_EVENT_LOST();
+					}
 				}
 			}
 

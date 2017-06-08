@@ -80,7 +80,7 @@
 #include "lpc_phy.h"
 
 /* The size of the stack allocated to the task that handles Rx packets. */
-#define configEMAC_TASK_STACK_SIZE	140
+#define configEMAC_TASK_STACK_SIZE	200
 
 #ifndef	PHY_LS_HIGH_CHECK_TIME_MS
 	/* Check if the LinkSStatus in the PHY is still high after 15 seconds of not
