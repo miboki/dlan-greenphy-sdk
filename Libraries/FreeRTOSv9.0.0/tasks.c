@@ -304,8 +304,8 @@ typedef struct tskTaskControlBlock
 	StackType_t			*pxStack;			/*< Points to the start of the stack. */
 	char				pcTaskName[ configMAX_TASK_NAME_LEN ];/*< Descriptive name given to the task when created.  Facilitates debugging only. */ /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 
-	#if ( portSTACK_GROWTH > 0 )
-		StackType_t		*pxEndOfStack;		/*< Points to the end of the stack on architectures where the stack grows up from low memory. */
+	#if ( ( portSTACK_GROWTH > 0 ) || ( configRECORD_STACK_HIGH_ADDRESS == 1 ) )
+		StackType_t		*pxEndOfStack;		/*< Points to the highest valid address for the stack. */
 	#endif
 
 	#if ( portCRITICAL_NESTING_IN_TCB == 1 )
@@ -809,6 +809,14 @@ UBaseType_t x;
 
 		/* Check the alignment of the calculated top of stack is correct. */
 		configASSERT( ( ( ( portPOINTER_SIZE_TYPE ) pxTopOfStack & ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK ) == 0UL ) );
+
+		#if( configRECORD_STACK_HIGH_ADDRESS == 1 )
+		{
+			/* Also record the stack's high address, which may assist
+			debugging. */
+			pxNewTCB->pxEndOfStack = pxTopOfStack;
+		}
+		#endif /* configRECORD_STACK_HIGH_ADDRESS */
 	}
 	#else /* portSTACK_GROWTH */
 	{
@@ -4805,3 +4813,107 @@ const TickType_t xConstTickCount = xTickCount;
 	#include "tasks_test_access_functions.h"
 #endif
 
+#if( configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H == 1 && configUSE_TRACE_FACILITY==1)
+
+	#include "freertos_tasks_c_additions.h"
+
+#ifdef FREERTOS_TASKS_C_ADDITIONS_INIT
+static void freertos_tasks_c_additions_init( void )
+	{
+		#ifdef FREERTOS_TASKS_C_ADDITIONS_INIT
+			FREERTOS_TASKS_C_ADDITIONS_INIT();
+		#endif
+	}
+#endif
+
+#endif
+
+#if 1 /* << EST: additional functionality to iterathe through task handles. */
+static void prvCollectTaskHandlesWithinSingleList( List_t *pxList,  TaskHandle_t taskHandleArray[], UBaseType_t noTaskHandlesInArray, UBaseType_t *idxCounter)
+{
+  TCB_t *pxNextTCB, *pxFirstTCB;
+
+  /* This function is called with the scheduler suspended. */
+  if( listCURRENT_LIST_LENGTH( pxList ) > ( UBaseType_t ) 0 )
+  {
+    listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList );
+    do
+    {
+      listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList );
+      if (*idxCounter<noTaskHandlesInArray) {
+        taskHandleArray[*idxCounter] = pxNextTCB;
+      }
+      (*idxCounter)++; /* use next entry */
+    } while( pxNextTCB != pxFirstTCB );
+  }
+  else
+  {
+    mtCOVERAGE_TEST_MARKER();
+  }
+}
+
+UBaseType_t xGetTaskHandles(TaskHandle_t pxTaskHandleArray[], UBaseType_t xNofTaskHandlesInArray)
+{
+  UBaseType_t uxQueue = configMAX_PRIORITIES;
+  UBaseType_t idxCounter = 0;
+
+  vTaskSuspendAll();
+  {
+    /* Search the ready lists. */
+    do
+    {
+      uxQueue--;
+      prvCollectTaskHandlesWithinSingleList( ( List_t * ) &( pxReadyTasksLists[ uxQueue ] ), pxTaskHandleArray, xNofTaskHandlesInArray, &idxCounter);
+    } while( uxQueue > ( UBaseType_t ) tskIDLE_PRIORITY ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
+
+    /* Search the delayed lists. */
+    prvCollectTaskHandlesWithinSingleList( ( List_t * ) pxDelayedTaskList, pxTaskHandleArray, xNofTaskHandlesInArray, &idxCounter);
+    prvCollectTaskHandlesWithinSingleList( ( List_t * ) pxOverflowDelayedTaskList, pxTaskHandleArray, xNofTaskHandlesInArray, &idxCounter);
+    #if ( INCLUDE_vTaskSuspend == 1 )
+    {
+      /* Search the suspended list. */
+      prvCollectTaskHandlesWithinSingleList( &xSuspendedTaskList, pxTaskHandleArray, xNofTaskHandlesInArray, &idxCounter);
+    }
+    #endif
+    #if( INCLUDE_vTaskDelete == 1 )
+    {
+      /* Search the deleted list. */
+      prvCollectTaskHandlesWithinSingleList( &xTasksWaitingTermination, pxTaskHandleArray, xNofTaskHandlesInArray, &idxCounter);
+    }
+    #endif
+  }
+  ( void ) xTaskResumeAll();
+  return idxCounter;
+}
+
+void vTaskGetStackInfo(TaskHandle_t xTask, StackType_t **ppxStart, StackType_t **ppxEnd, StackType_t **ppxTopOfStack, uint8_t *pucStaticallyAllocated)
+{
+  TCB_t *pxTCB;
+
+  taskENTER_CRITICAL();
+  {
+    /* If null is passed in here then it is the priority of the that
+    called uxTaskPriorityGet() that is being queried. */
+    pxTCB = prvGetTCBFromHandle( xTask );
+#if ( portSTACK_GROWTH > 0 )
+    *ppxStart = pxTCB->pxStack;
+    *ppxEnd = pxTCB->pxEndOfStack;
+#elif (configRECORD_STACK_HIGH_ADDRESS == 1)
+    *ppxStart = pxTCB->pxEndOfStack;
+    *ppxEnd = pxTCB->pxStack;
+#else /* no stack end information, return a zero size */
+    *ppxStart = pxTCB->pxStack;
+    *ppxEnd = pxTCB->pxStack;
+#endif
+    *ppxTopOfStack = (StackType_t*)pxTCB->pxTopOfStack;
+#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 )
+    *pucStaticallyAllocated = pxTCB->ucStaticallyAllocated;
+#elif (configSUPPORT_STATIC_ALLOCATION && !configSUPPORT_DYNAMIC_ALLOCATION) /* only static allocation */
+    *pucStaticallyAllocated = tskSTATICALLY_ALLOCATED_STACK_AND_TCB;
+#else /* only configSUPPORT_DYNAMIC_ALLOCATION */
+    *pucStaticallyAllocated = tskDYNAMICALLY_ALLOCATED_STACK_AND_TCB;
+#endif
+  }
+  taskEXIT_CRITICAL();
+}
+#endif /* << EST end */

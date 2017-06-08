@@ -176,22 +176,40 @@ extern "C" {
 #define VBUS_USB_BIT_NUM                          30
 
 /**
+ * SSP defines
+ */
+#define SSP0_SCK_PORT                             0
+#define SSP0_SCK_PIN                              15
+
+#define SSP0_SSEL_PORT                            0
+#define SSP0_SSEL_PIN                             16
+
+#define SSP0_MISO_PORT                            0
+#define SSP0_MISO_PIN                             17
+
+#define SSP0_MOSI_PORT                            0
+#define SSP0_MOSI_PIN                             18
+
+#define SSP0_INT_PORT                             0
+#define SSP0_INT_PIN                              22
+
+/**
  * GreenPHY defines
  */
-#define GREENPHY_SSP0_SCK_PORT_NUM                0
-#define GREENPHY_SSP0_SCK_BIT_NUM                 15
+#define GREENPHY_SCK_PORT                         SSP0_SCK_PORT
+#define GREENPHY_SCK_PIN                          SSP0_SCK_PIN
 
-#define GREENPHY_SSP0_SSEL_PORT_NUM               0
-#define GREENPHY_SSP0_SSEL_BIT_NUM                16
+#define GREENPHY_SSEL_PORT                        SSP0_SSEL_PORT
+#define GREENPHY_SSEL_PIN                         SSP0_SSEL_PIN
 
-#define GREENPHY_SSP0_MISO_PORT_NUM               0
-#define GREENPHY_SSP0_MISO_BIT_NUM                17
+#define GREENPHY_MISO_PORT                        SSP0_MISO_PORT
+#define GREENPHY_MISO_PIN                         SSP0_MISO_PIN
 
-#define GREENPHY_SSP0_MOSI_PORT_NUM               0
-#define GREENPHY_SSP0_MOSI_BIT_NUM                18
+#define GREENPHY_MOSI_PORT                        SSP0_MOSI_PORT
+#define GREENPHY_MOSI_PIN                         SSP0_MOSI_PIN
 
-#define GREENPHY_SSP0_INT_PORT_NUM                0
-#define GREENPHY_SSP0_INT_BIT_NUM                 22
+#define GREENPHY_INT_PORT                         SSP0_INT_PORT
+#define GREENPHY_INT_PIN                          SSP0_INT_PIN
 
 #define GREENPHY_RESET_GPIO_PORT                  1
 #define GREENPHY_RESET_GPIO_PIN                   29
@@ -239,25 +257,6 @@ bool Board_SSP_AssertSSEL(LPC_SSP_T *pSSP);
  * @return	previous SSEL state
  */
 bool Board_SSP_DeassertSSEL(LPC_SSP_T *pSSP);
-
-/**
- * @brief	Initialize pin muxing for SPI interface
- * @param	isMaster	: true for master mode, false for slave mode
- * @return	Nothing
- */
-void Board_SPI_Init(bool isMaster);
-
-/**
- * @brief	Assert SSEL pin
- * @return	Nothing
- */
-void Board_SPI_AssertSSEL(void);
-
-/**
- * @brief	De-assert SSEL pin
- * @return	Nothing
- */
-void Board_SPI_DeassertSSEL(void);
 
 /**
  * @brief	Sets up board specific I2C interface

@@ -141,7 +141,10 @@ struct xFTP_CLIENT
 	uint32_t ulRestartOffset;
 	uint32_t ulRecvBytes;
 	size_t uxBytesLeft;	/* Bytes left to send */
-	uint32_t ulClientIP;
+	uint32_t ulClientIPv4;
+#if( ipconfigUSE_IPv6 != 0 )
+	IPv6_Address_t ulClientIPv6;
+#endif
 	TickType_t xStartTime;
 	uint16_t usClientPort;
 	Socket_t xTransferSocket;

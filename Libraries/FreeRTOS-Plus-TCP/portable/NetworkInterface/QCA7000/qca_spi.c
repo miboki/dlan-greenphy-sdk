@@ -48,6 +48,8 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_IP_Private.h"
 #include "NetworkBufferManagement.h"
+#include "FreeRTOS_Routing.h"
+#include "FreeRTOS_Bridge.h"
 
 /*====================================================================*
  *   custom header files;
@@ -57,6 +59,10 @@
 #include "qca_spi.h"
 #include "qca_framing.h"
 #include "qca_7k.h"
+
+#if configREAD_MAC_FROM_GREENPHY
+	#include "mme_handler.h"
+#endif
 
 /*====================================================================*
  *
@@ -196,7 +202,8 @@ qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
 						len);
 
 	Chip_SSP_DMA_Enable(qca->SSPx);
-	/* wait for DMA to complete */
+	/* wait for DMA to complete, take one semaphore for RX and TX each */
+	xSemaphoreTake( xGreenPHY_DMASemaphore, portMAX_DELAY );
 	xSemaphoreTake( xGreenPHY_DMASemaphore, portMAX_DELAY );
 	Chip_SSP_DMA_Disable(qca->SSPx);
 
@@ -222,12 +229,12 @@ qcaspi_tx_frame(struct qcaspi *qca, NetworkBufferDescriptor_t * txBuffer)
 {
 	uint16_t writtenBytes = 0;
 
-	uint8_t* pData = txBuffer->pucEthernetBuffer;
+	uint8_t* pucData = txBuffer->pucEthernetBuffer;
 	uint16_t len = txBuffer->xDataLength;
 	uint16_t pad_len;
 	if (len < QCAFRM_ETHMINLEN) {
 		pad_len = QCAFRM_ETHMINLEN - len;
-		memset(pData+len, 0, pad_len);
+		memset(pucData+len, 0, pad_len);
 		len += pad_len;
 	}
 
@@ -238,7 +245,7 @@ qcaspi_tx_frame(struct qcaspi *qca, NetworkBufferDescriptor_t * txBuffer)
 	status = Board_SSP_AssertSSEL(qca->SSPx);
 
 	/* send ethernet packet via DMA to SPI */
-	writtenBytes = qcaspi_write_burst(qca, pData, len);
+	writtenBytes = qcaspi_write_burst(qca, pucData, len);
 
 	if (status) Board_SSP_DeassertSSEL(qca->SSPx);
 
@@ -311,9 +318,8 @@ qcaspi_receive(struct qcaspi *qca)
 	if (qca->rx_desc == NULL) {
 		qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, 0);
 		if (qca->rx_desc == NULL) {
-//			printk(KERN_DEBUG "qcaspi: out of RX resources\n");
 			qca->stats.rx_dropped++;
-			//return -1;
+			return -1;
 		}
 	}
 
@@ -368,14 +374,43 @@ qcaspi_receive(struct qcaspi *qca)
 				/* Data was received and stored.  Send a message to the IP
 				task to let it know. */
 				qca->rx_desc->xDataLength = retcode;
-				xRxEvent.pvData = ( void * ) qca->rx_desc;
-				if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+
+			#if configREAD_MAC_FROM_GREENPHY
+				if( filter_rx_mme( qca->rx_desc ) )
 				{
-					/* Could not send the descriptor into the TCP/IP
-					stack, it must be released. */
-					vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-					qca->stats.rx_dropped++;
-					iptraceETHERNET_RX_EVENT_LOST();
+					/* Data was a MME which is handled elsewhere */
+				}
+				else
+			#endif
+				{
+					/* Set the receiving interface */
+					qca->rx_desc->pxInterface = qca->pxInterface;
+				#if( ipconfigUSE_BRIDGE != 0 )
+					if( qca->pxInterface->bits.bIsBridged )
+					{
+						if( xBridge_Process( qca->rx_desc ) == pdFAIL )
+						{
+							/* The Bridge could not process the descriptor,
+							it must be released. */
+							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+							qca->stats.rx_dropped++;
+							iptraceETHERNET_RX_EVENT_LOST();
+						}
+					}
+					else
+				#endif
+					{
+						/* Pass data up to the IP Task */
+						xRxEvent.pvData = ( void * ) qca->rx_desc;
+						if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
+						{
+							/* Could not send the descriptor into the TCP/IP
+							stack, it must be released. */
+							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
+							qca->stats.rx_dropped++;
+							iptraceETHERNET_RX_EVENT_LOST();
+						}
+					}
 				}
 
 				iptraceNETWORK_INTERFACE_RECEIVE();
@@ -404,9 +439,7 @@ qcaspi_receive(struct qcaspi *qca)
 void
 qcaspi_flush_txq(struct qcaspi *qca)
 {
-	DEBUG_PRINT(GREEN_PHY_TX,"%s\r\n",__func__);
-
-	NetworkBufferDescriptor_t * txBuffer = NULL;
+NetworkBufferDescriptor_t * txBuffer = NULL;
 
 #if GREEN_PHY_SIMPLE_QOS == ON
 	int i;
@@ -485,14 +518,12 @@ qcaspi_qca7k_sync(struct qcaspi *qca, int event)
 			return;
 
 		case QCASPI_SYNC_HARD_RESET:
-			DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy hard reset\n\r");
 			/* reset is normally active low, so reset ... */
-			Chip_GPIO_SetPinOutLow(LPC_GPIO, GREEN_PHY_RESET_PORT, GREEN_PHY_RESET_PIN);
+			Chip_GPIO_SetPinOutLow(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 			/*  ... for 100 ms ... */
 			vTaskDelay( 100 * portTICK_RATE_MS);
 			/* ... and release QCA7k from reset */
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, GREEN_PHY_RESET_PORT, GREEN_PHY_RESET_PIN);
-			DEBUG_PRINT(GREEN_PHY_INTERUPT,"GreenPhy reset high\n\r");
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 
 			qca->sync = QCASPI_SYNC_WAIT_RESET;
 			reset_count = 0;
@@ -571,7 +602,6 @@ qcaspi_spi_thread(void *data)
 			/* not synced, awaiting reset, or unknown */
 			if (qca->sync != QCASPI_SYNC_READY)
 			{
-				DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_TX, "qcaspi: sync: not ready, flush\n");
 				qcaspi_flush_txq(qca);
 				continue;
 			}
@@ -583,11 +613,8 @@ qcaspi_spi_thread(void *data)
 			intr_enable = disable_spi_interrupts(qca);
 			ulInterruptCause = qcaspi_read_register(qca, SPI_REG_INTR_CAUSE);
 
-			DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_TX|DEBUG_ERROR_SEARCH,"[GreenPHY] %s got cause 0x%x\r\n",__func__,ulInterruptCause);
-
 			if (ulInterruptCause & SPI_INT_CPU_ON)
 			{
-				DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_FW_FEATURES|DEBUG_ERR," QCASPI_SYNC_CPUON\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
 				/* if not synced, wait reset */
 				if (qca->sync != QCASPI_SYNC_READY)
@@ -600,7 +627,6 @@ qcaspi_spi_thread(void *data)
 			if (ulInterruptCause & SPI_INT_RDBUF_ERR)
 			{
 				/* restart sync */
-				DEBUG_PRINT(GREEN_PHY_RX|DEBUG_ERR," SPI_INT_RDBUF_ERR\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
 				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
 				continue;
@@ -609,7 +635,6 @@ qcaspi_spi_thread(void *data)
 			if (ulInterruptCause & SPI_INT_WRBUF_ERR)
 			{
 				/* restart sync */
-				DEBUG_PRINT(GREEN_PHY_TX|DEBUG_ERR," SPI_INT_WRBUF_ERR\r\n");
 				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
 				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
 				continue;
@@ -622,8 +647,6 @@ qcaspi_spi_thread(void *data)
 				intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
 			}
 
-			DEBUG_PRINT(GREEN_PHY_RX|GREEN_PHY_TX,"[GreenPHY] %s early clearing cause 0x%x\r\n",__func__,vInterruptCause);
-
 			qcaspi_write_register(qca, SPI_REG_INTR_CAUSE, ulInterruptCause);
 			enable_spi_interrupts(qca, intr_enable);
 
@@ -632,7 +655,6 @@ qcaspi_spi_thread(void *data)
 			{
 				if (ulInterruptCause & SPI_INT_PKT_AVLBL)
 				{
-					DEBUG_PRINT(GREEN_PHY_RX,"%s RX\r\n",__func__);
 					qcaspi_receive(qca);
 				}
 			}

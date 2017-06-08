@@ -166,6 +166,8 @@ section macros. */
 	}
 	/*-----------------------------------------------------------*/
 
+	/*_RB_ When would it not be a valid network buffer descriptor? */
+	/*_HT_ It is tested whether the pointer points to one of the elements within the array xNetworkBuffers. */
 	UBaseType_t bIsValidNetworkDescriptor( const NetworkBufferDescriptor_t * pxDesc )
 	{
 		uint32_t offset = ( uint32_t ) ( ((const char *)pxDesc) - ((const char *)xNetworkBuffers) );
@@ -257,7 +259,7 @@ UBaseType_t uxCount;
 		available. */
 		if( xSemaphoreTake( xNetworkBufferSemaphore, xBlockTimeTicks ) == pdPASS )
 		{
-			/* Protect the structure as they are accessed from tasks and
+			/* Protect the structure as it is accessed from tasks and
 			interrupts. */
 			ipconfigBUFFER_ALLOC_LOCK();
 			{
@@ -279,7 +281,7 @@ UBaseType_t uxCount;
 			{
 				/* _RB_ Can printf() be called from an interrupt?  (comment
 				above says this can be called from an interrupt too) */
-				/* _HT_ The function shall not be called from an ISR. Comment
+				/* _HT_ The function shall not be called from an ISR.  Comment
 				was indeed misleading. Hopefully clear now?
 				So the printf()is OK here. */
 				FreeRTOS_debug_printf( ( "pxGetNetworkBufferWithDescriptor: INVALID BUFFER: %p (valid %lu)\n",
@@ -299,6 +301,7 @@ UBaseType_t uxCount;
 				}
 
 				pxReturn->xDataLength = xRequestedSizeBytes;
+				pxReturn->pxEndPoint = NULL;
 
 				#if( ipconfigTCP_IP_SANITY != 0 )
 				{
@@ -312,13 +315,6 @@ UBaseType_t uxCount;
 					pxReturn->pxNextBuffer = NULL;
 				}
 				#endif /* ipconfigUSE_LINKED_RX_MESSAGES */
-
-				if( xTCPWindowLoggingLevel > 3 )
-				{
-					FreeRTOS_debug_printf( ( "BUF_GET[%ld]: %p (%p)\n",
-						bIsValidNetworkDescriptor( pxReturn ),
-						pxReturn, pxReturn->pucEthernetBuffer ) );
-				}
 			}
 			iptraceNETWORK_BUFFER_OBTAINED( pxReturn );
 		}
@@ -452,4 +448,4 @@ NetworkBufferDescriptor_t *pxResizeNetworkBufferWithDescriptor( NetworkBufferDes
 	return pxNetworkBuffer;
 }
 
-/*#endif */ /* ipconfigINCLUDE_TEST_CODE */
+

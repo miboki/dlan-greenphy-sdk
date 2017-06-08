@@ -252,7 +252,7 @@ TCPClient_t **ppxClient;
 BaseType_t xIndex;
 BaseType_t xRc;
 
-	/* Let the server do one working cycle */
+	/* Let the server do one working cycle. */
 	xRc = FreeRTOS_select( pxServer->xSocketSet, xBlockingTime );
 
 	if( xRc != 0 )
@@ -284,7 +284,6 @@ BaseType_t xRc;
 	{
 	TCPClient_t *pxThis = *ppxClient;
 
-		/* Almost C++ */
 		xRc = pxThis->fWorkFunction( pxThis );
 
 		if (xRc < 0 )

@@ -34,14 +34,14 @@ STATIC const PINMUX_GRP_T pinmuxing[] = {
 //	{0,  9,   IOCON_MODE_INACT    | IOCON_FUNC2},  /* click SPI MOSI1;           P0.9  GPIO I2STX_SDA MOSI1     MAT2.3   */
 //	{0, 10,   IOCON_MODE_INACT    | IOCON_FUNC0},  /* click TXD2 UART mikrobus2; P0.10 GPIO TXD2      SDA2      MAT3.0   */
 //	{0, 11,   IOCON_MODE_INACT    | IOCON_FUNC0},  /* click RXD2 UART mikrobus2; P0.11 GPIO RXD2      SCL2      MAT3.1   */
-//	{0, 15,   IOCON_MODE_PULLDOWN | IOCON_FUNC2},  /* greenPHY SCK               P0.15 GPIO TXD1      SCK0      SCK      */
-//	{0, 16,   IOCON_MODE_PULLUP   | IOCON_FUNC0},  /* greenPHY SSEL as GPIO      P0.16 GPIO RXD1      SSEL0     SSEL     */
-//	{0, 17,   IOCON_MODE_INACT    | IOCON_FUNC2},  /* greenPHY MISO              P0.17 GPIO CTS1      MISO0     MISO     */
-//	{0, 18,   IOCON_MODE_INACT    | IOCON_FUNC2},  /* greenPHY MOSI              P0.18 GPIO DCD1      MOSI0     MOSI     */
+	{0, 15,   IOCON_MODE_PULLDOWN | IOCON_FUNC2},  /* greenPHY SCK               P0.15 GPIO TXD1      SCK0      SCK      */
+	{0, 16,   IOCON_MODE_PULLUP   | IOCON_FUNC0},  /* greenPHY SSEL as GPIO      P0.16 GPIO RXD1      SSEL0     SSEL     */
+	{0, 17,   IOCON_MODE_INACT    | IOCON_FUNC2},  /* greenPHY MISO              P0.17 GPIO CTS1      MISO0     MISO     */
+	{0, 18,   IOCON_MODE_INACT    | IOCON_FUNC2},  /* greenPHY MOSI              P0.18 GPIO DCD1      MOSI0     MOSI     */
 //	{0, 19,   IOCON_MODE_INACT    | IOCON_FUNC0},  /*                Not available on 80-pin package.                    */
 //	{0, 20,   IOCON_MODE_INACT    | IOCON_FUNC0},  /*                Not available on 80-pin package.                    */
 //	{0, 21,   IOCON_MODE_INACT    | IOCON_FUNC0},  /*                Not available on 80-pin package.                    */
-//	{0, 22,   IOCON_MODE_INACT    | IOCON_FUNC0},  /* greenPHY GPIO Interrupt    P0.22 GPIO RTS1      Reserved  TD1      */
+	{0, 22,   IOCON_MODE_INACT    | IOCON_FUNC0},  /* greenPHY GPIO Interrupt    P0.22 GPIO RTS1      Reserved  TD1      */
 //	{0, 23,   IOCON_MODE_INACT    | IOCON_FUNC0},  /*                Not available on 80-pin package.                    */
 //	{0, 24,   IOCON_MODE_INACT    | IOCON_FUNC0},  /*                            Not available on 80-pin package.        */
 //	{0, 25,   IOCON_MODE_INACT    | IOCON_FUNC0},  /* click ANA mikrobus2;       P0.25 GPIO AD0.2     I2SRX_SDA TXD3     */

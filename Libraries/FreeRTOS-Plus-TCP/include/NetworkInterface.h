@@ -63,10 +63,18 @@ extern "C" {
 #endif
 
 /* NOTE PUBLIC API FUNCTIONS. */
-BaseType_t xNetworkInterfaceInitialise( void );
-BaseType_t xNetworkInterfaceOutput( NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t xReleaseAfterSend );
 void vNetworkInterfaceAllocateRAMToBuffers( NetworkBufferDescriptor_t pxNetworkBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ] );
-BaseType_t xGetPhyLinkStatus( void );
+
+/* Since there are multiple interfaces, there are multiple versions
+of the following functions.
+These are now declared static in NetworkInterface.c and their addresses
+are stored in a struct NetworkInterfaceDescriptor_t.
+
+	BaseType_t xNetworkInterfaceInitialise( struct xNetworkInterface *pxInterface );
+	BaseType_t xNetworkInterfaceOutput( struct xNetworkInterface *pxInterface, NetworkBufferDescriptor_t * const pxNetworkBuffer, BaseType_t xReleaseAfterSend );
+	BaseType_t xGetPhyLinkStatus( struct xNetworkInterface *pxInterface );
+*/
+
 
 #ifdef __cplusplus
 } // extern "C"

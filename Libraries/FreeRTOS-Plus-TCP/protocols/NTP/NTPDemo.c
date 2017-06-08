@@ -263,7 +263,8 @@ static void prvNTPPacketInit( )
 
 static void prvReadTime( struct SNtpPacket * pxPacket )
 {
-	FF_TimeStruct_t xTimeStruct;
+FF_TimeStruct_t xTimeStruct;
+
 	time_t uxPreviousSeconds;
 	time_t uxPreviousMS;
 

@@ -128,6 +128,10 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#error ipconfigNETWORK_MTU must be at least 46.
 #endif
 
+#if ( (ipconfigTCP_MSS + ipSIZE_OF_IPv4_HEADER + ipSIZE_OF_TCP_HEADER ) > ipconfigNETWORK_MTU)
+	#error The ipconfigTCP_MSS setting in FreeRTOSIPConfig.h is too large.
+#endif
+
 #ifdef	ipconfigBUFFER_ALLOC_FIXED_SIZE
 	#error ipconfigBUFFER_ALLOC_FIXED_SIZE was dropped and replaced by a const value, declared in BufferAllocation[12].c
 #endif
@@ -303,6 +307,10 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#define ipconfigARP_CACHE_ENTRIES		10
 #endif
 
+#ifndef ipconfigND_CACHE_ENTRIES
+	#define ipconfigND_CACHE_ENTRIES		24
+#endif
+
 #ifndef ipconfigMAX_ARP_RETRANSMISSIONS
 	#define ipconfigMAX_ARP_RETRANSMISSIONS ( 5u )
 #endif
@@ -355,6 +363,8 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#define ipconfigUSE_DHCP				1
 #endif
 
+/* In earlier releases 'ipconfigUSE_DHCP_HOOK' was called
+'ipconfigDHCP_USES_USER_HOOK'. */
 #ifndef ipconfigUSE_DHCP_HOOK
 	#define ipconfigUSE_DHCP_HOOK		0
 #endif
@@ -381,7 +391,9 @@ from the FreeRTOSIPConfig.h configuration header file. */
 #endif
 
 #ifndef ipconfigTCP_MSS
-	#define ipconfigTCP_MSS		( ipconfigNETWORK_MTU - ipSIZE_OF_IPv4_HEADER - ipSIZE_OF_TCP_HEADER )
+	/* _HT_ the default value of ipconfigTCP_MSS should somehow
+	depend on the IP version in use. */
+	#define ipconfigTCP_MSS		( ipconfigNETWORK_MTU - ipSIZE_OF_IP_HEADER_IPv6 - ipSIZE_OF_TCP_HEADER )
 #endif
 
 /* Each TCP socket has circular stream buffers for Rx and Tx, which
@@ -506,13 +518,13 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	/* When non-zero, the buffers passed to the SEND routine may be passed
 	to DMA. As soon as sending is ready, the buffers must be released by
 	calling vReleaseNetworkBufferAndDescriptor(), */
-	#define ipconfigZERO_COPY_TX_DRIVER		( 1 )
+	#define ipconfigZERO_COPY_TX_DRIVER		( 0 )
 #endif
 
 #ifndef ipconfigZERO_COPY_RX_DRIVER
 	/* This define doesn't mean much to the driver, except that it makes
 	sure that pxPacketBuffer_to_NetworkBuffer() will be included. */
-	#define ipconfigZERO_COPY_RX_DRIVER		( 1 )
+	#define ipconfigZERO_COPY_RX_DRIVER		( 0 )
 #endif
 
 #ifndef ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM
@@ -544,7 +556,11 @@ from the FreeRTOSIPConfig.h configuration header file. */
 #endif
 
 #ifndef ipconfigSUPPORT_SIGNALS
-	#define ipconfigSUPPORT_SIGNALS				0
+	#define ipconfigSUPPORT_SIGNALS 0
+#endif
+
+#ifndef ipconfigUSE_IPv6
+	#define ipconfigUSE_IPv6 0
 #endif
 
 #ifndef ipconfigUSE_NBNS
@@ -563,6 +579,10 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#define ipconfigARP_STORES_REMOTE_ADDRESSES 0
 #endif
 
+#ifndef ipconfigUSE_LINKED_RX_MESSAGES
+	#define ipconfigUSE_LINKED_RX_MESSAGES 0
+#endif
+
 #ifndef ipconfigBUFFER_PADDING
 	/* Expert option: define a value for 'ipBUFFER_PADDING'.
 	When 'ipconfigBUFFER_PADDING' equals 0,
@@ -574,4 +594,9 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#define ipconfigPACKET_FILLER_SIZE 2
 #endif
 
+#ifndef ipconfigMULTI_INTERFACE
+	#define ipconfigMULTI_INTERFACE 0
+#endif
+
 #endif /* FREERTOS_DEFAULT_IP_CONFIG_H */
+

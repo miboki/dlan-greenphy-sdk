@@ -172,6 +172,8 @@ FreeRTOS_setsockopt(). */
 #define FREERTOS_MSG_DONTROUTE			( 8 )		/* send without using routing tables */
 #define FREERTOS_MSG_DONTWAIT			( 16 )		/* Can be used with recvfrom(), sendto(), recv(), and send(). */
 
+#define FREERTOS_INADDR_ANY				( 0ul )		/* The 0.0.0.0 IPv4 address. */
+
 typedef struct xWIN_PROPS {
 	/* Properties of the Tx buffer and Tx window */
 	int32_t lTxBufSize;	/* Unit: bytes */
@@ -189,16 +191,26 @@ typedef struct xWIN_PROPS {
 Berkeley style sockaddr structure. */
 struct freertos_sockaddr
 {
-	/* _HT_ On 32- and 64-bit architectures, the addition of the two uint8_t
-	fields doesn't make the structure bigger, due to alignment.
-	The fields are inserted as a preparation for IPv6. */
-
 	/* sin_len and sin_family not used in the IPv4-only release. */
+	/* Otherwise, for an IPv4 address:
+	 * Set sin_len to sizeof( freertos_sockaddr )
+	 * Set sin_family FREERTOS_AF_INET
+	 */
 	uint8_t sin_len;		/* length of this structure. */
 	uint8_t sin_family;		/* FREERTOS_AF_INET. */
 	uint16_t sin_port;
 	uint32_t sin_addr;
 };
+
+#if( ipconfigUSE_IPv6 != 0 )
+	struct freertos_sockaddr6 {
+		uint8_t sin_len;			/* length of this structure. */
+		uint8_t sin_family;		/* Set to FREERTOS_AF_INET6. */
+		uint16_t sin_port;
+	    uint32_t  sin_flowinfo;	/* IPv6 flow information. */
+		IPv6_Address_t sin_addrv6;
+	};
+#endif
 
 #if ipconfigBYTE_ORDER == pdFREERTOS_LITTLE_ENDIAN
 
@@ -250,6 +262,7 @@ int32_t FreeRTOS_sendto( Socket_t xSocket, const void *pvBuffer, size_t xTotalDa
 BaseType_t FreeRTOS_bind( Socket_t xSocket, struct freertos_sockaddr *pxAddress, socklen_t xAddressLength );
 
 /* function to get the local address and IP port */
+/* Note that when 'ipconfigUSE_IPv6 != 0', freertos_sockaddr can be intepreted as a freertos_sockaddr6. */
 size_t FreeRTOS_GetLocalAddress( Socket_t xSocket, struct freertos_sockaddr *pxAddress );
 
 /* Made available when ipconfigETHERNET_DRIVER_FILTERS_PACKETS is set to 1. */
@@ -274,6 +287,8 @@ BaseType_t FreeRTOS_shutdown (Socket_t xSocket, BaseType_t xHow);
 #endif /* ipconfigSUPPORT_SIGNALS */
 
 /* Return the remote address and IP port. */
+
+/* Note that when 'ipconfigUSE_IPv6 != 0', freertos_sockaddr can be intepreted as a freertos_sockaddr6. */
 BaseType_t FreeRTOS_GetRemoteAddress( Socket_t xSocket, struct freertos_sockaddr *pxAddress );
 
 /* returns pdTRUE if TCP socket is connected */
@@ -366,7 +381,18 @@ typedef union xTCP_UDP_HANDLER
 BaseType_t FreeRTOS_setsockopt( Socket_t xSocket, int32_t lLevel, int32_t lOptionName, const void *pvOptionValue, size_t xOptionLength );
 BaseType_t FreeRTOS_closesocket( Socket_t xSocket );
 uint32_t FreeRTOS_gethostbyname( const char *pcHostName );
-uint32_t FreeRTOS_inet_addr( const char * pcIPAddress );
+#if ipconfigINCLUDE_FULL_INET_ADDR == 1
+	uint32_t FreeRTOS_inet_addr( const char * pcIPAddress );
+	BaseType_t FreeRTOS_inet_pton4( const char *pcSource, uint8_t *pucDest );
+#endif
+
+#if( ipconfigUSE_IPv6 != 0 )
+	/*
+	 * Convert a string like 'fe80::8d11:cd9b:8b66:4a80'
+	 * to a 16-byte IPv6 address
+	 */
+	BaseType_t FreeRTOS_inet_pton6( const char *pcSource, uint8_t *pucDest );
+#endif /* ipconfigUSE_IPv6 */
 
 /*
  * For the web server: borrow the circular Rx buffer for inspection

@@ -77,6 +77,7 @@
 #endif /* ipconfigUSE_LLMNR */
 #include "NetworkInterface.h"
 #include "NetworkBufferManagement.h"
+#include "FreeRTOS_Routing.h"
 
 
 /* When the age of an entry in the ARP table reaches this value (it counts down
@@ -137,39 +138,57 @@ static const uint8_t xDefaultPartARPPacketHeader[] =
 
 /*-----------------------------------------------------------*/
 
-eFrameProcessingResult_t eARPProcessPacket( ARPPacket_t * const pxARPFrame )
+eFrameProcessingResult_t eARPProcessPacket( NetworkBufferDescriptor_t * const pxNetworkBuffer )
 {
+ARPPacket_t * const pxARPFrame = ( ARPPacket_t * const ) pxNetworkBuffer->pucEthernetBuffer;
 eFrameProcessingResult_t eReturn = eReleaseBuffer;
-ARPHeader_t *pxARPHeader;
+ARPHeader_t *pxARPHeader = &( pxARPFrame->xARPHeader );
+uint32_t ulTargetProtocolAddress, ulSenderProtocolAddress;
+/*_RB_ I think this was determined before eARPProcessPacket was called so perhaps could just be passed in as a parameter. */
+NetworkEndPoint_t *pxTargetEndPoint = FreeRTOS_FindEndPointOnIP( pxARPHeader->ulTargetProtocolAddress, 1 );
+#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
+	NetworkEndPoint_t *pxSourceEndPoint;
+#endif
 
-	pxARPHeader = &( pxARPFrame->xARPHeader );
+	/* The field ulSenderProtocolAddress is badly aligned, copy byte-by-byte. */
+	memcpy( ( void *)&( ulSenderProtocolAddress ), ( void * )pxARPHeader->ucSenderProtocolAddress, sizeof( ulSenderProtocolAddress ) );
+	/* The field ulTargetProtocolAddress is well-aligned, a 32-bits copy. */
+	ulTargetProtocolAddress = pxARPHeader->ulTargetProtocolAddress;
+
+	#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
+	{
+		pxSourceEndPoint = FreeRTOS_FindEndPointOnIP( ulSenderProtocolAddress, 2 );
+	}
+	#endif
 
 	traceARP_PACKET_RECEIVED();
 
 	/* Don't do anything if the local IP address is zero because
 	that means a DHCP request has not completed. */
-	if( *ipLOCAL_IP_ADDRESS_POINTER != 0UL )
+	/*_RB_ Is this check done elsewhere now, on an interface by interface basis? */
+//	if( *ipLOCAL_IP_ADDRESS_POINTER != 0UL )
 	{
 		switch( pxARPHeader->usOperation )
 		{
 			case ipARP_REQUEST	:
 				/* The packet contained an ARP request.  Was it for the IP
-				address of the node running this code? */
-				if( pxARPHeader->ulTargetProtocolAddress == *ipLOCAL_IP_ADDRESS_POINTER )
+				address of one of the end-points? */
+				if( pxTargetEndPoint != NULL )
 				{
-					iptraceSENDING_ARP_REPLY( pxARPHeader->ulSenderProtocolAddress );
+					iptraceSENDING_ARP_REPLY( ulSenderProtocolAddress );
 
 					/* The request is for the address of this node.  Add the
 					entry into the ARP cache, or refresh the entry if it
 					already exists. */
-					vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), pxARPHeader->ulSenderProtocolAddress );
+					vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), ulSenderProtocolAddress );
 
 					/* Generate a reply payload in the same buffer. */
 					pxARPHeader->usOperation = ( uint16_t ) ipARP_REPLY;
-					if( pxARPHeader->ulTargetProtocolAddress == pxARPHeader->ulSenderProtocolAddress )
+					if( pxARPHeader->ulTargetProtocolAddress == ulSenderProtocolAddress )
 					{
-						/* A double IP address is detected! */
-						/* Give the sources MAC address the value of the broadcast address, will be swapped later */
+						/* The same IP address!  Give the sources MAC address 
+						the value of the broadcast address, will be swapped 
+						later. *//*_RB_ What is this path? */
 						memcpy( pxARPFrame->xEthernetHeader.xSourceAddress.ucBytes, xBroadcastMACAddress.ucBytes, sizeof( xBroadcastMACAddress ) );
 						memset( pxARPHeader->xTargetHardwareAddress.ucBytes, '\0', sizeof( MACAddress_t ) );
 						pxARPHeader->ulTargetProtocolAddress = 0UL;
@@ -177,25 +196,27 @@ ARPHeader_t *pxARPHeader;
 					else
 					{
 						memcpy( pxARPHeader->xTargetHardwareAddress.ucBytes, pxARPHeader->xSenderHardwareAddress.ucBytes, sizeof( MACAddress_t ) );
-						pxARPHeader->ulTargetProtocolAddress = pxARPHeader->ulSenderProtocolAddress;
+						pxARPHeader->ulTargetProtocolAddress = ulSenderProtocolAddress;
 					}
-					memcpy( pxARPHeader->xSenderHardwareAddress.ucBytes, ( void * ) ipLOCAL_MAC_ADDRESS, sizeof( MACAddress_t ) );
-					pxARPHeader->ulSenderProtocolAddress = *ipLOCAL_IP_ADDRESS_POINTER;
+					memcpy( pxARPHeader->xSenderHardwareAddress.ucBytes, pxTargetEndPoint->xMACAddress.ucBytes, sizeof( MACAddress_t ) );
+					memcpy( ( void* )pxARPHeader->ucSenderProtocolAddress, ( void* ) & pxTargetEndPoint->ulIPAddress, sizeof( pxARPHeader->ucSenderProtocolAddress ) );
+					pxNetworkBuffer->pxEndPoint = pxTargetEndPoint;
 
 					eReturn = eReturnEthernetFrame;
 				}
 				break;
 
 			case ipARP_REPLY :
-				iptracePROCESSING_RECEIVED_ARP_REPLY( pxARPHeader->ulTargetProtocolAddress );
-				vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), pxARPHeader->ulSenderProtocolAddress );
+				iptracePROCESSING_RECEIVED_ARP_REPLY( ulTargetProtocolAddress );
+				vARPRefreshCacheEntry( &( pxARPHeader->xSenderHardwareAddress ), ulSenderProtocolAddress );
 				/* Process received ARP frame to see if there is a clash. */
 				#if( ipconfigARP_USE_CLASH_DETECTION != 0 )
 				{
-					if( pxARPHeader->ulSenderProtocolAddress == *ipLOCAL_IP_ADDRESS_POINTER )
+					if( pxSourceEndPoint != NULL )
 					{
 						xARPHadIPClash = pdTRUE;
-						memcpy( xARPClashMacAddress.ucBytes, pxARPHeader->xSenderHardwareAddress.ucBytes, sizeof( xARPClashMacAddress.ucBytes ) );
+						/* Remember the MAC-address of the other device which has the same IP-address. */
+						memcpy( xARPClashMacAddress.ucBytes, pxARPHeader->xSenderHardwareAddress.ucBytes, sizeof xARPClashMacAddress.ucBytes );
 					}
 				}
 				#endif /* ipconfigARP_USE_CLASH_DETECTION */
@@ -239,13 +260,15 @@ void vARPRefreshCacheEntry( const MACAddress_t * pxMACAddress, const uint32_t ul
 {
 BaseType_t x, xIpEntry = -1, xMacEntry = -1, xUseEntry = 0;
 uint8_t ucMinAgeFound = 0U;
+#if( ipconfigARP_STORES_REMOTE_ADDRESSES != 0 )
+	BaseType_t xAddressIsLocal = ( BaseType_t ) -1;
+#endif
 
 	#if( ipconfigARP_STORES_REMOTE_ADDRESSES == 0 )
-		/* Only process the IP address if it is on the local network.
-		Unless: when '*ipLOCAL_IP_ADDRESS_POINTER' equals zero, the IP-address
-		and netmask are still unknown. */
-		if( ( ( ulIPAddress & xNetworkAddressing.ulNetMask ) == ( ( *ipLOCAL_IP_ADDRESS_POINTER ) & xNetworkAddressing.ulNetMask ) ) ||
-			( *ipLOCAL_IP_ADDRESS_POINTER == 0ul ) )
+		/* Only process the IP address if it matches with one of the end-points,
+		or as long as not all end-points are up. */
+		if( ( FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 1 ) != NULL ) ||
+			( FreeRTOS_AllEndPointsUp( NULL ) == pdFALSE ) )
 	#else
 		/* If ipconfigARP_STORES_REMOTE_ADDRESSES is non-zero, IP addresses with
 		a different netmask will also be stored.  After when replying to a UDP
@@ -299,20 +322,25 @@ uint8_t ucMinAgeFound = 0U;
 				/* Found an entry with the given MAC-address, but the IP-address
 				is different.  Continue looping to find a possible match with
 				ulIPAddress. */
-	#if( ipconfigARP_STORES_REMOTE_ADDRESSES != 0 )
-				/* If ARP stores the MAC address of IP addresses outside the
-				network, than the MAC address of the gateway should not be
-				overwritten. */
-				BaseType_t bIsLocal[ 2 ];
-				bIsLocal[ 0 ] = ( ( xARPCache[ x ].ulIPAddress & xNetworkAddressing.ulNetMask ) == ( ( *ipLOCAL_IP_ADDRESS_POINTER ) & xNetworkAddressing.ulNetMask ) );
-				bIsLocal[ 1 ] = ( ( ulIPAddress & xNetworkAddressing.ulNetMask ) == ( ( *ipLOCAL_IP_ADDRESS_POINTER ) & xNetworkAddressing.ulNetMask ) );
-				if( bIsLocal[ 0 ] == bIsLocal[ 1 ] )
+				#if( ipconfigARP_STORES_REMOTE_ADDRESSES != 0 )
+				{
+				BaseType_t xOtherIsLocal = FreeRTOS_FindEndPointOnNetMask( xARPCache[ x ].ulIPAddress, 3 ) != NULL;
+
+					if( xAddressIsLocal < ( BaseType_t ) 0 )
+					{
+						/* Only look-up the address when needed. */
+						xAddressIsLocal = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 2 ) != NULL;
+					}
+					if( xAddressIsLocal == xOtherIsLocal )
+					{
+						xMacEntry = x;
+					}
+				}
+				#else
 				{
 					xMacEntry = x;
 				}
-	#else
-				xMacEntry = x;
-	#endif
+				#endif
 			}
 			/* _HT_
 			Shouldn't we test for xARPCache[ x ].ucValid == pdFALSE here ? */
@@ -397,73 +425,86 @@ eARPLookupResult_t eReturn;
 uint32_t ulAddressToLookup;
 
 #if( ipconfigUSE_LLMNR == 1 )
-	if( *pulIPAddress == ipLLMNR_IP_ADDR )	/* Is in network byte order */
+	if( *pulIPAddress == ipLLMNR_IP_ADDR )	/* Is in network byte order. */
 	{
-		/* The LLMNR IP-address has a fixed virtual MAC address */
+		/* The LLMNR IP-address has a fixed virtual MAC address. */
 		memcpy( pxMACAddress->ucBytes, xLLMNR_MacAdress.ucBytes, sizeof( MACAddress_t ) );
 		eReturn = eARPCacheHit;
 	}
 	else
 #endif
-	if( ( *pulIPAddress == ipBROADCAST_IP_ADDRESS ) ||	/* Is it the general broadcast address 255.255.255.255? */
-		( *pulIPAddress == xNetworkAddressing.ulBroadcastAddress ) )/* Or a local broadcast address, eg 192.168.1.255? */
+	if( ( FreeRTOS_ntohl( *pulIPAddress ) & 0xff ) == 0xff )
 	{
-		/* This is a broadcast so uses the broadcast MAC address. */
+		/* This is a broadcast (x.x.x.255) so uses the broadcast MAC address. */
 		memcpy( pxMACAddress->ucBytes, xBroadcastMACAddress.ucBytes, sizeof( MACAddress_t ) );
 		eReturn = eARPCacheHit;
 	}
-	else if( *ipLOCAL_IP_ADDRESS_POINTER == 0UL )
-	{
-		/* The IP address has not yet been assigned, so there is nothing that
-		can be done. */
-		eReturn = eCantSendPacket;
-	}
 	else
 	{
-		eReturn = eARPCacheMiss;
+		NetworkEndPoint_t *pxEndPoint = FreeRTOS_FindEndPointOnNetMask( *pulIPAddress, 4 );
 
-		if( ( *pulIPAddress & xNetworkAddressing.ulNetMask ) != ( ( *ipLOCAL_IP_ADDRESS_POINTER ) & xNetworkAddressing.ulNetMask ) )
+		if( ( pxEndPoint != NULL ) && ( pxEndPoint->ulIPAddress == 0UL ) )
 		{
-#if( ipconfigARP_STORES_REMOTE_ADDRESSES == 1 )
-			eReturn = prvCacheLookup( *pulIPAddress, pxMACAddress );
-
-			if( eReturn == eARPCacheHit )
-			{
-				/* The stack is configured to store 'remote IP addresses', i.e. addresses
-				belonging to a different the netmask.  prvCacheLookup() returned a hit, so
-				the MAC address is known */
-			}
-			else
-#endif
-			{
-				/* The IP address is off the local network, so look up the
-				hardware address of the router, if any. */
-				ulAddressToLookup = xNetworkAddressing.ulGatewayAddress;
-			}
+			/* The IP address has not yet been assigned, so there is nothing that
+			can be done. */
+			eReturn = eCantSendPacket;
 		}
 		else
 		{
-			/* The IP address is on the local network, so lookup the requested
-			IP address directly. */
-			ulAddressToLookup = *pulIPAddress;
-		}
+			eReturn = eARPCacheMiss;
 
-		if( eReturn == eARPCacheMiss )
-		{
-			if( ulAddressToLookup == 0UL )
+			if( pxEndPoint == NULL )
 			{
-				/* The address is not on the local network, and there is not a
-				router. */
-				eReturn = eCantSendPacket;
+				/* No matching end-point is found, look for a gateway. */
+#if( ipconfigARP_STORES_REMOTE_ADDRESSES == 1 )
+				eReturn = prvCacheLookup( *pulIPAddress, pxMACAddress );
+
+				if( eReturn == eARPCacheHit )
+				{
+					/* The stack is configured to store 'remote IP addresses', 
+					i.e. addresses belonging to a different the netmask.  
+					prvCacheLookup() returned a hit, so the MAC address is 
+					known. */
+				}
+				else
+#endif
+				{
+					/* The IP address is off the local network, so look up the
+					hardware address of the router, if any. */
+					if( xNetworkAddressing.ulGatewayAddress != ( uint32_t )0u )
+					{
+						ulAddressToLookup = xNetworkAddressing.ulGatewayAddress;
+					}
+					else
+					{
+						ulAddressToLookup = *pulIPAddress;
+					}
+				}
 			}
 			else
 			{
-				eReturn = prvCacheLookup( ulAddressToLookup, pxMACAddress );
+			/* The IP address is on the local network, so lookup the requested
+			IP address directly. */
+				ulAddressToLookup = *pulIPAddress;
+			}
 
-				if( eReturn == eARPCacheMiss )
+			if( eReturn == eARPCacheMiss )
+			{
+				if( ulAddressToLookup == 0UL )
 				{
-					/* It might be that the ARP has to go to the gateway. */
-					*pulIPAddress = ulAddressToLookup;
+				/* The address is not on the local network, and there is not a
+				router. */
+					eReturn = eCantSendPacket;
+				}
+				else
+				{
+					eReturn = prvCacheLookup( ulAddressToLookup, pxMACAddress );
+
+					if( eReturn == eARPCacheMiss )
+					{
+						/* It might be that the ARP has to go to the gateway. */
+						*pulIPAddress = ulAddressToLookup;
+					}
 				}
 			}
 		}
@@ -552,7 +593,25 @@ TickType_t xTimeNow;
 
 	if( ( xLastGratuitousARPTime == ( TickType_t ) 0 ) || ( ( xTimeNow - xLastGratuitousARPTime ) > ( TickType_t ) arpGRATUITOUS_ARP_PERIOD ) )
 	{
-		FreeRTOS_OutputARPRequest( *ipLOCAL_IP_ADDRESS_POINTER );
+	NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
+
+		while( pxEndPoint != NULL )
+		{
+			if( ( pxEndPoint->bits.bEndPointUp != pdFALSE_UNSIGNED ) && ( pxEndPoint->ulIPAddress != 0ul ) )
+			{
+			#if( ipconfigUSE_IPv6 != 0 )
+				if( pxEndPoint->bits.bIPv6 != pdFALSE_UNSIGNED )
+				{
+					FreeRTOS_OutputAdvertiseIPv6( pxEndPoint );
+				}
+			#endif
+				if( pxEndPoint->ulIPAddress != 0 )
+				{
+					FreeRTOS_OutputARPRequest( pxEndPoint->ulIPAddress );
+				}
+			}
+			pxEndPoint = pxEndPoint->pxNext;
+		}
 		xLastGratuitousARPTime = xTimeNow;
 	}
 }
@@ -572,33 +631,47 @@ void vARPSendGratuitous( void )
 void FreeRTOS_OutputARPRequest( uint32_t ulIPAddress )
 {
 NetworkBufferDescriptor_t *pxNetworkBuffer;
+NetworkEndPoint_t *pxEndPoint;
 
-	/* This is called from the context of the IP event task, so a block time
-	must not be used. */
-	pxNetworkBuffer = pxGetNetworkBufferWithDescriptor( sizeof( ARPPacket_t ), ( TickType_t ) 0 );
-
-	if( pxNetworkBuffer != NULL )
+	pxEndPoint = FreeRTOS_FindEndPointOnIP( ulIPAddress, 3 );
+	if( pxEndPoint == NULL )
 	{
-		pxNetworkBuffer->ulIPAddress = ulIPAddress;
-		vARPGenerateRequestPacket( pxNetworkBuffer );
+		pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 5 );
+	}
+	if( pxEndPoint != NULL )
+	{
+	NetworkInterface_t *pxInterface;
 
-		#if defined( ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+		/* This is called from the context of the IP event task, so a block time
+		must not be used. */
+		pxNetworkBuffer = pxGetNetworkBufferWithDescriptor( sizeof( ARPPacket_t ), 0 );
+
+		if( pxNetworkBuffer != NULL )
 		{
-			if( pxNetworkBuffer->xDataLength < ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES )
+			pxNetworkBuffer->ulIPAddress = ulIPAddress;
+			pxNetworkBuffer->pxEndPoint = pxEndPoint;
+	
+			pxInterface = pxNetworkBuffer->pxEndPoint->pxNetworkInterface;
+			configASSERT( pxInterface != NULL );
+			vARPGenerateRequestPacket( pxNetworkBuffer );
+			#if defined( ipconfigETHERNET_MINIMUM_PACKET_BYTES )
 			{
-			BaseType_t xIndex;
-
-				FreeRTOS_printf( ( "OutputARPRequest: length %lu\n", pxNetworkBuffer->xDataLength ) );
-				for( xIndex = ( BaseType_t ) pxNetworkBuffer->xDataLength; xIndex < ( BaseType_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES; xIndex++ )
+				if( pxNetworkBuffer->xDataLength < ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES )
 				{
-					pxNetworkBuffer->pucEthernetBuffer[ xIndex ] = 0u;
+				BaseType_t xIndex;
+	
+//					FreeRTOS_printf( ( "OutputARPRequest: length %lu -> %lu\n",
+//						pxNetworkBuffer->xDataLength, ipconfigETHERNET_MINIMUM_PACKET_BYTES ) );
+					for( xIndex = ( BaseType_t ) pxNetworkBuffer->xDataLength; xIndex < ( BaseType_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES; xIndex++ )
+					{
+						pxNetworkBuffer->pucEthernetBuffer[ xIndex ] = 0u;
+					}
+					pxNetworkBuffer->xDataLength = ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES;
 				}
-				pxNetworkBuffer->xDataLength = ( size_t ) ipconfigETHERNET_MINIMUM_PACKET_BYTES;
 			}
+			#endif
+			pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, pdTRUE );
 		}
-		#endif
-
-		xNetworkInterfaceOutput( pxNetworkBuffer, pdTRUE );
 	}
 }
 
@@ -619,11 +692,14 @@ ARPPacket_t *pxARPPacket;
 		xARPHeader.usOperation;
 		xARPHeader.xTargetHardwareAddress;
 	*/
+	configASSERT( pxNetworkBuffer->pxEndPoint != NULL );
+
 	memcpy( ( void * ) &( pxARPPacket->xEthernetHeader ), ( void * ) xDefaultPartARPPacketHeader, sizeof( xDefaultPartARPPacketHeader ) );
-	memcpy( ( void * ) pxARPPacket->xEthernetHeader.xSourceAddress.ucBytes , ( void * ) ipLOCAL_MAC_ADDRESS, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
-	memcpy( ( void * ) pxARPPacket->xARPHeader.xSenderHardwareAddress.ucBytes, ( void * ) ipLOCAL_MAC_ADDRESS, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
+	memcpy( ( void * ) pxARPPacket->xEthernetHeader.xSourceAddress.ucBytes , ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
+	memcpy( ( void * ) pxARPPacket->xARPHeader.xSenderHardwareAddress.ucBytes, ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
 	/* HT:endian: network to network */
-	pxARPPacket->xARPHeader.ulSenderProtocolAddress = *ipLOCAL_IP_ADDRESS_POINTER;
+	memcpy( ( void* )pxARPPacket->xARPHeader.ucSenderProtocolAddress, ( void* )&( pxNetworkBuffer->pxEndPoint->ulIPAddress ), sizeof( pxARPPacket->xARPHeader.ucSenderProtocolAddress ) );
+
 	pxARPPacket->xARPHeader.ulTargetProtocolAddress = pxNetworkBuffer->ulIPAddress;
 
 	pxNetworkBuffer->xDataLength = sizeof( ARPPacket_t );

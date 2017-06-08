@@ -9,6 +9,7 @@
 /* FreeRTOS +TCP includes. */
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
+#include "FreeRTOS_Routing.h"
 #include "FreeRTOS_TCP_server.h"
 
 /* GreenPHY SDK includes. */
@@ -30,6 +31,11 @@ to and from a real network connection on the host PC.  See the
 configNETWORK_INTERFACE_TO_USE definition for information on how to configure
 the real network connection to use. */
 const uint8_t ucMACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 };
+
+static NetworkInterface_t xEthInterface = { 0 };
+static NetworkInterface_t xPlcInterface = { 0 };
+static NetworkInterface_t xBridgeInterface = { 0 };
+static NetworkEndPoint_t  xEndPoint =  { 0 };
 
 /*-----------------------------------------------------------*/
 
@@ -78,7 +84,7 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 static void prvServerWorkTask( void *pvParameters );
 
 /*-----------------------------------------------------------*/
-void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEndPoint_t *pxEndPoint  ) {
 	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
 	static BaseType_t xTasksAlreadyCreated = pdFALSE;
 	int8_t cBuffer[ 16 ];
@@ -98,7 +104,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 
 	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
-	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
+	    		// xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
 
 	            xTasksAlreadyCreated = pdTRUE;
@@ -106,7 +112,8 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent ) {
 
 	        /* The network is up and configured.  Print out the configuration,
 	        which may have been obtained from a DHCP server. */
-	        FreeRTOS_GetAddressConfiguration( &ulIPAddress,
+	        FreeRTOS_GetAddressConfiguration( pxEndPoint,
+	                                          &ulIPAddress,
 	                                          &ulNetMask,
 	                                          &ulGatewayAddress,
 	                                          &ulDNSServerAddress );
@@ -135,6 +142,14 @@ const char *pcApplicationHostnameHook( void )
 	return "GreenPHY evalboard II";
 }
 /*-----------------------------------------------------------*/
+
+/*_HT_ introduced this memory-check temporarily for debugging. */
+BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
+{
+	return 0x03;
+}
+/*-----------------------------------------------------------*/
+
 
 void vConfigureTimerForRunTimeStats(void) {
 	/* This function configures a timer that is used as the time base when
@@ -227,7 +242,26 @@ int main(void) {
 
 	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
 
-	FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
+	extern NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
+	pxLPC1758_FillInterfaceDescriptor(0, &xEthInterface);
+	xEthInterface.bits.bIsBridged = 1;
+	FreeRTOS_AddNetworkInterface(&xEthInterface);
+
+	extern NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
+	pxQCA7000_FillInterfaceDescriptor(0, &xPlcInterface);
+	xPlcInterface.bits.bIsBridged = 1;
+	FreeRTOS_AddNetworkInterface(&xPlcInterface);
+
+	extern NetworkInterface_t *pxBridge_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
+	pxBridge_FillInterfaceDescriptor(0, &xBridgeInterface);
+	FreeRTOS_AddNetworkInterface(&xBridgeInterface);
+
+	FreeRTOS_FillEndPoint(&xEndPoint, ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress);
+	xEndPoint.bits.bIsDefault = pdTRUE_UNSIGNED;
+	xEndPoint.bits.bWantDHCP = pdTRUE_UNSIGNED;
+	FreeRTOS_AddEndPoint(&xBridgeInterface, &xEndPoint);
+
+	FreeRTOS_IPStart();
 
 	vTaskStartScheduler();
 

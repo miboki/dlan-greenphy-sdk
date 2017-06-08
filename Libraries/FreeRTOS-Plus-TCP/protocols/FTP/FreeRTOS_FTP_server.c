@@ -71,6 +71,7 @@
 #include "FreeRTOS_TCP_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_Stream_Buffer.h"
+#include "FreeRTOS_Routing.h"
 
 /* FreeRTOS Protocol includes. */
 #include "FreeRTOS_FTP_commands.h"
@@ -188,6 +189,11 @@ static BaseType_t prvGetTransferType( const char *pcType );
  * to an IP-address and a port number.
  */
 static UBaseType_t prvParsePortData( const char *pcCommand, uint32_t *pulIPAddress );
+
+/*
+ * EPRT<space><d><net-prt><d><net-addr><d><tcp-port><d>
+ */
+static UBaseType_t prvParseEprtData( char *pcCommand, uint32_t *pulIPAddress, uint8_t *ucIPAddress );
 
 /*
  * CWD: Change current working directory.
@@ -596,6 +602,7 @@ BaseType_t xResult = 0;
 			break;
 
 		case ECMD_PASV: /* Enter passive mode. */
+		case ECMD_EPSV: /* Enter extended passive mode. */
 			/* Connect passive: Server will listen() and wait for a connection.
 			Start up a new data connection with 'xDoListen' set to true. */
 			if( prvTransferConnect( pxClient, pdTRUE ) == pdFALSE )
@@ -606,41 +613,73 @@ BaseType_t xResult = 0;
 			{
 			uint32_t ulIP;
 			uint16_t ulPort;
-			struct freertos_sockaddr xLocalAddress;
-			struct freertos_sockaddr xRemoteAddress;
+			#if( ipconfigUSE_IPv6 != 0 )
+				struct freertos_sockaddr6 xLocalAddress, xRemoteAddress;
+			#else
+				struct freertos_sockaddr xLocalAddress, xRemoteAddress;
+			#endif
+			struct freertos_sockaddr *pxLocalAddressIPv4 = ( struct freertos_sockaddr * ) &xLocalAddress;
+			struct freertos_sockaddr *pxRemoteAddressIPv4 = ( struct freertos_sockaddr * ) &xRemoteAddress;
 
-				FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, &xLocalAddress );
-				FreeRTOS_GetRemoteAddress( pxClient->xSocket, &xRemoteAddress );
+				xLocalAddress.sin_len = sizeof( xLocalAddress );
+				FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, pxLocalAddressIPv4 );
 
-				ulIP = FreeRTOS_ntohl( xLocalAddress.sin_addr );
-				pxClient->ulClientIP = FreeRTOS_ntohl( xRemoteAddress.sin_addr );
+				xRemoteAddress.sin_len = sizeof( xRemoteAddress );
+				FreeRTOS_GetRemoteAddress( pxClient->xSocket, pxRemoteAddressIPv4 );
+
+				ulIP = FreeRTOS_ntohl( pxLocalAddressIPv4->sin_addr );
+				pxClient->ulClientIPv4 = FreeRTOS_ntohl( pxRemoteAddressIPv4->sin_addr );
 				ulPort = FreeRTOS_ntohs( xLocalAddress.sin_port );
 
 				pxClient->usClientPort = FreeRTOS_ntohs( xRemoteAddress.sin_port );
 
 				/* REPL_227_D "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d). */
-				snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_227_D,
-					( unsigned )ulIP >> 24,
-					( unsigned )( ulIP >> 16 ) & 0xFF,
-					( unsigned )( ulIP >> 8 ) & 0xFF,
-					( unsigned )ulIP & 0xFF,
-					( unsigned )ulPort >> 8,
-					( unsigned )ulPort & 0xFF );
-
+				if( pxFTPCommand->ucCommandType == ECMD_PASV )
+				{
+					snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_227_D,
+						( unsigned )ulIP >> 24,
+						( unsigned )( ulIP >> 16 ) & 0xFF,
+						( unsigned )( ulIP >> 8 ) & 0xFF,
+						( unsigned )ulIP & 0xFF,
+						( unsigned )ulPort >> 8,
+						( unsigned )ulPort & 0xFF );
+				}
+				else /* ECMD_EPSV */
+				{
+					/* Entering Extended Passive Mode. */
+					/* "229 Entering Extended Passive Mode (|||<port>|).\r\n" */
+					snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), REPL_229_D, ulPort );
+				}
 				pcMyReply = pcCOMMAND_BUFFER;
 			}
 			break;
 
 		case ECMD_PORT: /* Active connection to the client. */
+		case ECMD_EPRT: /* Extended active connection to the client. */
 			/* The client uses this command to tell the server to what
 			client-side port the server should contact; use of this command
 			indicates an active data transfer. e.g. PORT 192,168,1,2,4,19. */
 			{
 			uint32_t ulIPAddress = 0;
+			uint8_t ucIPAddress[ ipSIZE_OF_IPv6_ADDRESS ];
 			UBaseType_t uxPort;
 
-				uxPort = prvParsePortData( pcRestCommand, &ulIPAddress );
-				FreeRTOS_printf( ("       PORT %lxip:%ld\n", ulIPAddress, uxPort ) );
+				if( pxFTPCommand->ucCommandType == ECMD_PORT )
+				{
+					uxPort = prvParsePortData( pcRestCommand, &ulIPAddress );
+					FreeRTOS_printf( ("       PORT %lxip:%ld\n", ulIPAddress, uxPort ) );
+				}
+				else
+				{
+					uxPort = prvParseEprtData( pcRestCommand, &ulIPAddress, ucIPAddress );
+				}
+				pxClient->usClientPort = ( uint16_t ) uxPort;
+				pxClient->ulClientIPv4 = ulIPAddress;
+				#if( ipconfigUSE_IPv6 != 0 )
+				{
+					memcpy( pxClient->ulClientIPv6.ucBytes, ucIPAddress, sizeof( pxClient->ulClientIPv6.ucBytes ) );
+				}
+				#endif
 
 				if( uxPort == 0u )
 				{
@@ -654,9 +693,6 @@ BaseType_t xResult = 0;
 				}
 				else
 				{
-					pxClient->usClientPort = ( uint16_t ) uxPort;
-					pxClient->ulClientIP = ulIPAddress;
-					FreeRTOS_printf( ("Client address %lxip:%lu\n", ulIPAddress, uxPort ) );
 					pcMyReply = REPL_200;
 				}
 			}
@@ -874,15 +910,57 @@ BaseType_t xResult;
 	if( ( xSocket != FREERTOS_NO_SOCKET ) && ( xSocket != FREERTOS_INVALID_SOCKET ) )
 	{
 	BaseType_t xSmallTimeout = pdMS_TO_TICKS( 100 );
-	struct freertos_sockaddr xAddress;
+#if( ipconfigUSE_IPv6 != 0 )
+	struct freertos_sockaddr6 xBindAddress, xRemote, xLocal2;
+	const uint8_t sin_family = FREERTOS_AF_INET6;
+#else	
+	struct freertos_sockaddr xBindAddress, xRemote, xLocal2;
+	const uint8_t sin_family = FREERTOS_AF_INET;
+#endif
+	struct freertos_sockaddr *pxBindAddress = ( struct freertos_sockaddr * )&xBindAddress;
+	struct freertos_sockaddr *pxRemote = ( struct freertos_sockaddr * )&xRemote;
+	struct freertos_sockaddr *pxLocal2 = ( struct freertos_sockaddr * )&xLocal2;
 
-	#if( ipconfigFTP_TX_BUFSIZE > 0 )
-		WinProperties_t xWinProps;
-	#endif
-		xAddress.sin_addr = FreeRTOS_GetIPAddress( );	/* Single NIC, currently not used */
-		xAddress.sin_port = FreeRTOS_htons( 0 );		/* Bind to any available port number */
+	NetworkEndPoint_t *pxEndPoint;
+#if( ipconfigFTP_TX_BUFSIZE > 0 )
+	WinProperties_t xWinProps;
+#endif
 
-		FreeRTOS_bind( xSocket, &xAddress, sizeof( xAddress ) );
+		xRemote.sin_len = sizeof( xRemote );
+		FreeRTOS_GetRemoteAddress( pxClient->xSocket, pxRemote );
+
+		xBindAddress.sin_len = sizeof( xBindAddress );
+		xBindAddress.sin_family = sin_family;//pxRemote->sin_family;
+		pxEndPoint = pxGetSocketEndpoint( pxClient->xSocket );
+
+		if( pxEndPoint == NULL )
+		{
+			FreeRTOS_printf( ( "prvTransferConnect: No pxEndPoint yet???\n" ) );
+			pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxRemote->sin_addr, 12 );
+		}
+		if( pxEndPoint != NULL )
+		{
+			/* Let the new socket use the same end-point. */
+			vSetSocketEndpoint( xSocket, pxEndPoint);
+
+			pxBindAddress->sin_addr = pxEndPoint->ulIPAddress;
+			#if( ipconfigUSE_IPv6 != 0 )
+			{
+				memcpy( xBindAddress.sin_addrv6.ucBytes, pxEndPoint->ulIPAddress_IPv6.ucBytes, sizeof( xBindAddress.sin_addrv6.ucBytes ) );
+			}
+			#endif /* ipconfigUSE_IPv6 */
+		}
+		else
+		{
+			pxBindAddress->sin_addr = 0ul;
+		}
+
+		xBindAddress.sin_port = FreeRTOS_htons( 0 );	/* Bind to aynt available port number. */
+
+		FreeRTOS_bind( xSocket, pxBindAddress, sizeof( *pxBindAddress ) );
+
+		xLocal2.sin_len = sizeof( xLocal2 );
+		FreeRTOS_GetLocalAddress( xSocket, pxLocal2 );
 
 		#if( ipconfigFTP_TX_BUFSIZE > 0 )
 		{
@@ -950,12 +1028,30 @@ BaseType_t xResult;
 	}
 	else
 	{
-	struct freertos_sockaddr xAddress;
-
-		xAddress.sin_addr = FreeRTOS_htonl( pxClient->ulClientIP );
+	#if( ipconfigUSE_IPv6 != 0 )
+		struct freertos_sockaddr6 xAddress;
+	#else
+		struct freertos_sockaddr xAddress;
+	#endif
+		xAddress.sin_len = sizeof( xAddress );
+		#if( ipconfigUSE_IPv6 != 0 )
+		if( pxClient->ulClientIPv4 == 0ul )
+		{
+			xAddress.sin_len = sizeof( xAddress );
+			xAddress.sin_family = FREERTOS_AF_INET6;
+			memcpy( xAddress.sin_addrv6.ucBytes, pxClient->ulClientIPv6.ucBytes, sizeof xAddress.sin_addrv6.ucBytes );
+		}
+		else
+		#endif
+		{
+		struct freertos_sockaddr *pxAddress = ( struct freertos_sockaddr *)&xAddress;
+			pxAddress->sin_len = sizeof( xAddress );
+			pxAddress->sin_family = FREERTOS_AF_INET;
+			pxAddress->sin_addr = FreeRTOS_htonl( pxClient->ulClientIPv4 );
+		}
 		xAddress.sin_port = FreeRTOS_htons( pxClient->usClientPort );
 		/* Start an active connection for this data socket */
-		xResult = FreeRTOS_connect( pxClient->xTransferSocket, &xAddress, sizeof( xAddress ) );
+		xResult = FreeRTOS_connect( pxClient->xTransferSocket, (struct freertos_sockaddr *)&xAddress, xAddress.sin_len );
 	}
 
 	return xResult;
@@ -1001,9 +1097,17 @@ BaseType_t xRxSize;
 				pxClient->bits1.bEmptyFile = pdFALSE_UNSIGNED;
 				#if( ipconfigHAS_PRINTF != 0 )
 				{
+				#if( ipconfigUSE_IPv6 != 0 )
+					struct freertos_sockaddr6 xRemoteAddress, xLocalAddress;
+				#else
 					struct freertos_sockaddr xRemoteAddress, xLocalAddress;
-					FreeRTOS_GetRemoteAddress( pxClient->xTransferSocket, &xRemoteAddress );
-					FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, &xLocalAddress );
+				#endif
+					xRemoteAddress.sin_len = sizeof( xRemoteAddress );
+					FreeRTOS_GetRemoteAddress( pxClient->xTransferSocket, ( struct freertos_sockaddr * )&xRemoteAddress );
+
+					xLocalAddress.sin_len = sizeof( xLocalAddress );
+					FreeRTOS_GetLocalAddress( pxClient->xTransferSocket, ( struct freertos_sockaddr * )&xLocalAddress );
+
 					FreeRTOS_printf( ( "%s Connected from %u to %u\n",
 						pxClient->bits1.bIsListen != pdFALSE_UNSIGNED ? "PASV" : "PORT",
 						( unsigned ) FreeRTOS_ntohs( xLocalAddress.sin_port ),
@@ -1022,14 +1126,19 @@ BaseType_t xRxSize;
 		{
 		BaseType_t xLength;
 		BaseType_t xRemotePort;
-		struct freertos_sockaddr xRemoteAddress;
+		#if( ipconfigUSE_IPv6 != 0 )
+			struct freertos_sockaddr6 xRemoteAddress;
+		#else
+			struct freertos_sockaddr xRemoteAddress;
+		#endif
 
-			FreeRTOS_GetRemoteAddress( pxClient->xTransferSocket, &xRemoteAddress );
+			xRemoteAddress.sin_len = sizeof( xRemoteAddress );
+			FreeRTOS_GetRemoteAddress( pxClient->xTransferSocket, ( struct freertos_sockaddr * )&xRemoteAddress );
 			xRemotePort = FreeRTOS_ntohs( xRemoteAddress.sin_port );
 
 			/* Tell on the command port 21 we have a data connection */
 			xLength = snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ),
-				pxClient->pcConnectionAck, pxClient->ulClientIP, xRemotePort );
+				pxClient->pcConnectionAck, pxClient->ulClientIPv4, xRemotePort );
 
 			prvSendReply( pxClient->xSocket, pcCOMMAND_BUFFER, xLength );
 			pxClient->pcConnectionAck[ 0 ] = '\0';
@@ -1275,6 +1384,111 @@ BaseType_t xResult = -1;
 	/*-----------------------------------------------------------*/
 #endif /* ipconfigHAS_PRINTF != 0 */
 
+static UBaseType_t prvParseEprtData( char *pcCommand, uint32_t *pulIPAddress, uint8_t *ucIPAddress )
+{
+char *pcType = NULL;
+char *pcIPAddress = NULL;
+char *pcPort = NULL;
+char cSeparator = 0;
+BaseType_t xStep = 0;
+UBaseType_t uxReturnPort = 0;
+
+	*pulIPAddress = 0ul;
+	ucIPAddress[ 0 ] = 0;
+	ucIPAddress[ 1 ] = 0;
+
+	while( xStep < 7 )
+	{
+		char ch = *pcCommand;
+		if( ch == '\0' )
+		{
+			break;
+		}
+		switch( xStep )
+		{
+		case 0:
+			cSeparator = ch;
+			xStep++;
+			pcCommand++;
+			break;
+		case 2:
+		case 4:
+		case 6:
+			if( cSeparator != ch )
+			{
+				xStep = 7;
+				break;
+			}
+			xStep++;
+			*pcCommand = '\0';
+			pcCommand++;
+			break;
+		case 1:
+		case 3:
+		case 5:
+			/* 1: expect IP type. */
+			/* 3: Expect an IPv4 or an IPv6 address. */
+			/* 5: expect port number. */
+			{
+				switch( xStep )
+				{
+					case 1:
+						pcType = pcCommand;
+						break;
+					case 3:
+						pcIPAddress = pcCommand;
+						break;
+					case 5:
+						pcPort = pcCommand;
+						break;
+				}
+				for( ;; )
+				{
+					ch = *pcCommand;
+					if( ( ch == cSeparator ) || ( ch == '\0' ) )
+					{
+						break;
+					}
+					pcCommand++;
+				}
+				xStep++;
+			}
+			break;
+		}
+	}
+
+	if( pcType != NULL )
+	{
+		if( ( pcIPAddress != NULL ) && ( pcPort != NULL ) )
+		{
+			if( pcType[ 0 ] == '1' )
+			{
+				BaseType_t rc = FreeRTOS_inet_pton4( pcIPAddress, ( uint8_t * ) pulIPAddress );
+				if( rc != ( BaseType_t ) 0 )
+				{
+					sscanf( pcPort, "%lu", &uxReturnPort );
+				}
+				FreeRTOS_printf( ( "prvParseEprtData: IPv4 rc %d %lxip port %lu\n", rc, FreeRTOS_htonl( *pulIPAddress ), uxReturnPort ) );
+			}
+			else if( pcType[ 0 ] == '2' )
+			{
+				#if( ipconfigUSE_IPv6 == 1 )
+				{
+					BaseType_t rc = FreeRTOS_inet_pton6( pcIPAddress, ( uint8_t * ) ucIPAddress );
+					if( rc != ( BaseType_t ) 0 )
+					{
+						sscanf( pcPort, "%lu", &uxReturnPort );
+					}
+					FreeRTOS_printf( ( "prvParseEprtData: IPv6 rc %d %pip port %lu\n", rc, ucIPAddress, uxReturnPort ) );
+				}
+				#endif /* ipconfigUSE_IPv6 */
+			}
+		}
+	}
+	return uxReturnPort;
+}
+/*-----------------------------------------------------------*/
+
 static UBaseType_t prvParsePortData( const char *pcCommand, uint32_t *pulIPAddress )
 {
 /*_HT_ Using 'unsigned' here because when sscanf() sees '%u', it expects a pointer to 'unsigned'.
@@ -1459,6 +1673,12 @@ int iErrorNo;
 
 #else	/* ipconfigFTP_ZERO_COPY_ALIGNED_WRITES != 0 */
 
+	#if !defined( ipconfigFTP_PREFERRED_WRITE_SIZE )
+		/* If you store data on flash, it may be profitable to give 'ipconfigFTP_PREFERRED_WRITE_SIZE'
+		the same size as the size of the flash' erase blocks, e.g. 4KB */
+		#define ipconfigFTP_PREFERRED_WRITE_SIZE	512ul
+	#endif
+
 	static BaseType_t prvStoreFileWork( FTPClient_t *pxClient )
 	{
 	BaseType_t xRc, xWritten;
@@ -1487,20 +1707,20 @@ int iErrorNo;
 			}
 			else
 			{
-				if( xRc >= 512 )
+				if( xRc >= ipconfigFTP_PREFERRED_WRITE_SIZE )
 				{
 					/* More than a sector to write, round down to a multiple of
-					512 bytes. */
-					xRc &= ~( 512 - 1 );
+					PREFERRED_WRITE_SIZE bytes. */
+					xRc = ( xRc / ipconfigFTP_PREFERRED_WRITE_SIZE ) * ipconfigFTP_PREFERRED_WRITE_SIZE;
 				}
 				else
 				{
 				const StreamBuffer_t *pxBuffer = FreeRTOS_get_rx_buf( pxClient->xTransferSocket );
-				size_t uxTail = pxBuffer->uxTail;
+				size_t uxSpace = pxBuffer->LENGTH - pxBuffer->uxTail;
 
-					if( pxBuffer->LENGTH - uxTail >= 512ul )
+					if( uxSpace >= ipconfigFTP_PREFERRED_WRITE_SIZE )
 					{
-						/* At this moment there are les than 512 bytes in the RX
+						/* At this moment there are les than PREFERRED_WRITE_SIZE bytes in the RX
 						buffer, but there is space for more. Just return and
 						wait for more. */
 						xRc = 0;
@@ -1511,7 +1731,7 @@ int iErrorNo;
 						use a normal read. */
 						pcBuffer = pcFILE_BUFFER;
 						xRc = FreeRTOS_recvcount( pxClient->xTransferSocket );
-						xRc &= ~( 512 - 1 );
+						xRc = ( xRc / ipconfigFTP_PREFERRED_WRITE_SIZE ) * ipconfigFTP_PREFERRED_WRITE_SIZE;
 						if( xRc > 0 )
 						{
 							xRc = FreeRTOS_recv( pxClient->xTransferSocket, ( void * ) pcBuffer,
@@ -1569,9 +1789,11 @@ size_t uxFileSize;
 	pxClient->pxReadHandle = ff_fopen( pxClient->pcFileName, "rb" );
 	if( pxClient->pxReadHandle == NULL )
 	{
+	int iErrno = stdioGET_ERRNO();
 		/* "Requested file action not taken". */
 		prvSendReply( pxClient->xSocket, REPL_450, 0 );
-		FreeRTOS_printf( ("prvRetrieveFilePrep: open %s: %s\n", pxClient->pcFileName, ( const char * ) strerror( stdioGET_ERRNO() ) ) );
+		FreeRTOS_printf( ("prvRetrieveFilePrep: open '%s': errno %d: %s\n",
+			pxClient->pcFileName, iErrno, ( const char * ) strerror( iErrno ) ) );
 		uxFileSize = 0ul;
 		xResult = pdFALSE;
 	}
@@ -1632,7 +1854,7 @@ size_t uxFileSize;
 
 			xLength = snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), "150%cOpening data connection to %lxip:%u\r\n%s",
 				pxClient->xTransType == TMODE_ASCII ? '-' : ' ',
-				pxClient->ulClientIP,
+				pxClient->ulClientIPv4,
 				pxClient->usClientPort,
 				pxClient->xTransType == TMODE_ASCII ? "150 NOTE: ASCII mode requested, but binary mode used\r\n" : "" );
 			prvSendReply( pxClient->xSocket, pcCOMMAND_BUFFER, xLength );

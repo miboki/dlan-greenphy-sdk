@@ -130,7 +130,7 @@ task.  This setting is less important when the FreeRTOS Win32 simulator is used
 as the Win32 simulator only stores a fixed amount of information on the task
 stack.  FreeRTOS includes optional stack overflow detection, see:
 http://www.freertos.org/Stacks-and-stack-overflow-checking.html */
-#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( 200 )
+#define ipconfigIP_TASK_STACK_SIZE_WORDS    ( 400 )
 
 /* ipconfigRAND32() is called by the IP stack to generate random numbers for
 things such as a DHCP transaction number or initial sequence number.  Random
@@ -283,7 +283,7 @@ perform the filtering instead (it is much less efficient for the stack to do it
 because the packet will already have been passed into the stack).  If the
 Ethernet driver does all the necessary filtering in hardware then software
 filtering can be removed by using a value other than 1 or 0. */
-#define ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES 1 // TODO: fix this in the driver
+#define ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES 0 // TODO: fix this in the driver
 
 /* Advanced only: in order to access 32-bit fields in the IP packets with
 32-bit memory instructions, all packets will be stored 32-bit-aligned, plus 16-bits.
@@ -351,5 +351,39 @@ FTP and HTTP servers both execute in the standard server task. */
 #define ipconfigTCP_FILE_BUFFER_SIZE 512
 
 #define NETWORK_IRQHandler ETH_IRQHandler
+#define configNUM_RX_DESCRIPTORS 4
+#define configNUM_TX_DESCRIPTORS 4
+
+#define configREAD_MAC_FROM_GREENPHY 0
+
+/* If ipconfigUSE_BRIDGE is set to 1 multiple interfaces can be bridged.
+Ethernet frames arriving on one interface are forwarded to the other bridged
+interfaces. The NetworkInterface implementation needs to support this by
+passing the received frame to xBridge_Process() instead of the IP task. */
+#define ipconfigUSE_BRIDGE 1
+
+/* If multiple interfaces are bridged the forwarding table is used to determine
+which interface can reach a specific MAC, so frames do not need to be
+duplicated every time. If the forwarding table is not used, the bridge behaves
+like a hub. */
+#define ipconfigUSE_FORWARDING_TABLE 1
+
+/* The forwarding table maps to MAC addresses to interfaces. When a frame
+arrives the forwarding table is updated with the source MAC and the receiving
+interface. ipconfigFORWARDING_TABLE_ENTRIES defines the maximum number of
+entries that can exist in the forwarding table at any one time. */
+#define ipconfigFORWARDING_TABLE_ENTRIES    32
+
+/* ipconfigMAX_FORWARDING_TABLE_AGE defines the maximum time between an entry
+in the forwarding table being created or refreshed and the entry being removed
+because it is stale. ipconfigUSE_FORWARDING_TABLE is specified in tens of
+seconds, so a value of 30 is equal to 300 seconds (or 5 minutes). */
+#define ipconfigMAX_FORWARDING_TABLE_AGE 30
+
+/* Defines how often the forwarding table timer callback function is executed.  The time is
+shorted in the Windows simulator as simulated time is not real time. */
+#define ipFORWARDING_TABLE_TIMER_PERIOD_MS 10000
+
+#define ipconfigENDPOINT_DNS_ADDRESS_COUNT 1
 
 #endif /* FREERTOS_IP_CONFIG_H */

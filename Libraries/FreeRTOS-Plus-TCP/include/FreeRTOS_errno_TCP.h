@@ -29,14 +29,14 @@
  * license that applies is dependent on the processor on which FreeRTOS+TCP is
  * executed, as follows:
  *
- * If FreeRTOS+TCP is executed on one of the processors listed under the Special 
- * License Arrangements heading of the FreeRTOS+TCP license information web 
- * page, then it can be used under the terms of the FreeRTOS Open Source 
+ * If FreeRTOS+TCP is executed on one of the processors listed under the Special
+ * License Arrangements heading of the FreeRTOS+TCP license information web
+ * page, then it can be used under the terms of the FreeRTOS Open Source
  * License.  If FreeRTOS+TCP is used on any other processor, then it can be used
  * under the terms of the GNU General Public License V2.  Links to the relevant
  * licenses follow:
- * 
- * The FreeRTOS+TCP License Information Page: http://www.FreeRTOS.org/tcp_license 
+ *
+ * The FreeRTOS+TCP License Information Page: http://www.FreeRTOS.org/tcp_license
  * The FreeRTOS Open Source License: http://www.FreeRTOS.org/license
  * The GNU General Public License Version 2: http://www.FreeRTOS.org/gpl-2.0.txt
  *

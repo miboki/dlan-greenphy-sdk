@@ -453,6 +453,7 @@ void vListInsertGeneric( List_t * const pxList, ListItem_t * const pxNewListItem
 				if( xLowestLength > xLength )
 				{
 					xLowestLength = xLength;
+					//FreeRTOS_debug_printf( ( "xTCPWindowNew: xLowestLength = %lu\n", xLowestLength ) );
 				}
 			}
 			#endif /* ipconfigHAS_DEBUG_PRINTF */
@@ -629,12 +630,12 @@ void vTCPWindowCreate( TCPWindow_t *pxWindow, uint32_t ulRxWindowLength,
 			prvCreateSectors();
 		}
 
-		vListInitialise( &pxWindow->xTxSegments );
-		vListInitialise( &pxWindow->xRxSegments );
+		vListInitialise( &( pxWindow->xTxSegments ) );
+		vListInitialise( &( pxWindow->xRxSegments ) );
 
-		vListInitialise( &pxWindow->xPriorityQueue );			/* Priority queue: segments which must be sent immediately */
-		vListInitialise( &pxWindow->xTxQueue   );			/* Transmit queue: segments queued for transmission */
-		vListInitialise( &pxWindow->xWaitQueue );			/* Waiting queue:  outstanding segments */
+		vListInitialise( &( pxWindow->xPriorityQueue ) );	/* Priority queue: segments which must be sent immediately */
+		vListInitialise( &( pxWindow->xTxQueue ) );			/* Transmit queue: segments queued for transmission */
+		vListInitialise( &( pxWindow->xWaitQueue ) );		/* Waiting queue:  outstanding segments */
 	}
 	#endif /* ipconfigUSE_TCP_WIN == 1 */
 
