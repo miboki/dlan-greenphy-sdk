@@ -65,6 +65,7 @@ QcaFrmCreateHeader(uint8_t *buf, uint16_t len, uint32_t protocol_version)
 
 	return QCAFRM_HEADER_LEN;
 }
+
 /*====================================================================*
  *
  *   QcaFrmCreateFooter
@@ -112,7 +113,53 @@ QcaFrmAddQID(uint8_t *buf, uint8_t qid)
 void
 QcaFrmFsmInit(QcaFrmHdl *frmHdl)
 {
-	frmHdl->state = QCAFRM_HW_LEN0;
+	frmHdl->state = QCAFRM_WAIT_AA1;
+	frmHdl->offset = 0;
+	frmHdl->len = 0;
+}
+
+uint16_t
+QcaFrmBytesRequired( QcaFrmHdl *frmHdl )
+{
+	switch( frmHdl->state )
+	{
+	case QCAFRM_WAIT_AA1:        return QCAFRM_TOTAL_HEADER_LEN;
+	case QCAFRM_WAIT_AA2:        return QCAFRM_HEADER_LEN - 1;
+	case QCAFRM_WAIT_AA3:        return QCAFRM_HEADER_LEN - 2;
+	case QCAFRM_WAIT_AA4:        return QCAFRM_HEADER_LEN - 3;
+	case QCAFRM_WAIT_LEN_BYTE0:  return QCAFRM_HEADER_LEN - 4;
+	case QCAFRM_WAIT_LEN_BYTE1:  return QCAFRM_HEADER_LEN - 5;
+	case QCAFRM_WAIT_RSVD_BYTE1: return QCAFRM_HEADER_LEN - 6;
+	case QCAFRM_WAIT_RSVD_BYTE2: return QCAFRM_HEADER_LEN - 7;
+	default:                     return frmHdl->state - QCAFRM_FOOTER_LEN;
+	case QCAFRM_WAIT_551:        return QCAFRM_FOOTER_LEN;
+	case QCAFRM_WAIT_552:        return QCAFRM_FOOTER_LEN - 1;
+	case QCAFRM_COMPLETE:        return 0;
+	}
+}
+
+QcaFrmAction
+QcaFrmGetAction( QcaFrmHdl *frmHdl )
+{
+	switch( frmHdl->state )
+	{
+	case QCAFRM_WAIT_AA1:
+	case QCAFRM_WAIT_AA2:
+	case QCAFRM_WAIT_AA3:
+	case QCAFRM_WAIT_AA4:
+	case QCAFRM_WAIT_LEN_BYTE0:
+	case QCAFRM_WAIT_LEN_BYTE1:
+	case QCAFRM_WAIT_RSVD_BYTE1:
+	case QCAFRM_WAIT_RSVD_BYTE2:
+		return QCAFRM_FIND_HEADER;
+	default:
+		return QCAFRM_COPY_FRAME;
+	case QCAFRM_WAIT_551:
+	case QCAFRM_WAIT_552:
+		return QCAFRM_CHECK_FOOTER;
+	case QCAFRM_COMPLETE:
+		return QCAFRM_FRAME_COMPLETE;
+	}
 }
 
 /*====================================================================*
@@ -130,108 +177,85 @@ QcaFrmFsmInit(QcaFrmHdl *frmHdl)
  *--------------------------------------------------------------------*/
 
 int32_t
-QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t *recvBuf, uint32_t recvLen, uint32_t *bytes_proc)
+QcaFrmFsmDecode( QcaFrmHdl *frmHdl, uint8_t recvByte, uint8_t *buffer )
 {
-	int32_t ret = QCAFRM_GATHER;
-	uint8_t recvByte = *recvBuf;
-	uint16_t len;
-	*bytes_proc = 1;
+int32_t ret = QCAFRM_GATHER;
+
 	switch(frmHdl->state)
 	{
-	case QCAFRM_HW_LEN0:
-	case QCAFRM_HW_LEN1:
-		/* by default, just go to next state */
-		frmHdl->state--;
-
-		if (recvByte != 0x00) {
-			/* first two bytes of length must be 0 */
-			frmHdl->state = QCAFRM_HW_LEN0;
+	/* 4 bytes header pattern */
+	case QCAFRM_COMPLETE:
+	case QCAFRM_WAIT_AA1:
+		if( recvByte == 0xAA )
+		{
+			frmHdl->state = QCAFRM_WAIT_AA2;
 		}
 		break;
-
-	case QCAFRM_HW_LEN2:
-	case QCAFRM_HW_LEN3:
-		frmHdl->state--;
-		break;
-
-	/* 4 bytes header pattern */
-	case QCAFRM_WAIT_AA1:
 	case QCAFRM_WAIT_AA2:
 	case QCAFRM_WAIT_AA3:
 	case QCAFRM_WAIT_AA4:
 		if (recvByte != 0xAA)
 		{
 			ret = QCAFRM_NOHEAD;
-			frmHdl->state = QCAFRM_HW_LEN0;
+			frmHdl->state = QCAFRM_WAIT_AA1;
 		}
 		else
 		{
 			frmHdl->state--;
 		}
 		break;
-
 		/* 2 bytes length. */
  	case QCAFRM_WAIT_LEN_BYTE0:
-		frmHdl->len = recvByte;
-		frmHdl->state--;
+ 		frmHdl->len = recvByte;
+ 		frmHdl->state = QCAFRM_WAIT_LEN_BYTE1;
 		break;
-
 	case QCAFRM_WAIT_LEN_BYTE1:
 		frmHdl->len = frmHdl->len | (recvByte << 8);
-		frmHdl->state--;
+		frmHdl->state = QCAFRM_WAIT_RSVD_BYTE1;
 		break;
-
 	case QCAFRM_WAIT_RSVD_BYTE1:
-		frmHdl->state--;
+		frmHdl->state = QCAFRM_WAIT_RSVD_BYTE2;
 		break;
-
 	case QCAFRM_WAIT_RSVD_BYTE2:
-		frmHdl->state--;
-		if (frmHdl->len > buf_len || frmHdl->len < QCAFRM_ETHMINLEN)
+		if (frmHdl->len > QCAFRM_ETHMAXLEN || frmHdl->len < QCAFRM_ETHMINLEN)
 		{
 			ret = QCAFRM_INVLEN;
-			frmHdl->state = QCAFRM_HW_LEN0;
+			frmHdl->state = QCAFRM_WAIT_AA1;
 		}
 		else
 		{
-			frmHdl->state = (QcaFrmState)(frmHdl->len + 1);
-			/* Remaining number of bytes. */
+			frmHdl->state = (QcaFrmState) (frmHdl->len + QCAFRM_FOOTER_LEN);
 			frmHdl->offset = 0;
 		}
 		break;
-
 	default:
 		/* Receiving Ethernet frame itself. */
-		len = MIN(recvLen, (frmHdl->len - frmHdl->offset));
-		memcpy(&buf[frmHdl->offset], recvBuf, len);
-		frmHdl->state -= len;
-		frmHdl->offset += len;
-		*bytes_proc = len;
+		buffer[frmHdl->offset] = recvByte;
+		frmHdl->offset++;
+		frmHdl->state--;
 		break;
-
 	case QCAFRM_WAIT_551:
 		if (recvByte != 0x55)
 		{
 			ret = QCAFRM_NOTAIL;
-			frmHdl->state = QCAFRM_HW_LEN0;
+			frmHdl->state = QCAFRM_WAIT_AA1;
 		}
 		else
 		{
 			frmHdl->state--;
 		}
 		break;
-
 	case QCAFRM_WAIT_552:
 		if (recvByte != 0x55)
 		{
 			ret = QCAFRM_NOTAIL;
-			frmHdl->state = QCAFRM_HW_LEN0;
+			frmHdl->state = QCAFRM_WAIT_AA1;
 		}
 		else
 		{
-			ret = frmHdl->offset;
 			/* Frame is fully received. */
-			frmHdl->state = QCAFRM_HW_LEN0;
+			ret = frmHdl->len;
+			frmHdl->state = QCAFRM_COMPLETE;
 		}
 		break;
 	}

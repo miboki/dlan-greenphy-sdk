@@ -955,7 +955,7 @@ BaseType_t xResult;
 			pxBindAddress->sin_addr = 0ul;
 		}
 
-		xBindAddress.sin_port = FreeRTOS_htons( 0 );	/* Bind to aynt available port number. */
+		xBindAddress.sin_port = FreeRTOS_htons( 0 );	/* Bind to any available port number. */
 
 		FreeRTOS_bind( xSocket, pxBindAddress, sizeof( *pxBindAddress ) );
 

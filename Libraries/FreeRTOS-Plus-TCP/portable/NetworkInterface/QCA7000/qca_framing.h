@@ -47,9 +47,6 @@
 /* Frame is currently being received */
 #define QCAFRM_GATHER 0
 
-/* Ethernet frame is found and ready to be copied */
-#define QCAFRM_CPY_ETH_FRAME 1
-
 /*  No header byte while expecting it */
 #define QCAFRM_NOHEAD (QCAFRM_ERR_BASE - 1)
 
@@ -72,6 +69,9 @@
 /* Min/Max frame lengths */
 #define QCAFRM_ETHMINLEN (QCAFRM_ETHMINMTU + ETH_HLEN)
 #define QCAFRM_ETHMAXLEN (QCAFRM_ETHMAXMTU + VLAN_ETH_HLEN)
+
+/* QCA7k hw len + header len*/
+#define QCAFRM_TOTAL_HEADER_LEN 12
 
 /* QCA7K header len */
 #define QCAFRM_HEADER_LEN 8
@@ -128,11 +128,21 @@ typedef enum {
 
 	/*  The frame length is used as the state until the end of the Ethernet frame */
 	/*  Waiting for first 0x55 of footer */
-	QCAFRM_WAIT_551 = 1,
+	QCAFRM_WAIT_551 = 2,
 
 	/*  Waiting for second 0x55 of footer */
-	QCAFRM_WAIT_552 = QCAFRM_WAIT_551 - 1
+	QCAFRM_WAIT_552 = QCAFRM_WAIT_551 - 1,
+
+	/*  Frame fully received */
+	QCAFRM_COMPLETE = 0,
 } QcaFrmState;
+
+typedef enum {
+	QCAFRM_FIND_HEADER = 0,
+	QCAFRM_COPY_FRAME,
+	QCAFRM_CHECK_FOOTER,
+	QCAFRM_FRAME_COMPLETE
+} QcaFrmAction;
 
 /*====================================================================*
  *
@@ -201,6 +211,9 @@ int32_t QcaFrmAddQID(uint8_t *buf, uint8_t qid);
 
 void QcaFrmFsmInit(QcaFrmHdl *frmHdl);
 
+uint16_t QcaFrmBytesRequired( QcaFrmHdl *frmHdl );
+QcaFrmAction QcaFrmGetAction( QcaFrmHdl *frmHdl );
+
 /*====================================================================*
  *
  *   QcaFrmFsmDecode
@@ -216,6 +229,6 @@ void QcaFrmFsmInit(QcaFrmHdl *frmHdl);
  *
  *--------------------------------------------------------------------*/
 
-int32_t QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t *buf, uint16_t buf_len, uint8_t *recvBuf, uint32_t recvLen, uint32_t *bytes_proc);
+int32_t QcaFrmFsmDecode(QcaFrmHdl *frmHdl, uint8_t recvByte, uint8_t *buf);
 
 #endif

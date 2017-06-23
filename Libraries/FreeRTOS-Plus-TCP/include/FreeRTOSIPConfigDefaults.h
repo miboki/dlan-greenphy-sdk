@@ -598,5 +598,10 @@ from the FreeRTOSIPConfig.h configuration header file. */
 	#define ipconfigMULTI_INTERFACE 0
 #endif
 
+#ifndef ipconfigENDPOINT_DNS_ADDRESS_COUNT
+	#define ipconfigENDPOINT_DNS_ADDRESS_COUNT   2
+#endif
+
+
 #endif /* FREERTOS_DEFAULT_IP_CONFIG_H */
 

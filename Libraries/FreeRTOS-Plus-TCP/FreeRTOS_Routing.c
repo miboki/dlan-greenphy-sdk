@@ -316,7 +316,6 @@ void FreeRTOS_GetAddressConfiguration( NetworkEndPoint_t *pxEndPoint, uint32_t *
 NetworkEndPoint_t *FreeRTOS_FindEndPointOnMAC( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface )
 {
 NetworkEndPoint_t *pxEndPoint = pxNetworkEndPoints;
-static const MACAddress_t xIPv6_MulticastAddress = { { 0x33, 0x33, 0xff, 0x00, 0x00, 0x00 } };
 
 	xRoutingStats.ulOnMAC++;
 	/*_RB_ Question - would it be more efficient to store the mac addresses in

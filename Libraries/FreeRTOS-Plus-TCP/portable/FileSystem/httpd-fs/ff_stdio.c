@@ -1,5 +1,6 @@
 
 /* Standard includes. */
+#include <string.h>
 #include <stdio.h>
 
 /* FreeRTOS includes. */
@@ -12,23 +13,23 @@
 FF_FILE *httpdfs_fopen( const char *pcFile, const char *pcMode)
 {
 	struct httpd_fs_file pxFileHandle;
-	FF_FILE *pxFile = NULL;
+	FF_FILE *pxStream = NULL;
 
 	/* pcMode not used */
 	(void) pcMode;
 
 	if( httpd_fs_open( pcFile, &pxFileHandle ) )
 	{
-		pxFile = pvPortMalloc( sizeof( FF_FILE) );
-		if( pxFile != NULL )
+		pxStream = pvPortMalloc( sizeof( FF_FILE) );
+		if( pxStream != NULL )
 		{
-			pxFile->pucBuffer = pxFileHandle.data;
-			pxFile->ulFileSize = pxFileHandle.len;
-			pxFile->ulFilePointer = 0;
+			pxStream->pucBuffer = (uint8_t *) pxFileHandle.data;
+			pxStream->ulFileSize = (uint32_t) pxFileHandle.len;
+			pxStream->ulFilePointer = 0;
 		}
 	}
 
-	return pxFile;
+	return pxStream;
 }
 
 int httpdfs_fclose(FF_FILE *pxStream)

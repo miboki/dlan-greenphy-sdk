@@ -64,6 +64,14 @@ extern "C" {
 
 #include "FreeRTOS_Routing.h"
 
+/* Age value for forwarding table entries that do not expire. */
+#define INFINITE_FORWARDING_TABLE_AGE ( 255 )
+
+/*
+ *
+ */
+void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface, uint8_t ucAge );
+
 /*
  * Reduce the age count in each entry within the forwarding table.  An entry is
  * no longer considered valid and is deleted if its age reaches zero.

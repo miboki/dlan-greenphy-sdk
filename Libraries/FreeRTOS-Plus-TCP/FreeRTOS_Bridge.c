@@ -109,7 +109,7 @@ NetworkInterface_t *pxInterface = NULL;
 }
 /*-----------------------------------------------------------*/
 
-void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface )
+void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInterface_t *pxInterface, uint8_t ucAge )
 {
 BaseType_t xUseEntry, xOldestEntry;
 uint8_t ucMinAgeFound = 0;
@@ -160,7 +160,7 @@ uint8_t ucMinAgeFound = 0;
 		memcpy( xForwardingTable[xUseEntry].xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES );
 	}
 	xForwardingTable[xUseEntry].pxInterface = pxInterface;
-	xForwardingTable[xUseEntry].ucAge = ipconfigMAX_FORWARDING_TABLE_AGE;
+	xForwardingTable[xUseEntry].ucAge = ucAge;
 }
 /*-----------------------------------------------------------*/
 
@@ -171,14 +171,17 @@ BaseType_t x;
 	/* Loop through each entry in the ARP cache. */
 	for( x = 0; x < uxForwardTableMaxUse; x++ )
 	{
-		/* Decrement the age value of the entry in this table row.
-		When the age reaches zero it is no longer considered valid. */
-		xForwardingTable[ x ].ucAge--;
-
-		if( xForwardingTable[ x ].ucAge == 0u )
+		if( xForwardingTable[ x ].ucAge != INFINITE_FORWARDING_TABLE_AGE )
 		{
-			/* The entry is no longer valid.  Wipe it out. */
-			xForwardingTable[ x ].pxInterface = NULL;
+			/* Decrement the age value of the entry in this table row.
+			When the age reaches zero it is no longer considered valid. */
+			xForwardingTable[ x ].ucAge--;
+
+			if( xForwardingTable[ x ].ucAge == 0u )
+			{
+				/* The entry is no longer valid.  Wipe it out. */
+				xForwardingTable[ x ].pxInterface = NULL;
+			}
 		}
 	}
 }
@@ -195,6 +198,7 @@ BaseType_t xReturn = pdFAIL;
 NetworkInterface_t *pxInterface;
 NetworkInterface_t *pxSendToInterface = NULL;
 NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
+BaseType_t xIsBroadcast = pdFALSE;
 
 	/* The receiving interface must be set */
 	configASSERT( pxNetworkBuffer->pxInterface );
@@ -208,12 +212,19 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 			/* No broadcast, try to find the correct interface in the forwarding table. */
 			pxSendToInterface = pxFindInterfaceOnMAC( &(pxEthernetHeader->xDestinationAddress) );
 		}
+		else
+		{
+			xIsBroadcast = pdTRUE;
+		}
 
-		/* _ML_ Maybe a sanity check (pxSendToInterface == pxNetworkBuffer->pxInterface) is necessary? */
+		configASSERT( pxSendToInterface != pxNetworkBuffer->pxInterface );
 
-		/* Update the forwarding table with the source address of the
-		received frame. */
-		vRefreshForwardingTableEntry( &(pxEthernetHeader->xSourceAddress), pxNetworkBuffer->pxInterface );
+		if( pxNetworkBuffer->pxInterface->bits.bForwardingTableKnown == 0 )
+		{
+			/* Update the forwarding table with the source address of the
+			received frame. */
+			vRefreshForwardingTableEntry( &(pxEthernetHeader->xSourceAddress), pxNetworkBuffer->pxInterface, ipconfigMAX_FORWARDING_TABLE_AGE );
+		}
 	}
 	#endif /* ipconfigUSE_FORWARDING_TABLE != 0 */
 
@@ -223,8 +234,13 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 		pxInterface = FreeRTOS_FirstNetworkInterface();
 		while( pxInterface != NULL )
 		{
-			/* Do not send back to the receiving interface. */
-			if( pxInterface != pxNetworkBuffer->pxInterface )
+			/* Do not send to Interfaces whose forwarding table is fully known,
+			unless it's a broadcast packet.
+			Do not send back to the receiving interface.
+			Also check if the interface's link is up. */
+			if( ( pxInterface->bits.bForwardingTableKnown == 0 || xIsBroadcast )
+				&& ( pxInterface != pxNetworkBuffer->pxInterface )
+				&& ( pxInterface->pfGetPhyLinkStatus( pxInterface ) == pdPASS ) )
 			{
 				/* Store the interface, so the NetworkBuffer is only
 				duplicated when necessary. */
@@ -237,12 +253,13 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 					pxNetworkBufferDuplicate = pxDuplicateNetworkBufferWithDescriptor( pxNetworkBuffer, pxNetworkBuffer->xDataLength );
 					if( pxNetworkBufferDuplicate != NULL )
 					{
+						iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxInterface );
 						pxInterface->pfOutput( pxInterface, pxNetworkBufferDuplicate, pdTRUE );
 					}
 					else
 					{
 						/* Unable to duplicate network buffer. */
-						iptraceETHERNET_RX_EVENT_LOST();
+						iptraceSTACK_TX_EVENT_LOST();
 					}
 				}
 			}
@@ -253,6 +270,7 @@ NetworkBufferDescriptor_t *pxNetworkBufferDuplicate;
 
 	if( pxSendToInterface != NULL )
 	{
+		iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxSendToInterface );
 		pxSendToInterface->pfOutput( pxSendToInterface, pxNetworkBuffer, pdTRUE );
 		xReturn = pdPASS;
 	}

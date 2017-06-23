@@ -982,8 +982,17 @@ FreeRTOS_printf( ( "prvParseDNSReply: No pxEndPoint yet???\n" ) );
 			to write into it. */
 			memcpy( &xEndPoint, pxEndPoint, sizeof( xEndPoint ) );
 			#if( ipconfigUSE_IPv6 != 0 )
-FreeRTOS_printf( ( "prvParseDNSReply: type %04X\n", usType ) );
-			xEndPoint.bits.bIPv6 = ( usType == dnsTYPE_AAAA_HOST );
+			{
+				FreeRTOS_printf( ( "prvParseDNSReply: type %04X\n", usType ) );
+				if( usType == dnsTYPE_AAAA_HOST )
+				{
+					xEndPoint.bits.bIPv6 = pdTRUE_UNSIGNED;
+				}
+				else
+				{
+					xEndPoint.bits.bIPv6 = pdFALSE_UNSIGNED;
+				}
+			}
 			#endif
 
 			if( xApplicationDNSQueryHook ( &xEndPoint, pcRequestedName + 1 ) == pdFALSE )

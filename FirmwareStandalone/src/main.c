@@ -179,15 +179,6 @@ void vConfigureTimerForRunTimeStats(void) {
 
 /*-----------------------------------------------------------*/
 
-/* Sets up system hardware */
-static void prvSetupHardware(void)
-{
-	SystemCoreClockUpdate();
-	Board_Init();
-}
-
-/*-----------------------------------------------------------*/
-
 static void prvServerWorkTask( void *pvParameters )
 {
 TCPServer_t *pxTCPServer = NULL;
@@ -218,7 +209,8 @@ static const struct xSERVER_CONFIG xServerConfiguration[] =
 /*-----------------------------------------------------------*/
 
 int main(void) {
-	prvSetupHardware();
+	SystemCoreClockUpdate();
+	Board_Init();
 
 	DEBUGSTR("\r\n\r\nSTANDALONE ");
 	{
@@ -240,7 +232,11 @@ int main(void) {
 		LPC_SYSCTL->RSID = reset_reason;
 	}
 
-	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
+//	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
+
+	extern NetworkInterface_t *pxBridge_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
+	pxBridge_FillInterfaceDescriptor(0, &xBridgeInterface);
+	FreeRTOS_AddNetworkInterface(&xBridgeInterface);
 
 	extern NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
 	pxLPC1758_FillInterfaceDescriptor(0, &xEthInterface);
@@ -251,10 +247,6 @@ int main(void) {
 	pxQCA7000_FillInterfaceDescriptor(0, &xPlcInterface);
 	xPlcInterface.bits.bIsBridged = 1;
 	FreeRTOS_AddNetworkInterface(&xPlcInterface);
-
-	extern NetworkInterface_t *pxBridge_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
-	pxBridge_FillInterfaceDescriptor(0, &xBridgeInterface);
-	FreeRTOS_AddNetworkInterface(&xBridgeInterface);
 
 	FreeRTOS_FillEndPoint(&xEndPoint, ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress);
 	xEndPoint.bits.bIsDefault = pdTRUE_UNSIGNED;

@@ -75,7 +75,7 @@ out the debugging messages. */
 FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
 then FreeRTOS_printf should be set to the function used to print out the
 messages. */
-#define ipconfigHAS_PRINTF			1
+#define ipconfigHAS_PRINTF			0
 #if( ipconfigHAS_PRINTF == 1 )
 	#define FreeRTOS_printf(X)			printf X
 #endif
@@ -137,6 +137,7 @@ things such as a DHCP transaction number or initial sequence number.  Random
 number generation is performed via this macro to allow applications to use their
 own random number generation method.  For example, it might be possible to
 generate a random number by sampling noise on an analogue input. */
+extern int rand(void);
 #define ipconfigRAND32()    rand()
 
 
@@ -386,4 +387,12 @@ shorted in the Windows simulator as simulated time is not real time. */
 
 #define ipconfigENDPOINT_DNS_ADDRESS_COUNT 1
 
+#define iptraceNETWORK_BUFFER_RELEASED( pxBufferAddress ) //FreeRTOS_debug_printf( ( "%s release buffer\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
+#define iptraceNETWORK_BUFFER_OBTAINED( pxBufferAddress ) //FreeRTOS_debug_printf( ( "%s obtain buffer\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
+#define iptraceETHERNET_RX_EVENT_LOST()                   //FreeRTOS_debug_printf( ( "%s lost RX Event\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
+#define iptraceSTACK_TX_EVENT_LOST( xEvent )              //FreeRTOS_debug_printf( ( "%s lost TX Event\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
+#define iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxInterfaceTo ) \
+		FreeRTOS_debug_printf( ( "BRIDGE 0x%04X %s -> %s\n", \
+			FreeRTOS_ntohs((( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer ))->usFrameType), \
+			pxNetworkBuffer->pxInterface->pcName, pxInterfaceTo->pcName ) )
 #endif /* FREERTOS_IP_CONFIG_H */

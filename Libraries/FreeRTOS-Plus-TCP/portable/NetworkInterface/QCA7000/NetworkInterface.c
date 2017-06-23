@@ -112,8 +112,8 @@ extern void qcaspi_spi_thread(void *data);
 BaseType_t xQCA7000_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
-NetworkEndPoint_t *pxEndPoint;
 #if configREAD_MAC_FROM_GREENPHY
+	NetworkEndPoint_t *pxEndPoint;
 	NetworkBufferDescriptor_t *pxDescriptor;
 	uint16_t usMMType;
 	struct CCMMEFrame *pxMMEFrame;
@@ -129,8 +129,6 @@ NetworkEndPoint_t *pxEndPoint;
 		qca.txQueue = xQueueCreate( ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS, sizeof( NetworkBufferDescriptor_t *) );
 		qca.rx_desc = NULL;
 
-		qca.rx_buffer = malloc(QCASPI_BURST_LEN);
-		qca.buffer_size = QCASPI_BURST_LEN;
 		qca.pxInterface = pxInterface;
 		QcaFrmFsmInit(&qca.lFrmHdl);
 		/* When reading data over SPI, there also needs to occur
@@ -138,15 +136,10 @@ NetworkEndPoint_t *pxEndPoint;
 		counts to two. */
 		xGreenPHY_DMASemaphore = xSemaphoreCreateCounting( 2u, 0u);
 
-		/* Interrupt pin setup */
-		Chip_GPIO_SetPinDIRInput(LPC_GPIO, GREENPHY_INT_PORT, GREENPHY_INT_PIN);
-		Chip_GPIOINT_SetIntFalling(LPC_GPIOINT, GREENPHY_INT_PORT, (1 << GREENPHY_INT_PIN));
-		Chip_GPIOINT_SetIntRising(LPC_GPIOINT, GREENPHY_INT_PORT, (1 << GREENPHY_INT_PIN));
-
 		/* QCA7000 reset pin setup */
 		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 
-		xTaskCreate( qcaspi_spi_thread, "GreenPhyIntHandler", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
+		xTaskCreate( qcaspi_spi_thread, "GreenPhy", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
 
 		registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
 
@@ -226,6 +219,9 @@ is declared static or global, and that it will remain to exist. */
 /*-----------------------------------------------------------*/
 void GreenPHY_GPIO_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken)
 {
+	/* Unregister GPIO Interrupt until the task handled it. */
+	unregisterInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN);
+
 	/* wake up the handler task */
 	xTaskNotifyFromISR( xGreenPHYTaskHandle,  QCAGP_INT_FLAG, eSetBits, xHigherPriorityTaskWoken );
 

@@ -102,7 +102,7 @@ a constant. */
 #define ipMULTICAST_MAC_ADDRESS_IPv6_1	0x33u
 
 /* Time delay between repeated attempts to initialise the network hardware. */
-#define ipINITIALISATION_RETRY_DELAY	( pdMS_TO_TICKS( 3000 ) )
+#define ipINITIALISATION_RETRY_DELAY	( pdMS_TO_TICKS( 5000 ) )
 
 /* Defines how often the ARP timer callback function is executed.  The time is
 shorted in the Windows simulator as simulated time is not real time. */
@@ -573,6 +573,10 @@ NetworkInterface_t *pxInterface;
 					vTCPNetStat();
 				}
 				#endif /* ipconfigUSE_TCP */
+				break;
+
+			case eNoEvent:
+				/* xQueueReceive() returned because of a normal time-out. */
 				break;
 
 			default :

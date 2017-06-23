@@ -138,9 +138,6 @@ static void turnaround_MDIO (void) {
 
 static long prvWritePHY( long lPhyReg, long lValue )
 {
-	const long lMaxTime = 10;
-	long x= 0;
-
 	Chip_GPIO_SetPinDIROutput(LPC_GPIO, MDIO_GPIO_PORT_NUM, MDIO_GPIO_BIT_NUM);
 
    /* 32 consecutive ones on MDO to establish sync */

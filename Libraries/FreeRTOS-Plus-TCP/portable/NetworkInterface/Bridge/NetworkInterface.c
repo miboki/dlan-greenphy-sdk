@@ -82,6 +82,13 @@
 static BaseType_t xBridge_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
+NetworkEndPoint_t *pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+
+	if( pxEndPoint != NULL )
+	{
+		/* Add the EndPoints MAC address to the forwarding table. */
+		vRefreshForwardingTableEntry( &pxEndPoint->xMACAddress, pxInterface, INFINITE_FORWARDING_TABLE_AGE );
+	}
 
 	return xReturn;
 }
@@ -161,6 +168,11 @@ is declared static or global, and that it will remain to exist. */
 	pxInterface->pfInitialise		= xBridge_NetworkInterfaceInitialise;
 	pxInterface->pfOutput			= xBridge_NetworkInterfaceOutput;
 	pxInterface->pfGetPhyLinkStatus = xBridge_GetPhyLinkStatus;
+
+	/* Bridge Interfaces are only connected to the IP Task,
+	when the Interface is initialised the EndPoint's MAC is
+	added to the forwarding table. */
+	pxInterface->bits.bForwardingTableKnown = 1;
 
 	return pxInterface;
 }

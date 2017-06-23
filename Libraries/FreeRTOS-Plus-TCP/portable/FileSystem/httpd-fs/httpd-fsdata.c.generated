@@ -1433,7 +1433,11 @@ file_NULL,
 data__404_html,
 data__404_html + 12,
 sizeof(data__404_html) - 12,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__clickconfig_shtml[] = { {
@@ -1441,7 +1445,11 @@ file__404_html,
 data__clickconfig_shtml,
 data__clickconfig_shtml + 20,
 sizeof(data__clickconfig_shtml) - 20,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__dali_shtml[] = { {
@@ -1449,7 +1457,11 @@ file__clickconfig_shtml,
 data__dali_shtml,
 data__dali_shtml + 12,
 sizeof(data__dali_shtml) - 12,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__index_html[] = { {
@@ -1457,7 +1469,11 @@ file__dali_shtml,
 data__index_html,
 data__index_html + 12,
 sizeof(data__index_html) - 12,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__index_shtml[] = { {
@@ -1465,7 +1481,11 @@ file__index_html,
 data__index_shtml,
 data__index_shtml + 16,
 sizeof(data__index_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__io_shtml[] = { {
@@ -1473,7 +1493,11 @@ file__index_shtml,
 data__io_shtml,
 data__io_shtml + 12,
 sizeof(data__io_shtml) - 12,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__notconfigured_shtml[] = { {
@@ -1481,7 +1505,11 @@ file__io_shtml,
 data__notconfigured_shtml,
 data__notconfigured_shtml + 24,
 sizeof(data__notconfigured_shtml) - 24,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relay_shtml[] = { {
@@ -1489,7 +1517,11 @@ file__notconfigured_shtml,
 data__relay_shtml,
 data__relay_shtml + 16,
 sizeof(data__relay_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayr_shtml[] = { {
@@ -1497,7 +1529,11 @@ file__relay_shtml,
 data__relayr_shtml,
 data__relayr_shtml + 16,
 sizeof(data__relayr_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayrid_shtml[] = { {
@@ -1505,7 +1541,11 @@ file__relayr_shtml,
 data__relayrid_shtml,
 data__relayrid_shtml + 16,
 sizeof(data__relayrid_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayrip_shtml[] = { {
@@ -1513,7 +1553,11 @@ file__relayrid_shtml,
 data__relayrip_shtml,
 data__relayrip_shtml + 16,
 sizeof(data__relayrip_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayrpass_shtml[] = { {
@@ -1521,7 +1565,11 @@ file__relayrip_shtml,
 data__relayrpass_shtml,
 data__relayrpass_shtml + 20,
 sizeof(data__relayrpass_shtml) - 20,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayrtopic_shtml[] = { {
@@ -1529,7 +1577,11 @@ file__relayrpass_shtml,
 data__relayrtopic_shtml,
 data__relayrtopic_shtml + 20,
 sizeof(data__relayrtopic_shtml) - 20,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__relayruser_shtml[] = { {
@@ -1537,7 +1589,11 @@ file__relayrtopic_shtml,
 data__relayruser_shtml,
 data__relayruser_shtml + 20,
 sizeof(data__relayruser_shtml) - 20,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__runtime_shtml[] = { {
@@ -1545,7 +1601,11 @@ file__relayruser_shtml,
 data__runtime_shtml,
 data__runtime_shtml + 16,
 sizeof(data__runtime_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__sensors_shtml[] = { {
@@ -1553,7 +1613,11 @@ file__runtime_shtml,
 data__sensors_shtml,
 data__sensors_shtml + 16,
 sizeof(data__sensors_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__stats_shtml[] = { {
@@ -1561,7 +1625,11 @@ file__sensors_shtml,
 data__stats_shtml,
 data__stats_shtml + 16,
 sizeof(data__stats_shtml) - 16,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 const struct fsdata_file file__tcp_shtml[] = { {
@@ -1569,7 +1637,11 @@ file__stats_shtml,
 data__tcp_shtml,
 data__tcp_shtml + 12,
 sizeof(data__tcp_shtml) - 12,
-0,
+#ifdef HTTPD_FS_STATISTICS
+#if HTTPD_FS_STATISTICS == 1
+  0,
+#endif /* HTTPD_FS_STATISTICS */
+#endif /* HTTPD_FS_STATISTICS */
 }};
 
 #define FS_ROOT file__tcp_shtml

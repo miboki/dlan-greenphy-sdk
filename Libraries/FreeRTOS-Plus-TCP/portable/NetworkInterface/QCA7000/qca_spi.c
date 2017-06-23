@@ -64,6 +64,9 @@
 	#include "mme_handler.h"
 #endif
 
+/**********************************************************************/
+static uint16_t available = 0;
+
 /*====================================================================*
  *
  * Disables all SPI interrupts and returns the old value of the
@@ -109,27 +112,34 @@ extern SemaphoreHandle_t xGreenPHY_DMASemaphore;
 extern void GreenPHY_DMA_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken);
 
 uint16_t
+qcaspi_write_blocking(struct qcaspi *qca, uint8_t *src, uint16_t len)
+{
+Chip_SSP_DATA_SETUP_T xf_setup = { 0 };
+
+	xf_setup.length = len;
+	xf_setup.tx_data = src;
+	xf_setup.rx_data = NULL;
+	Chip_SSP_RWFrames_Blocking(qca->SSPx, &xf_setup);
+
+	return len;
+}
+
+uint16_t
 qcaspi_write_burst(struct qcaspi *qca, uint8_t* src, uint16_t len)
 {
-	Chip_SSP_DATA_SETUP_T dataConfig;
 	uint8_t localBuffer[QCAFRM_HEADER_LEN];
 
 	qcaspi_tx_cmd(qca, QCA7K_SPI_WRITE | QCA7K_SPI_EXTERNAL);
 
 	/* send QCA header */
 	QcaFrmCreateHeader(localBuffer, len, 0);
-	dataConfig.length = QCAFRM_HEADER_LEN;
-	dataConfig.tx_data = localBuffer;
-	dataConfig.rx_data = NULL;
-	dataConfig.tx_cnt = 0;
-	dataConfig.rx_cnt = 0;
-	Chip_SSP_RWFrames_Blocking(qca->SSPx, &dataConfig);
+	qcaspi_write_blocking(qca, localBuffer, QCAFRM_HEADER_LEN);
 
 	/* Get a free DMA channel and register the interrupt handler */
 	uint8_t channel = Chip_GPDMA_GetFreeChannel(LPC_GPDMA, GPDMA_CONN_SSP0_Tx);
 	registerInterruptHandlerDMA(channel, GreenPHY_DMA_IRQHandler);
 
-	/* data Tx_Buf --> SSP */
+	/* TxBuf --> SSP */
 	Chip_GPDMA_Transfer(LPC_GPDMA,
 						channel,
 						(uint32_t) src,
@@ -147,12 +157,7 @@ qcaspi_write_burst(struct qcaspi *qca, uint8_t* src, uint16_t len)
 
 	/* send QCA footer */
 	QcaFrmCreateFooter(localBuffer);
-	dataConfig.length = QCAFRM_FOOTER_LEN;
-	dataConfig.tx_data = localBuffer;
-	dataConfig.rx_data = NULL;
-	dataConfig.tx_cnt = 0;
-	dataConfig.rx_cnt = 0;
-	Chip_SSP_RWFrames_Blocking(qca->SSPx, &dataConfig);
+	qcaspi_write_blocking(qca, localBuffer, QCAFRM_FOOTER_LEN);
 
 	return len;
 }
@@ -169,23 +174,46 @@ qcaspi_write_burst(struct qcaspi *qca, uint8_t* src, uint16_t len)
  *--------------------------------------------------------------------*/
 
 uint16_t
-qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
+qcaspi_read_blocking(struct qcaspi *qca, uint8_t *dst, uint16_t len)
 {
-	uint16_t cmd = (QCA7K_SPI_READ | QCA7K_SPI_EXTERNAL);
+Chip_SSP_DATA_SETUP_T xf_setup = { 0 };
+
+	qcaspi_write_register(qca, SPI_REG_BFR_SIZE, len);
 
 	int status = Board_SSP_AssertSSEL(qca->SSPx);
 
-	qcaspi_tx_cmd(qca,cmd);
+	qcaspi_tx_cmd(qca, (QCA7K_SPI_READ | QCA7K_SPI_EXTERNAL));
+
+	xf_setup.length = len;
+	xf_setup.tx_data = NULL;
+	xf_setup.rx_data = dst;
+	Chip_SSP_RWFrames_Blocking(qca->SSPx, &xf_setup);
+
+	if (status) Board_SSP_DeassertSSEL(qca->SSPx);
+
+	available -= len;
+
+	return len;
+}
+
+uint16_t
+qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
+{
+	qcaspi_write_register(qca, SPI_REG_BFR_SIZE, len);
+
+	int status = Board_SSP_AssertSSEL(qca->SSPx);
+
+	qcaspi_tx_cmd(qca, (QCA7K_SPI_READ | QCA7K_SPI_EXTERNAL));
 
 	/* The SSP interface needs to write data to drive the clock, thus
 	 * we need a dummy TX transfer, where we just send arbitrary data
 	 * of the same length as RX */
-	uint8_t channelRX = Chip_GPDMA_GetFreeChannel(LPC_GPDMA, GPDMA_CONN_SSP0_Tx);
 	uint8_t channelTX = Chip_GPDMA_GetFreeChannel(LPC_GPDMA, GPDMA_CONN_SSP0_Tx);
+	uint8_t channelRX = Chip_GPDMA_GetFreeChannel(LPC_GPDMA, GPDMA_CONN_SSP0_Rx);
 	registerInterruptHandlerDMA(channelTX, GreenPHY_DMA_IRQHandler);
 	registerInterruptHandlerDMA(channelRX, GreenPHY_DMA_IRQHandler);
 
-	/* data dummy data --> SSP */
+	/* dummy data --> SSP */
 	Chip_GPDMA_Transfer(LPC_GPDMA,
 						channelTX,
 						(uint32_t) dst,
@@ -193,7 +221,7 @@ qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
 						GPDMA_TRANSFERTYPE_M2P_CONTROLLER_DMA,
 						len);
 
-	/* data SSP --> RxBuf */
+	/* SSP --> RxBuf */
 	Chip_GPDMA_Transfer(LPC_GPDMA,
 						channelRX,
 						GPDMA_CONN_SSP0_Rx,
@@ -212,6 +240,8 @@ qcaspi_read_burst(struct qcaspi *qca, uint8_t *dst, uint16_t len)
 	Chip_GPDMA_Stop(LPC_GPDMA, channelRX);
 
 	if (status) Board_SSP_DeassertSSEL(qca->SSPx);
+
+	available -= len;
 
 	return len;
 }
@@ -302,130 +332,149 @@ qcaspi_transmit(struct qcaspi *qca)
  *
  *--------------------------------------------------------------------*/
 
+void
+qcaspi_process_rx_buffer(struct qcaspi *qca)
+{
+int32_t ret;
+	qca->rx_buffer_pos = 0;
+	while( qca->rx_buffer_pos < qca->rx_buffer_len )
+	{
+		ret = QcaFrmFsmDecode( &qca->lFrmHdl, qca->rx_buffer[qca->rx_buffer_pos], qca->rx_desc->pucEthernetBuffer );
+		switch( ret )
+		{
+		case QCAFRM_GATHER:
+		case QCAFRM_NOHEAD:
+			break;
+		case QCAFRM_NOTAIL:
+			qca->stats.rx_errors++;
+			qca->stats.rx_dropped++;
+			break;
+		case QCAFRM_INVLEN:
+			qca->stats.rx_errors++;
+			qca->stats.rx_dropped++;
+			break;
+		default:
+			qca->rx_desc->xDataLength = ret;
+			break;
+		}
+		qca->rx_buffer_pos++;
+	}
+}
+
 int
 qcaspi_receive(struct qcaspi *qca)
 {
-	uint32_t available;
-	uint32_t bytes_read;
-	uint32_t bytes_proc;
-	uint32_t count;
-	uint8_t *rx_buffer;
-	uint16_t len;
-
-	IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
+const TickType_t xDescriptorWaitTime = pdMS_TO_TICKS( 250 );
+const UBaseType_t uxMinimumBuffersRemaining = 2UL;
+IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 
 	/* Allocate rx buffer if we don't have one available. */
-	if (qca->rx_desc == NULL) {
-		qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, 0);
-		if (qca->rx_desc == NULL) {
-			qca->stats.rx_dropped++;
-			return -1;
+	if (qca->rx_desc == NULL)
+	{
+		if( uxGetNumberOfFreeNetworkBuffers() > uxMinimumBuffersRemaining )
+		{
+			qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, xDescriptorWaitTime);
 		}
 	}
 
-	/* Read the packet size. */
 	available = qcaspi_read_register(qca, SPI_REG_RDBUF_BYTE_AVA);
 
-	if (available == 0) {
-		return -1;
-	}
+	/* At least one header is required. */
+	while( qca->rx_desc && ( available >= QcaFrmBytesRequired( &qca->lFrmHdl ) ) )
+	{
+		switch( QcaFrmGetAction( &qca->lFrmHdl ) )
+		{
+		case QCAFRM_FIND_HEADER:
+			/* Read data of the size of one header. */
+			qca->rx_buffer_len = qcaspi_read_blocking( qca, qca->rx_buffer, QcaFrmBytesRequired( &qca->lFrmHdl ) );
+			qcaspi_process_rx_buffer( qca );
+			break;
 
-	qcaspi_write_register(qca, SPI_REG_BFR_SIZE, available);
+		case QCAFRM_COPY_FRAME:
+			/* Start DMA read to copy the frame into the ethernet buffer. */
+			qca->lFrmHdl.state -= qcaspi_read_burst(qca, qca->rx_desc->pucEthernetBuffer + qca->lFrmHdl.offset, ( qca->lFrmHdl.len - qca->lFrmHdl.offset ) );
+			break;
 
-	while (available) {
-		count = available;
-		if (count > QCASPI_BURST_LEN) {
-			count = QCASPI_BURST_LEN;
-		}
+		case QCAFRM_CHECK_FOOTER:
+			/* Read footer. */
+			qca->rx_buffer_len = qcaspi_read_blocking( qca, qca->rx_buffer, QcaFrmBytesRequired( &qca->lFrmHdl ) );
+			qcaspi_process_rx_buffer( qca );
+			break;
 
-		bytes_read = qcaspi_read_burst(qca, qca->rx_buffer, count);
-		rx_buffer = qca->rx_buffer;
+		case QCAFRM_FRAME_COMPLETE:
+			qca->stats.rx_packets++;
+			qca->stats.rx_bytes += qca->rx_desc->xDataLength;
 
-		DEBUGOUT("qcaspi: available: %d, byte read: %d\n", available, bytes_read);
+			/* Data was received and stored.  Send a message to the IP
+			task to let it know. */
 
-		available -= bytes_read;
-
-		while (bytes_read && (qca->rx_desc)) {
-			int32_t retcode = QcaFrmFsmDecode(&qca->lFrmHdl, qca->rx_desc->pucEthernetBuffer, ipTOTAL_ETHERNET_FRAME_SIZE,
-											  rx_buffer, bytes_read, &bytes_proc);
-			bytes_read -= bytes_proc;
-			rx_buffer  += bytes_proc;
-			switch (retcode) {
-			case QCAFRM_GATHER:
-				break;
-
-			case QCAFRM_NOHEAD:
-				break;
-
-			case QCAFRM_NOTAIL:
-				qca->stats.rx_errors++;
-				qca->stats.rx_dropped++;
-				break;
-
-			case QCAFRM_INVLEN:
-				qca->stats.rx_errors++;
-				qca->stats.rx_dropped++;
-				break;
-
-			default:
-				qca->stats.rx_packets++;
-				qca->stats.rx_bytes += retcode;
-
-				/* Data was received and stored.  Send a message to the IP
-				task to let it know. */
-				qca->rx_desc->xDataLength = retcode;
-
-			#if configREAD_MAC_FROM_GREENPHY
-				if( filter_rx_mme( qca->rx_desc ) )
+		#if configREAD_MAC_FROM_GREENPHY
+			/* Check if frame is an MME which is handled elsewhere. */
+			if( !filter_rx_mme( qca->rx_desc ) )
+		#endif
+			{
+				/* Set the receiving interface */
+				qca->rx_desc->pxInterface = qca->pxInterface;
+			#if( ipconfigUSE_BRIDGE != 0 )
+				if( qca->pxInterface->bits.bIsBridged )
 				{
-					/* Data was a MME which is handled elsewhere */
+					if( xBridge_Process( qca->rx_desc ) == pdPASS )
+					{
+						/* The bridge passed the descriptor to another NetworkInterface. */
+						qca->rx_desc = NULL;
+					}
+					else
+					{
+						/* The bridge could not process the buffer, but there is no need
+						to free it, as the buffer will be reused for the next packet. */
+						qca->stats.rx_dropped++;
+						iptraceETHERNET_RX_EVENT_LOST();
+					}
 				}
 				else
 			#endif
 				{
-					/* Set the receiving interface */
-					qca->rx_desc->pxInterface = qca->pxInterface;
-				#if( ipconfigUSE_BRIDGE != 0 )
-					if( qca->pxInterface->bits.bIsBridged )
+					/* Pass data up to the IP Task */
+					xRxEvent.pvData = ( void * ) qca->rx_desc;
+					if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdPASS )
 					{
-						if( xBridge_Process( qca->rx_desc ) == pdFAIL )
-						{
-							/* The Bridge could not process the descriptor,
-							it must be released. */
-							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-							qca->stats.rx_dropped++;
-							iptraceETHERNET_RX_EVENT_LOST();
-						}
+						/* The descriptor was sent into the TCP/IP stack. */
+						qca->rx_desc = NULL;
 					}
 					else
-				#endif
 					{
-						/* Pass data up to the IP Task */
-						xRxEvent.pvData = ( void * ) qca->rx_desc;
-						if( xSendEventStructToIPTask( &xRxEvent, ( TickType_t ) 0 ) == pdFAIL )
-						{
-							/* Could not send the descriptor into the TCP/IP
-							stack, it must be released. */
-							vReleaseNetworkBufferAndDescriptor( qca->rx_desc );
-							qca->stats.rx_dropped++;
-							iptraceETHERNET_RX_EVENT_LOST();
-						}
+						/* Could not send the descriptor into the TCP/IP stack,
+						but there is no need to free it, as the buffer will be
+						reused for the next packet. */
+						qca->stats.rx_dropped++;
+						iptraceETHERNET_RX_EVENT_LOST();
 					}
 				}
-
-				iptraceNETWORK_INTERFACE_RECEIVE();
-
-				qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, 0);
-				if (!qca->rx_desc) {
-					qca->stats.rx_dropped++;
-					break;
-				}
-				break;
 			}
 
+			iptraceNETWORK_INTERFACE_RECEIVE();
+
+			/* Reset the frame handle, so a new header will be read */
+			qca->lFrmHdl.state = QCAFRM_WAIT_AA1;
+
+			if( qca->rx_desc == NULL )
+			{
+				/* Wait for a new buffer */
+				if( uxGetNumberOfFreeNetworkBuffers() > uxMinimumBuffersRemaining )
+				{
+					qca->rx_desc = pxGetNetworkBufferWithDescriptor(ipTOTAL_ETHERNET_FRAME_SIZE, xDescriptorWaitTime);
+				}
+			}
+
+			break;
 		}
 	}
 
+	if( available >= QcaFrmBytesRequired( &qca->lFrmHdl ) )
+	{
+		/* Could not receive all frames. */
+		return -1;
+	}
 	return 0;
 }
 
@@ -576,92 +625,108 @@ qcaspi_qca7k_sync(struct qcaspi *qca, int event)
 	#define GREENPHY_SYNC_LOW_CHECK_TIME_MS	1000
 #endif
 
+extern void vCheckBuffersAndQueue( void );
+extern void GreenPHY_GPIO_IRQHandler (portBASE_TYPE * xHigherPriorityTaskWoken);
 void
 qcaspi_spi_thread(void *data)
 {
-	struct qcaspi *qca = (struct qcaspi *) data;
-	uint32_t ulInterruptCause;
-	uint32_t intr_enable;
-	uint32_t ulNotificationValue;
-	TickType_t xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
+struct qcaspi *qca = (struct qcaspi *) data;
+uint32_t ulInterruptCause;
+uint32_t intr_enable;
+uint32_t ulNotificationValue;
+TickType_t xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
+uint8_t available = 0;
 
 	for ( ;; )
 	{
-		/* Take notification
-		 * 0 timeout
-		 * 1 interrupt (including receive)
-		 * 2 receive (not used, handled by interrupt)
-		 * 4 transmit
-		 * */
-		ulNotificationValue = ulTaskNotifyTake( pdTRUE, xSyncRemTime );
+		// vCheckBuffersAndQueue();
 
-		if ( !ulNotificationValue )
-		{
-			/* We got a timeout, check if we need to restart sync */
-			qcaspi_qca7k_sync(qca, QCASPI_SYNC_UPDATE);
-			/* not synced, awaiting reset, or unknown */
-			if (qca->sync != QCASPI_SYNC_READY)
+		if( available == 0 ) {
+			/* Take notification
+			 * 0 timeout
+			 * 1 interrupt (including receive)
+			 * 2 receive (not used, handled by interrupt)
+			 * 4 transmit
+			 * */
+			ulNotificationValue = ulTaskNotifyTake( pdTRUE, xSyncRemTime );
+
+			if ( !ulNotificationValue )
 			{
-				qcaspi_flush_txq(qca);
-				continue;
-			}
-		}
-
-		if ( ulNotificationValue & QCAGP_INT_FLAG )
-		{
-			/* We got an interrupt */
-			intr_enable = disable_spi_interrupts(qca);
-			ulInterruptCause = qcaspi_read_register(qca, SPI_REG_INTR_CAUSE);
-
-			if (ulInterruptCause & SPI_INT_CPU_ON)
-			{
-				qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
-				/* if not synced, wait reset */
+				/* We got a timeout, check if we need to restart sync */
+				qcaspi_qca7k_sync(qca, QCASPI_SYNC_UPDATE);
+				/* not synced, awaiting reset, or unknown */
 				if (qca->sync != QCASPI_SYNC_READY)
+				{
+					qcaspi_flush_txq(qca);
 					continue;
-
-				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_HIGH_CHECK_TIME_MS );
-				intr_enable = (SPI_INT_CPU_ON | SPI_INT_PKT_AVLBL | SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR);
+				}
 			}
 
-			if (ulInterruptCause & SPI_INT_RDBUF_ERR)
+			if ( ulNotificationValue & QCAGP_INT_FLAG )
 			{
-				/* restart sync */
-				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
-				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
-				continue;
-			}
+				/* We got an interrupt */
+				intr_enable = disable_spi_interrupts(qca);
+				ulInterruptCause = qcaspi_read_register(qca, SPI_REG_INTR_CAUSE);
 
-			if (ulInterruptCause & SPI_INT_WRBUF_ERR)
-			{
-				/* restart sync */
-				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
-				xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
-				continue;
-			}
+				/* Re-enable the GPIO interrupt. */
+				registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
 
-			if (ulInterruptCause & SPI_INT_WRBUF_BELOW_WM)
-			{
-				/* transmit is handled later */
-				/* disable write watermark interrupt */
-				intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
-			}
+				if (ulInterruptCause & SPI_INT_CPU_ON)
+				{
+					qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
+					/* if not synced, wait reset */
+					if (qca->sync != QCASPI_SYNC_READY)
+						continue;
 
-			qcaspi_write_register(qca, SPI_REG_INTR_CAUSE, ulInterruptCause);
-			enable_spi_interrupts(qca, intr_enable);
+					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_HIGH_CHECK_TIME_MS );
+					intr_enable = (SPI_INT_CPU_ON | SPI_INT_PKT_AVLBL | SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR);
+				}
 
-			/* can only handle other interrupts if sync has occured */
-			if (qca->sync == QCASPI_SYNC_READY)
-			{
+				if (ulInterruptCause & SPI_INT_RDBUF_ERR)
+				{
+					/* restart sync */
+					qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
+					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
+					continue;
+				}
+
+				if (ulInterruptCause & SPI_INT_WRBUF_ERR)
+				{
+					/* restart sync */
+					qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
+					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
+					continue;
+				}
+
 				if (ulInterruptCause & SPI_INT_PKT_AVLBL)
 				{
-					qcaspi_receive(qca);
+					/* Packets available to receive. */
+					available = 1;
 				}
+
+				if (ulInterruptCause & SPI_INT_WRBUF_BELOW_WM)
+				{
+					/* transmit is handled later */
+					/* disable write watermark interrupt */
+					intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
+				}
+
+				qcaspi_write_register(qca, SPI_REG_INTR_CAUSE, ulInterruptCause);
+				enable_spi_interrupts(qca, intr_enable);
 			}
 		}
 
 		if (qca->sync == QCASPI_SYNC_READY)
 		{
+			if( available != 0 )
+			{
+				if( qcaspi_receive(qca) == 0 )
+				{
+					/* All packets received. */
+					available = 0;
+				}
+			}
+
 			if( uxQueueMessagesWaiting(qca->txQueue) )
 			{
 				if( qcaspi_transmit(qca) != 0 )
@@ -676,3 +741,4 @@ qcaspi_spi_thread(void *data)
 	}
 
 }
+

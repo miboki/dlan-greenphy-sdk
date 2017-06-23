@@ -752,13 +752,9 @@ NetworkBufferDescriptor_t xTempBuffer;
 		memset( &xTempBuffer, '\0', sizeof( xTempBuffer ) );
 		pxNetworkBuffer = &xTempBuffer;
 
-		#if( ipconfigUSE_LINKED_RX_MESSAGES != 0 )
-		{
-			xTempBuffer.pxNextBuffer = NULL;
-		}
-		#endif
 		xTempBuffer.pucEthernetBuffer = pxSocket->u.xTCP.xPacket.u.ucLastPacket;
 		xTempBuffer.xDataLength = sizeof( pxSocket->u.xTCP.xPacket.u.ucLastPacket );
+		/* A pseudo network buffer can not be released. */
 		xReleaseAfterSend = pdFALSE;
 	}
 

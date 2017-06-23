@@ -35,7 +35,9 @@ extern "C" {
     DEBUGIN macros. If not defined, DEBUG* functions will be optimized
     out of the code at build time.
  */
-#define DEBUG_ENABLE
+#ifdef DEBUG
+	#define DEBUG_ENABLE
+#endif
 
 /** Define DEBUG_SEMIHOSTING along with DEBUG_ENABLE to enable IO support
     via semihosting. You may need to use a C library that supports

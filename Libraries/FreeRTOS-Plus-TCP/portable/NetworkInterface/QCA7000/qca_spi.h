@@ -90,7 +90,7 @@
 #define QCAGP_TX_FLAG  (1<<2)
 
 /* Max amount of bytes read in one run */
-#define QCASPI_BURST_LEN QCASPI_HW_BUF_LEN
+#define QCASPI_BURST_LEN ( QCASPI_HW_BUF_LEN + 4 )
 
 /*====================================================================*
  *   driver variables;
@@ -120,8 +120,10 @@ struct qcaspi {
 #endif
 	NetworkBufferDescriptor_t *rx_desc;
 
-	uint8_t *rx_buffer;
-	uint32_t buffer_size;
+	uint8_t rx_buffer[QCAFRM_TOTAL_HEADER_LEN];
+	uint16_t rx_buffer_size;
+	uint16_t rx_buffer_pos;
+	uint16_t rx_buffer_len;
 	QcaFrmHdl lFrmHdl;
 
 	struct stats stats;

@@ -16,7 +16,7 @@ typedef struct _FF_FILE
 	uint32_t ulFilePointer;			/* Current Position Pointer. */
 } FF_FILE;
 
-#define FF_FindData_t BaseType_t /* used for FTP */
+#define FF_FindData_t BaseType_t /* Used for FTP. Suppress Error. */
 
 #define stdioGET_ERRNO() ENOENT
 

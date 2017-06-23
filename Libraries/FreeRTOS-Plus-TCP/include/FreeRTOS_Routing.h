@@ -97,6 +97,7 @@ typedef struct xNetworkInterface
 		uint32_t
 			#if( ipconfigUSE_BRIDGE )
 				bIsBridged : 1,
+				bForwardingTableKnown : 1,
 			#endif
 			bInterfaceUp : 1;
 	} bits;
