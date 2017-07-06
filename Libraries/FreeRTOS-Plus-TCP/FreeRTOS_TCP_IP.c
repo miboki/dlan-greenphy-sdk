@@ -1059,6 +1059,9 @@ FreeRTOS_printf( ( "prvTCPReturnPacket: No pxEndPoint yet???\n" ) );
 		}
 		#endif
 
+		/* Remove the receiving interface as this is a transmission network buffer now. */
+		pxNetworkBuffer->pxInterface = NULL;
+
 //FreeRTOS_printf( ( "prvTCPReturnPacket: from %xip to %xip\n",
 //	FreeRTOS_ntohl( pxIPHeader_IPv4->ulSourceIPAddress ),
 //	FreeRTOS_ntohl( pxIPHeader_IPv4->ulDestinationIPAddress ) ) );

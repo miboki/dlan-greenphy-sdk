@@ -635,95 +635,94 @@ uint32_t ulInterruptCause;
 uint32_t intr_enable;
 uint32_t ulNotificationValue;
 TickType_t xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
-uint8_t available = 0;
+BaseType_t available = pdFALSE;
 
 	for ( ;; )
 	{
-		// vCheckBuffersAndQueue();
+		#if ipconfigHAS_PRINTF
+			vCheckBuffersAndQueue();
+		#endif
 
-		if( available == 0 ) {
-			/* Take notification
-			 * 0 timeout
-			 * 1 interrupt (including receive)
-			 * 2 receive (not used, handled by interrupt)
-			 * 4 transmit
-			 * */
-			ulNotificationValue = ulTaskNotifyTake( pdTRUE, xSyncRemTime );
+		/* Take notification
+		 * 0 timeout
+		 * 1 interrupt (including receive)
+		 * 2 receive (not used, handled by interrupt)
+		 * 4 transmit
+		 * */
+		if( ( qca->sync == QCASPI_SYNC_READY ) && ( available == pdFALSE ) )
+		{
+			xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_HIGH_CHECK_TIME_MS );
+		}
+		else
+		{
+			xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
+		}
 
-			if ( !ulNotificationValue )
+		ulNotificationValue = ulTaskNotifyTake( pdTRUE, xSyncRemTime );
+		if ( !ulNotificationValue && ( available == pdFALSE ) )
+		{
+			/* We got a timeout, check if we need to restart sync. */
+			qcaspi_qca7k_sync(qca, QCASPI_SYNC_UPDATE);
+			/* Not synced. Awaiting reset, or sync unknown. */
+			if (qca->sync != QCASPI_SYNC_READY)
 			{
-				/* We got a timeout, check if we need to restart sync */
-				qcaspi_qca7k_sync(qca, QCASPI_SYNC_UPDATE);
-				/* not synced, awaiting reset, or unknown */
+				qcaspi_flush_txq(qca);
+				continue;
+			}
+		}
+
+		if ( ulNotificationValue & QCAGP_INT_FLAG )
+		{
+			/* We got an interrupt. */
+			intr_enable = disable_spi_interrupts(qca);
+			ulInterruptCause = qcaspi_read_register(qca, SPI_REG_INTR_CAUSE);
+
+			/* Re-enable the GPIO interrupt. */
+			registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
+
+			if (ulInterruptCause & SPI_INT_CPU_ON)
+			{
+				qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
+				/* If not synced, wait reset. */
 				if (qca->sync != QCASPI_SYNC_READY)
-				{
-					qcaspi_flush_txq(qca);
 					continue;
-				}
+
+				/* Reset interrupts. */
+				intr_enable = (SPI_INT_CPU_ON | SPI_INT_PKT_AVLBL | SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR);
 			}
 
-			if ( ulNotificationValue & QCAGP_INT_FLAG )
+			if (ulInterruptCause & ( SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR ) )
 			{
-				/* We got an interrupt */
-				intr_enable = disable_spi_interrupts(qca);
-				ulInterruptCause = qcaspi_read_register(qca, SPI_REG_INTR_CAUSE);
-
-				/* Re-enable the GPIO interrupt. */
-				registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
-
-				if (ulInterruptCause & SPI_INT_CPU_ON)
-				{
-					qcaspi_qca7k_sync(qca, QCASPI_SYNC_CPUON);
-					/* if not synced, wait reset */
-					if (qca->sync != QCASPI_SYNC_READY)
-						continue;
-
-					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_HIGH_CHECK_TIME_MS );
-					intr_enable = (SPI_INT_CPU_ON | SPI_INT_PKT_AVLBL | SPI_INT_RDBUF_ERR | SPI_INT_WRBUF_ERR);
-				}
-
-				if (ulInterruptCause & SPI_INT_RDBUF_ERR)
-				{
-					/* restart sync */
-					qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
-					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
-					continue;
-				}
-
-				if (ulInterruptCause & SPI_INT_WRBUF_ERR)
-				{
-					/* restart sync */
-					qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
-					xSyncRemTime = pdMS_TO_TICKS( GREENPHY_SYNC_LOW_CHECK_TIME_MS );
-					continue;
-				}
-
-				if (ulInterruptCause & SPI_INT_PKT_AVLBL)
-				{
-					/* Packets available to receive. */
-					available = 1;
-				}
-
-				if (ulInterruptCause & SPI_INT_WRBUF_BELOW_WM)
-				{
-					/* transmit is handled later */
-					/* disable write watermark interrupt */
-					intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
-				}
-
-				qcaspi_write_register(qca, SPI_REG_INTR_CAUSE, ulInterruptCause);
-				enable_spi_interrupts(qca, intr_enable);
+				/* Restart sync. */
+				qcaspi_qca7k_sync(qca, QCASPI_SYNC_RESET);
+				continue;
 			}
+
+			if (ulInterruptCause & SPI_INT_PKT_AVLBL)
+			{
+				/* Packets available to receive. */
+				available = pdTRUE;
+			}
+
+			if (ulInterruptCause & SPI_INT_WRBUF_BELOW_WM)
+			{
+				/* transmit is handled later */
+				/* disable write watermark interrupt */
+				intr_enable &= ~SPI_INT_WRBUF_BELOW_WM;
+			}
+
+			qcaspi_write_register(qca, SPI_REG_INTR_CAUSE, ulInterruptCause);
+			enable_spi_interrupts(qca, intr_enable);
 		}
 
 		if (qca->sync == QCASPI_SYNC_READY)
 		{
-			if( available != 0 )
+			if( available == pdTRUE )
 			{
 				if( qcaspi_receive(qca) == 0 )
 				{
 					/* All packets received. */
-					available = 0;
+					available = pdFALSE;
 				}
 			}
 

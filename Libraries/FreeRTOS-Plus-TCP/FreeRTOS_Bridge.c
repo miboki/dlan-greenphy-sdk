@@ -96,7 +96,7 @@ NetworkInterface_t *pxInterface = NULL;
 
 	for( x = 0; x < uxForwardTableMaxUse; x++ )
 	{
-		if( ( pxInterface != NULL )
+		if( ( xForwardingTable->pxInterface != NULL )
 			&& ( memcmp( xForwardingTable[x].xMACAddress.ucBytes, pxMACAddress->ucBytes, ipMAC_ADDRESS_LENGTH_BYTES ) ) == 0 )
 		{
 			/* Found. */
