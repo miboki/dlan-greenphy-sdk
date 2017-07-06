@@ -96,6 +96,10 @@
 	#define ipconfigHTTP_REQUEST_CHARACTER		'?'
 #endif
 
+#ifndef ipconfigHTTP_REQUEST_DELIMITER
+	#define ipconfigHTTP_REQUEST_DELIMITER		'&'
+#endif
+
 /*_RB_ Need comment block, although fairly self evident. */
 static void prvFileClose( HTTPClient_t *pxClient );
 static BaseType_t prvProcessCmd( HTTPClient_t *pxClient, BaseType_t xIndex );
@@ -117,6 +121,8 @@ static TypeCouple_t pxTypeCouples[ ] =
 	{ "html", "text/html" },
 	{ "css",  "text/css" },
 	{ "js",   "text/javascript" },
+	{ "json", "application/json" },
+	{ "svg",  "image/svg+xml" },
 	{ "png",  "image/png" },
 	{ "jpg",  "image/jpeg" },
 	{ "gif",  "image/gif" },
@@ -136,9 +142,14 @@ HTTPClient_t *pxClient = ( HTTPClient_t * ) pxTCPClient;
 	/* This HTTP client stops, close / release all resources. */
 	if( pxClient->xSocket != FREERTOS_NO_SOCKET )
 	{
-		FreeRTOS_FD_CLR( pxClient->xSocket, pxClient->pxParent->xSocketSet, eSELECT_ALL );
-		FreeRTOS_closesocket( pxClient->xSocket );
-		pxClient->xSocket = FREERTOS_NO_SOCKET;
+		/* Check if socket is a reused listen socket and let it listen again. */
+		if( FreeRTOS_listen( pxClient->xSocket, 0 ) != 0 )
+		{
+			/* Otherwise it must be a child socket which will be closed now. */
+			FreeRTOS_FD_CLR( pxClient->xSocket, pxClient->pxParent->xSocketSet, eSELECT_ALL );
+			FreeRTOS_closesocket( pxClient->xSocket );
+			pxClient->xSocket = FREERTOS_NO_SOCKET;
+		}
 	}
 	prvFileClose( pxClient );
 }
@@ -169,7 +180,8 @@ BaseType_t xRc;
 		"Transfer-Encoding: chunked\r\n"
 #endif
 		"Content-Type: %s\r\n"
-		"Connection: keep-alive\r\n"
+		//"Connection: keep-alive\r\n"
+		"Connection: close\r\n"
 		"%s\r\n",
 		( int ) xCode,
 		webCodename (xCode),
@@ -178,6 +190,12 @@ BaseType_t xRc;
 
 	pxParent->pcContentsType[0] = '\0';
 	pxParent->pcExtraContents[0] = '\0';
+
+	if( xCode != WEB_REPLY_OK )
+	{
+	BaseType_t xTrueValue = 1;
+		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xTrueValue, sizeof( xTrueValue ) );
+	}
 
 	xRc = FreeRTOS_send( pxClient->xSocket, ( const void * ) pcBuffer, xRc, 0 );
 	pxClient->bits.bReplySent = pdTRUE_UNSIGNED;
@@ -191,13 +209,18 @@ static BaseType_t prvSendFile( HTTPClient_t *pxClient )
 size_t uxSpace;
 size_t uxCount;
 BaseType_t xRc = 0;
+BaseType_t xSockOptValue;
 
 	if( pxClient->bits.bReplySent == pdFALSE_UNSIGNED )
 	{
 		pxClient->bits.bReplySent = pdTRUE_UNSIGNED;
 
+		xSockOptValue = pdTRUE_UNSIGNED;
+		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+
 		strcpy( pxClient->pxParent->pcContentsType, pcGetContentsType( pxClient->pcCurrentFilename ) );
 		snprintf( pxClient->pxParent->pcExtraContents, sizeof( pxClient->pxParent->pcExtraContents ),
+			"Content-Encoding: gzip\r\n"
 			"Content-Length: %d\r\n", ( int ) pxClient->uxBytesLeft );
 
 		/* "Requested file action OK". */
@@ -206,27 +229,37 @@ BaseType_t xRc = 0;
 
 	if( xRc >= 0 ) do
 	{
-		uxSpace = FreeRTOS_tx_space( pxClient->xSocket );
+		char *pcBuffer;
+		BaseType_t xBufferLength;
+		pcBuffer = ( char * )FreeRTOS_get_tx_head( pxClient->xSocket, &xBufferLength );
 
-		if( pxClient->uxBytesLeft < uxSpace )
+		if( pxClient->uxBytesLeft < (size_t) xBufferLength )
 		{
 			uxCount = pxClient->uxBytesLeft;
 		}
 		else
 		{
-			uxCount = uxSpace;
+			uxCount = xBufferLength;
 		}
 
 		if( uxCount > 0u )
 		{
-			if( uxCount > sizeof( pxClient->pxParent->pcFileBuffer ) )
-			{
-				uxCount = sizeof( pxClient->pxParent->pcFileBuffer );
-			}
-			ff_fread( pxClient->pxParent->pcFileBuffer, 1, uxCount, pxClient->pxFileHandle );
+			ff_fread( pcBuffer, 1, uxCount, pxClient->pxFileHandle );
 			pxClient->uxBytesLeft -= uxCount;
 
-			xRc = FreeRTOS_send( pxClient->xSocket, pxClient->pxParent->pcFileBuffer, uxCount, 0 );
+			if( pxClient->uxBytesLeft == 0u )
+			{
+				xSockOptValue = pdTRUE_UNSIGNED;
+				FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+			}
+
+			xRc = FreeRTOS_send( pxClient->xSocket, NULL, uxCount, 0 );
+
+			if( pxClient->uxBytesLeft == 0u )
+			{
+				xSockOptValue = pdFALSE_UNSIGNED;
+				FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+			}
 			if( xRc < 0 )
 			{
 				break;
@@ -250,6 +283,56 @@ BaseType_t xRc = 0;
 }
 /*-----------------------------------------------------------*/
 
+static BaseType_t prvHandleRequest( HTTPClient_t *pxClient )
+{
+BaseType_t xRc = 0;
+size_t uxCount;
+BaseType_t xSockOptValue;
+char pcChunkSize[8];
+
+	if( pxClient->bits.bReplySent == pdFALSE_UNSIGNED )
+	{
+		pxClient->bits.bReplySent = pdTRUE_UNSIGNED;
+
+		xSockOptValue = pdTRUE_UNSIGNED;
+		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+
+		strncpy( pxClient->pxParent->pcContentsType, "application/json", sizeof( pxClient->pxParent->pcContentsType ) );
+		strncpy( pxClient->pxParent->pcExtraContents, "Transfer-Encoding: chunked\r\n", sizeof( pxClient->pxParent->pcExtraContents ) );
+
+		xRc = prvSendReply( pxClient, WEB_REPLY_OK );	/* "Requested file action OK" */
+	}
+
+	/* Use a loop to be able to break out on error. */
+	while( xRc >= 0 )
+	{
+		uxCount = uxApplicationHTTPHandleRequestHook( pxClient->pcUrlData, pxClient->pxParent->pcFileBuffer, sizeof( pxClient->pxParent->pcFileBuffer ) );
+
+		if( uxCount > 0 )
+		{
+			xRc = snprintf( pcChunkSize, sizeof( pcChunkSize ), "%x\r\n", uxCount );
+
+			/* First send the chunk size. */
+			if( ( xRc = FreeRTOS_send( pxClient->xSocket, pcChunkSize, xRc, 0 ) ) < 0 ) break;
+			/* Now send the chunk itself. */
+			if( ( xRc = FreeRTOS_send( pxClient->xSocket, pxClient->pxParent->pcFileBuffer, uxCount, 0 ) ) < 0 ) break;
+		}
+
+		xSockOptValue = pdTRUE_UNSIGNED;
+		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+
+		/* At last send end of chunk and finishing 0 byte chunk at once. */
+		if( ( xRc = FreeRTOS_send( pxClient->xSocket, "\r\n0\r\n\r\n", sizeof( "\r\n0\r\n\r\n" ) - 1, 0 ) ) < 0 ) break;
+
+		xSockOptValue = pdFALSE_UNSIGNED;
+		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+
+		break;
+	}
+
+	return xRc;
+}
+
 static BaseType_t prvOpenURL( HTTPClient_t *pxClient )
 {
 BaseType_t xRc;
@@ -261,23 +344,9 @@ char pcSlash[ 2 ];
 	{
 		if( strchr( pxClient->pcUrlData, ipconfigHTTP_REQUEST_CHARACTER ) != NULL )
 		{
-		size_t xResult;
-
-			xResult = uxApplicationHTTPHandleRequestHook( pxClient->pcUrlData, pxClient->pcCurrentFilename, sizeof( pxClient->pcCurrentFilename ) );
-			if( xResult > 0 )
-			{
-				strcpy( pxClient->pxParent->pcContentsType, "text/html" );
-				snprintf( pxClient->pxParent->pcExtraContents, sizeof( pxClient->pxParent->pcExtraContents ),
-					"Content-Length: %d\r\n", ( int ) xResult );
-				xRc = prvSendReply( pxClient, WEB_REPLY_OK );	/* "Requested file action OK" */
-				if( xRc > 0 )
-				{
-					xRc = FreeRTOS_send( pxClient->xSocket, pxClient->pcCurrentFilename, xResult, 0 );
-				}
-				/* Although against the coding standard of FreeRTOS, a return is
-				done here  to simplify this conditional code. */
-				return xRc;
-			}
+			/* Although against the coding standard of FreeRTOS, a return is
+			done here  to simplify this conditional code. */
+			return prvHandleRequest( pxClient );
 		}
 	}
 	#endif /* ipconfigHTTP_HAS_HANDLE_REQUEST_HOOK */
@@ -435,8 +504,11 @@ static const char *pcGetContentsType (const char *apFname)
 
 	for( ptr = apFname; *ptr; ptr++ )
 	{
-		if (*ptr == '.') dot = ptr;
-		if (*ptr == '/') slash = ptr;
+		switch(*ptr)
+		{
+		case '.': dot   = ptr; break;
+		case '/': slash = ptr; break;
+		}
 	}
 	if( dot > slash )
 	{

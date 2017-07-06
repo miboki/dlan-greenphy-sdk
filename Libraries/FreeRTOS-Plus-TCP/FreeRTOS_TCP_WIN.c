@@ -1756,6 +1756,7 @@ const int32_t l500ms = 500;
 	{
 	TCPSegment_t *pxSegment = &( pxWindow->xTxSegment );
 	int32_t lResult;
+	uint32_t ulMaxLength = ( uint32_t ) pxSegment->lMaxLength - pxSegment->lDataLength;
 
 		/* Data is being scheduled for transmission. */
 
@@ -1763,20 +1764,20 @@ const int32_t l500ms = 500;
 		( void ) lMax;
 		/* This is tiny TCP: there is only 1 segment for outgoing data.
 		As long as 'lDataLength' is unequal to zero, the segment is still occupied. */
-		if( pxSegment->lDataLength > 0 )
+		if( ( pxSegment->lDataLength > 0 ) && ( pxWindow->u.bits.bSendFullSize == pdFALSE_UNSIGNED ) )
 		{
 			lResult = 0L;
 		}
 		else
 		{
-			if( ulLength > ( uint32_t ) pxSegment->lMaxLength )
+			if( ulLength > ulMaxLength )
 			{
 				if( ( xTCPWindowLoggingLevel != 0 ) && ( ipconfigTCP_MAY_LOG_PORT( pxWindow->usOurPortNumber ) != pdFALSE ) )
 				{
-					FreeRTOS_debug_printf( ( "lTCPWindowTxAdd: can only store %ld / %ld bytes\n", ulLength, pxSegment->lMaxLength ) );
+					FreeRTOS_debug_printf( ( "lTCPWindowTxAdd: can only store %ld / %ld bytes\n", ulLength, ulMaxLength ) );
 				}
 
-				ulLength = ( uint32_t ) pxSegment->lMaxLength;
+				ulLength = ulMaxLength;
 			}
 
 			if( ( xTCPWindowLoggingLevel != 0 ) && ( ipconfigTCP_MAY_LOG_PORT( pxWindow->usOurPortNumber ) != pdFALSE ) )
@@ -1787,12 +1788,16 @@ const int32_t l500ms = 500;
 					ulLength ) );
 			}
 
-			/* The sequence number of the first byte in this packet. */
-			pxSegment->ulSequenceNumber = pxWindow->ulNextTxSequenceNumber;
-			pxSegment->lDataLength = ( int32_t ) ulLength;
-			pxSegment->lStreamPos = lPosition;
-			pxSegment->u.ulFlags = 0UL;
-			vTCPTimerSet( &( pxSegment->xTransmitTimer ) );
+			if( pxSegment->lDataLength == 0 )
+			{
+				/* The sequence number of the first byte in this packet. */
+				pxSegment->ulSequenceNumber = pxWindow->ulNextTxSequenceNumber;
+				pxSegment->lStreamPos = lPosition;
+				pxSegment->u.ulFlags = 0UL;
+				vTCPTimerSet( &( pxSegment->xTransmitTimer ) );
+			}
+
+			pxSegment->lDataLength += ( int32_t ) ulLength;
 
 			/* Increase the sequence number of the next data to be stored for
 			transmission. */
@@ -1828,6 +1833,11 @@ const int32_t l500ms = 500;
 				{
 					ulLength = 0ul;
 				}
+			}
+
+			if( ( pxWindow->u.bits.bSendFullSize != pdFALSE_UNSIGNED ) && ( pxSegment->lDataLength < pxSegment->lMaxLength ) )
+			{
+				ulLength = 0ul;
 			}
 
 			if( ulLength != 0ul )
@@ -1922,6 +1932,10 @@ const int32_t l500ms = 500;
 			else if( prvTCPWindowTxHasSpace( pxWindow, ulWindowSize ) == pdFALSE )
 			{
 				/* Too many outstanding messages. */
+				xReturn = pdFALSE;
+			}
+			else if( ( pxWindow->u.bits.bSendFullSize != pdFALSE_UNSIGNED ) && ( pxSegment->lDataLength < pxSegment->lMaxLength ) )
+			{
 				xReturn = pdFALSE;
 			}
 			else

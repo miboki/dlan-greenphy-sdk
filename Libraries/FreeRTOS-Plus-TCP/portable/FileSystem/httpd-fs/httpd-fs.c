@@ -39,12 +39,7 @@
 #define NULL 0
 #endif /* NULL */
 
-#include "httpd-fsdata.h.generated"
-#include "httpd-fsdata.c.generated"
-
-#if HTTPD_FS_STATISTICS
-static uint16_t count[FS_NUMFILES];
-#endif /* HTTPD_FS_STATISTICS */
+#include "httpd-fsdata.h"
 
 /*-----------------------------------------------------------------------------------*/
 static uint8_t
@@ -77,7 +72,7 @@ httpd_fs_open(const char *name, struct httpd_fs_file *file)
 #endif /* HTTPD_FS_STATISTICS */
   struct httpd_fsdata_file_noconst *f;
 
-  for(f = (struct httpd_fsdata_file_noconst *)FS_ROOT;
+  for(f = (struct httpd_fsdata_file_noconst *)fs_root;
       f != NULL;
       f = (struct httpd_fsdata_file_noconst *)f->next) {
 
@@ -85,7 +80,7 @@ httpd_fs_open(const char *name, struct httpd_fs_file *file)
       file->data = f->data;
       file->len = f->len;
 #if HTTPD_FS_STATISTICS
-      ++count[i];
+      ++fs_count[i];
 #endif /* HTTPD_FS_STATISTICS */
       return 1;
     }
@@ -102,8 +97,8 @@ httpd_fs_init(void)
 {
 #if HTTPD_FS_STATISTICS
   uint16_t i;
-  for(i = 0; i < FS_NUMFILES; i++) {
-    count[i] = 0;
+  for(i = 0; i < fs_numfiles; i++) {
+    fs_count[i] = 0;
   }
 #endif /* HTTPD_FS_STATISTICS */
 }
@@ -121,7 +116,7 @@ uint16_t httpd_fs_count
       f = (struct httpd_fsdata_file_noconst *)f->next) {
 
     if(httpd_fs_strcmp(name, f->name) == 0) {
-      return count[i];
+      return fs_count[i];
     }
     ++i;
   }

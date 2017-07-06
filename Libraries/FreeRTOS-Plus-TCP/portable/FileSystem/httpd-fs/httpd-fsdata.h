@@ -62,4 +62,10 @@ struct httpd_fsdata_file_noconst {
 #endif /* HTTPD_FS_STATISTICS */
 };
 
+extern const struct fsdata_file *fs_root;
+#if HTTPD_FS_STATISTICS
+extern uint16_t *fs_count;
+#endif /* HTTPD_FS_STATISTICS */
+
+
 #endif /* __HTTPD_FSDATA_H__ */

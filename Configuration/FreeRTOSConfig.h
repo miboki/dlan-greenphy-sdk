@@ -124,7 +124,7 @@ standard names - or at least those used in the unmodified vector table. */
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #define configUSE_TICKLESS_IDLE                 0
-#define configCPU_CLOCK_HZ                      ( ( unsigned long ) 100000000 )/*TF was 60000000 2017-02-09*/
+#define configCPU_CLOCK_HZ                      ( ( unsigned long ) 96000000 )/*TF was 60000000 2017-02-09*/
 #define configTICK_RATE_HZ                      1000 /*TF was 250 2017-02-09*/
 #define configMAX_PRIORITIES                    5
 #define configMINIMAL_STACK_SIZE                ( ( unsigned short ) 80 )

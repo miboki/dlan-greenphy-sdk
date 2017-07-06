@@ -1,0 +1,173 @@
+.wrapper {
+    position: relative;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+#header {
+  box-shadow: 0px 2px 5px #888;
+}
+
+#upper-header {
+    background-color: white;
+    height: 35px;
+}
+
+#lower-header {
+    background-color: #006e9f;
+    background-image: linear-gradient(90deg, #006e9f 0%, #006e9f 70%, #00497b 95%);
+    box-shadow: inset -7px 3px 8px #00497b;
+    height:60px;
+    color: white;
+}
+
+#title {
+  float: right;
+  font-size: 20px;
+  margin: 10px 0 0;
+}
+
+#logo-wrapper {
+    background-color: white;
+    width: calc(50vw - 530px + 240px - 20px);
+    min-width: 240px;
+    height: 84px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#logo-wrapper:after{
+    content:"";
+    position:absolute;
+    background-color: white;
+    bottom:-2px;
+    right:-5px;
+    width:18px;
+    height: 60px;
+    transform: rotate(15deg);
+    transform-origin: 100% 100%;
+        border-radius: 0 0 9px 0;
+
+}
+
+#logo-wrapper img {
+    width: 240px;
+    height: auto;
+    position: absolute;
+    bottom:0;
+    right:-10px;
+    display: block;
+    z-index: 10;
+}
+
+#nav {
+    margin-left: 240px;
+}
+
+#nav ul {
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    line-height: 60px;
+}
+
+#nav li {
+    display: inline-block;
+    padding-left: 20px;
+}
+
+#nav a {
+  color: inherit;
+}
+
+#nav a:hover, #nav a:focus, #nav a:active {
+  text-shadow: 0 0 0 #FFF;
+  text-decoration: none;
+}
+
+#nav .last-left {
+  flex-grow: 1;
+}
+
+#content {
+  min-height: calc(100vh - 95px - 20px);
+  display: flex;
+  flex-direction: column;
+}
+
+#footer {
+  height: 20px;
+  background-color: #006e9f;
+  background-image: linear-gradient(90deg, #006e9f 0%, #006e9f 70%, #00497b 95%);
+  color: white;
+}
+
+#footer img {
+  display: block;
+  height: 20px;
+  width: auto;
+  line-height: 20px;
+}
+
+#copyright {
+  float:right;
+}
+
+
+.onoffswitch {
+    position: relative; width: 60px;
+    -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+}
+.onoffswitch-checkbox {
+    display: none;
+}
+.onoffswitch-label {
+    display: block; overflow: hidden; cursor: pointer;
+    border: 1px solid #adadad; border-radius: 4px;
+}
+.onoffswitch-inner {
+    display: block; width: 200%; margin-left: -100%;
+    transition: margin 0.3s ease-in 0s;
+}
+.onoffswitch-inner:before, .onoffswitch-inner:after {
+    display: block; float: left; width: 50%; height: 30px; padding: 0; line-height: 30px;
+    font-size: 14px; color: white; font-weight: normal;
+    box-sizing: border-box;
+}
+.onoffswitch-inner:before {
+    content: "On";
+    text-align: left;
+    padding-left: 14px;
+    background-color: #337ab7; color: #FFF;
+}
+.onoffswitch-inner:after {
+    content: "Off";
+    padding-right: 14px;
+    text-align: right;
+    background-color: #e6e6e6; color: #999999;
+}
+.onoffswitch-switch {
+    display: block; width: 14px; margin: 0px;
+    background: #fff;
+    position: absolute; top: 0; bottom: 0;
+    right: 46px;
+    border: 1px solid #adadad; border-radius: 4px;
+    transition: right 0.3s ease-in 0s; 
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label {
+    border-color: #2e6da4;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+    margin-left: 0;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
+    right: 0px;
+    border-color: #2e6da4;
+}
+.onoffswitch-label:hover .onoffswitch-switch {
+  background: #e6e6e6;
+}
+

@@ -75,7 +75,7 @@ out the debugging messages. */
 FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
 then FreeRTOS_printf should be set to the function used to print out the
 messages. */
-#define ipconfigHAS_PRINTF			0
+#define ipconfigHAS_PRINTF			1
 #if( ipconfigHAS_PRINTF == 1 )
 	#define FreeRTOS_printf(X)			printf X
 #endif
@@ -252,7 +252,7 @@ aborted. */
 #define ipconfigUSE_TCP             ( 1 )
 
 /* USE_WIN: Let TCP use windowing mechanism. */
-#define ipconfigUSE_TCP_WIN         ( 1 )
+#define ipconfigUSE_TCP_WIN         ( 0 )
 
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
@@ -308,7 +308,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigTCP_HANG_PROTECTION_TIME    ( 30 )
 
 /* Include support for TCP keep-alive messages. */
-#define ipconfigTCP_KEEP_ALIVE              ( 1 )
+#define ipconfigTCP_KEEP_ALIVE              ( 0 )
 #define ipconfigTCP_KEEP_ALIVE_INTERVAL     ( 20 ) /* in seconds */
 
 #define ipconfigHAS_INLINE_FUNCTIONS 1
@@ -322,7 +322,7 @@ contain.  For normal Ethernet V2 frames the maximum MTU is 1500.  Setting a
 lower value can save RAM, depending on the buffer management scheme used.  If
 ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
-#define ipconfigNETWORK_MTU     1500 //586 // 1500 /*1526*/
+#define ipconfigNETWORK_MTU     1500 // 586 //1500 // /*1526*/
 //#define ipconfigTCP_MSS         522 // 1460
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
@@ -396,3 +396,8 @@ shorted in the Windows simulator as simulated time is not real time. */
 			FreeRTOS_ntohs((( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer ))->usFrameType), \
 			pxNetworkBuffer->pxInterface->pcName, pxInterfaceTo->pcName ) )
 #endif /* FREERTOS_IP_CONFIG_H */
+
+
+#define ipconfigHTTP_HAS_HANDLE_REQUEST_HOOK 1
+#define ipconfigHTTP_REQUEST_CHARACTER		'?'
+#define ipconfigHTTP_REQUEST_DELIMITER		'&'

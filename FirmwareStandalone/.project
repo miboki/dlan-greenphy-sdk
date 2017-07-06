@@ -5,6 +5,7 @@
 	<projects>
 		<project>Libraries</project>
 		<project>Configuration</project>
+		<project>Applications</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

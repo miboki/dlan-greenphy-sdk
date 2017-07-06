@@ -104,7 +104,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
-	    		// xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
+	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
 
 	            xTasksAlreadyCreated = pdTRUE;
@@ -181,8 +181,8 @@ void vConfigureTimerForRunTimeStats(void) {
 
 static void prvServerWorkTask( void *pvParameters )
 {
-TCPServer_t *pxTCPServer = NULL;
 const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 200UL );
+TCPServer_t *pxTCPServer = NULL;
 
 /* A structure that defines the servers to be created.  Which servers are
 included in the structure depends on the mainCREATE_HTTP_SERVER and
@@ -190,7 +190,7 @@ mainCREATE_FTP_SERVER settings at the top of this file. */
 static const struct xSERVER_CONFIG xServerConfiguration[] =
 {
 	/* Server type,		port number,	backlog, 	root dir. */
-	{ eSERVER_HTTP, 	80, 			12, 		"" }
+	{ eSERVER_HTTP, 	80, 			0, 		"" }
 };
 
 	/* Remove compiler warning about unused parameter. */
@@ -205,7 +205,225 @@ static const struct xSERVER_CONFIG xServerConfiguration[] =
 		FreeRTOS_TCPServerWork( pxTCPServer, xInitialBlockTime );
 	}
 }
+/*-----------------------------------------------------------*/
 
+/* A structure to hold the query string parameter values. */
+typedef struct query_param {
+	char *pcKey;
+	char *pcValue;
+} QueryParam_t;
+
+BaseType_t xParseQuery(char *pcQuery, QueryParam_t *pxParams, BaseType_t xMaxParams)
+{
+BaseType_t x = 0;
+
+	if( ( pcQuery != NULL ) && ( *pcQuery != '\0' ) )
+	{
+		pxParams[x++].pcKey = pcQuery;             /* First key is at begin of query. */
+		while ( ( x < xMaxParams ) && ( (pcQuery = strchr(pcQuery, ipconfigHTTP_REQUEST_DELIMITER)) != NULL ) )
+		{
+			*pcQuery = '\0';                     /* Replace delimiter with '\0'. */
+			pxParams[x].pcKey = ++pcQuery;         /* Set next parameter key. */
+
+			/* Look for previous parameter value. */
+			if ((pxParams[x - 1].pcValue = strchr(pxParams[x - 1].pcKey, '=')) != NULL) {
+				*(pxParams[x - 1].pcValue)++ = '\0'; /* Replace '=' with '\0'. */
+			}
+			x++;
+		}
+
+		/* Look for last parameter value. */
+		if ((pxParams[x - 1].pcValue = strchr(pxParams[x - 1].pcKey, '=')) != NULL) {
+			*(pxParams[x - 1].pcValue)++ = '\0';     /* Replace '=' with '\0'. */
+		}
+	}
+
+	return x;
+}
+
+
+QueryParam_t *pxFindKeyInQueryParams( char *pcKey, QueryParam_t *pxParams, BaseType_t xParamCount )
+{
+BaseType_t x;
+QueryParam_t *pxParam = NULL;
+
+	for( x = 0; x < xParamCount; x++ )
+	{
+		if( strcmp( pxParams[ x ].pcKey, pcKey ) == 0 )
+		{
+			pxParam = &pxParams[ x ];
+			break;
+		}
+	}
+
+	return pxParam;
+}
+
+BaseType_t xIsStringOneOf( char *pcString, char *ppcStringList[], BaseType_t xStringListSize )
+{
+BaseType_t x;
+
+	for( x = 0; x < xStringListSize; x++ )
+	{
+		if( strcmp( pcString, ppcStringList[x] ) == 0 )
+		{
+			break;
+		}
+	}
+
+	return x;
+}
+
+typedef UBaseType_t ( * FHTTPFileHandleFunction ) ( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount );
+
+typedef struct xHTTP_FILE_HANDLE
+{
+	const char *pcFilename;
+	FHTTPFileHandleFunction fFileHandleFunction_Get;
+	FHTTPFileHandleFunction fFileHandleFunction_Set;
+} HTTPFileHandle_t;
+
+
+//TaskStatus_t *pxTaskStatusArray;
+//volatile UBaseType_t uxArraySize, x;
+//uint32_t ulTotalTime, ulStatsAsPercentage;
+//
+//uxArraySize = uxCurrentNumberOfTasks;
+//pxTaskStatusArray = pvPortMalloc( uxCurrentNumberOfTasks * sizeof( TaskStatus_t ) );
+//
+//if( pxTaskStatusArray != NULL )
+//{
+//	/* Generate the (binary) data. */
+//	uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalTime );
+//
+
+enum eActions {
+	eACTION_GET,
+	eACTION_SET,
+	eACTION_UNK,
+};
+
+UBaseType_t uxFileHandle_StatusGet( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+{
+BaseType_t xCount = 0;
+
+	xCount = snprintf( pcBuffer, uxBufferLength,
+			"{\"status\":\"success\",\"data\":{\"uptime\":\"%ds\",\"free_heap\":\"%d bytes\",\"led\":%s}}",
+			( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ), xPortGetFreeHeapSize(),
+			(Board_LED_Test( LEDS_LED0 ) ? "true" : "false" ) );
+
+	return xCount;
+}
+
+UBaseType_t uxFileHandle_StatusSet( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+{
+BaseType_t xCount = 0;
+QueryParam_t *pxParam;
+
+	pxParam = pxFindKeyInQueryParams( "led", pxParams, xParamCount );
+	if( pxParam != NULL )
+	{
+		if( strcmp(pxParam->pcValue, "on") == 0 )
+		{
+			Board_LED_Set( LEDS_LED0, TRUE );
+		}
+		else if( strcmp(pxParam->pcValue, "off") == 0 )
+		{
+			Board_LED_Set( LEDS_LED0, FALSE );
+		}
+		else if( strcmp(pxParam->pcValue, "toggle") == 0 )
+		{
+			Board_LED_Toggle( LEDS_LED0 );
+		}
+		else
+		{
+			xCount = -1;
+		}
+	}
+
+	return xCount;
+}
+
+UBaseType_t uxFileHandle_ConfigGet( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+{
+BaseType_t xCount = 0;
+
+	return xCount;
+}
+
+static HTTPFileHandle_t pxHTTPFileHandles[ ] =
+{
+	{ "/status.json", uxFileHandle_StatusGet, uxFileHandle_StatusSet },
+	{ "/config.json", uxFileHandle_ConfigGet, NULL }
+};
+
+#define ARRAY_SIZE(x) ( BaseType_t ) (sizeof( x ) / sizeof( x )[ 0 ] )
+
+HTTPFileHandle_t *pxFindFileHandle( const char *pcFilename )
+{
+BaseType_t x;
+HTTPFileHandle_t *pxFileHandle = NULL;
+
+	for( x = 0; x < ARRAY_SIZE( pxHTTPFileHandles ); x++ )
+	{
+		if( strcmp( pcFilename, pxHTTPFileHandles[ x ].pcFilename ) == 0 )
+		{
+			pxFileHandle = &pxHTTPFileHandles[ x ];
+			break;
+		}
+	}
+
+	return pxFileHandle;
+}
+
+/*
+ * A GET request is received containing a special character,
+ * usually a question mark.
+ * const char *pcURLData;	// A request, e.g. "/request?limit=75"
+ * char *pcBuffer;			// Here the answer can be written
+ * size_t uxBufferLength;	// Size of the buffer
+ *
+ */
+size_t uxApplicationHTTPHandleRequestHook( const char *pcURLData, char *pcBuffer, size_t uxBufferLength )
+{
+char *pcQuery;
+QueryParam_t pxParams[3];
+BaseType_t xParamCount;
+HTTPFileHandle_t *pxFileHandle = NULL;
+QueryParam_t *pxParam;
+size_t uxResult = 0;
+
+	pcQuery = strchr( pcURLData, ipconfigHTTP_REQUEST_CHARACTER );
+	*pcQuery++ = '\0';
+
+	pxFileHandle = pxFindFileHandle( pcURLData );
+	if( pxFileHandle != NULL )
+	{
+		xParamCount = xParseQuery( pcQuery, pxParams, ARRAY_SIZE( pxParams ) );
+
+		pxParam = pxFindKeyInQueryParams( "action", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp(pxParam->pcValue, "get") == 0 )
+			{
+				uxResult = pxFileHandle->fFileHandleFunction_Get(pcBuffer, uxBufferLength, pxParams, xParamCount);
+			}
+			else if( strcmp(pxParam->pcValue, "set") == 0 )
+			{
+				uxResult = pxFileHandle->fFileHandleFunction_Set(pcBuffer, uxBufferLength, pxParams, xParamCount);
+			}
+
+			if( uxResult <= 0 )
+			{
+				uxResult = snprintf( pcBuffer, uxBufferLength,
+						"{\"status\":%s}",
+						( ( uxResult == 0 ) ? "\"success\"" : "\"fail\"" ) );
+			}
+		}
+	}
+
+	return uxResult;
+}
 /*-----------------------------------------------------------*/
 
 int main(void) {

@@ -119,7 +119,8 @@ void Board_LED_Set(uint8_t LEDNumber, bool Status)
 {
 	/* There is only one LED */
 	if (LEDNumber == LEDS_LED0) {
-		Chip_GPIO_SetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM, Status);
+		/* LED0 is ON if GPIO is LOW. */
+		Chip_GPIO_SetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM, !Status);
 	}
 }
 
@@ -129,7 +130,8 @@ bool Board_LED_Test(uint8_t LEDNumber)
 	bool state = false;
 
 	if (LEDNumber == LEDS_LED0) {
-		state = Chip_GPIO_GetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM);
+		/* LED0 is ON if GPIO is LOW. */
+		state = !Chip_GPIO_GetPinState(LPC_GPIO, LED0_GPIO_PORT_NUM, LED0_GPIO_BIT_NUM);
 	}
 
 	return state;

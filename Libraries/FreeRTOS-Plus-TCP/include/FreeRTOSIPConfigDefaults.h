@@ -393,8 +393,14 @@ from the FreeRTOSIPConfig.h configuration header file. */
 #ifndef ipconfigTCP_MSS
 	/* _HT_ the default value of ipconfigTCP_MSS should somehow
 	depend on the IP version in use. */
-	#define ipconfigTCP_MSS		( ipconfigNETWORK_MTU - ipSIZE_OF_IP_HEADER_IPv6 - ipSIZE_OF_TCP_HEADER )
-#endif
+    /* _ML_ Not completely solved, but at least use IPv4 header
+    when IPv6 is disabled. */
+	#if( ipconfigUSE_IPv6 != 0 )
+		#define ipconfigTCP_MSS		( ipconfigNETWORK_MTU - ipSIZE_OF_IP_HEADER_IPv6 - ipSIZE_OF_TCP_HEADER )
+	#else
+		#define ipconfigTCP_MSS		( ipconfigNETWORK_MTU - ipSIZE_OF_IP_HEADER_IPv4 - ipSIZE_OF_TCP_HEADER )
+	#endif /* ipconfigUSE_IPv6 */
+#endif /* ipconfigTCP_MSS */
 
 /* Each TCP socket has circular stream buffers for Rx and Tx, which
  * have a fixed maximum size.
@@ -406,7 +412,7 @@ from the FreeRTOSIPConfig.h configuration header file. */
 
 /* Define the size of Tx stream buffer for TCP sockets */
 #ifndef ipconfigTCP_TX_BUFFER_LENGTH
-#	define ipconfigTCP_TX_BUFFER_LENGTH			( 4u * ipconfigTCP_MSS )	/* defaults to 5840 bytes */
+	#define ipconfigTCP_TX_BUFFER_LENGTH			( 4u * ipconfigTCP_MSS )	/* defaults to 5840 bytes */
 #endif
 
 #ifndef ipconfigMAXIMUM_DISCOVER_TX_PERIOD

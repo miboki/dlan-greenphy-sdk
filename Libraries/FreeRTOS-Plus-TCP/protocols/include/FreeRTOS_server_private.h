@@ -205,7 +205,7 @@ struct xTCP_SERVER
 	#endif
 	#if( ipconfigUSE_HTTP != 0 )
 		char pcContentsType[40];	/* Space for the msg: "text/javascript" */
-		char pcExtraContents[40];	/* Space for the msg: "Content-Length: 346500" */
+		char pcExtraContents[60];	/* Space for the msg: "Content-Length: 346500" */
 	#endif
 	BaseType_t xServerCount;
 	TCPClient_t *pxClients;
