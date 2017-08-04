@@ -88,8 +88,9 @@
   text-decoration: none;
 }
 
-#nav .last-left {
+#nav .first-right {
   flex-grow: 1;
+  text-align: right;
 }
 
 #content {

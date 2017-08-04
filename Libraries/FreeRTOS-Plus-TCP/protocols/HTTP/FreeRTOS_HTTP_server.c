@@ -206,7 +206,6 @@ BaseType_t xRc;
 
 static BaseType_t prvSendFile( HTTPClient_t *pxClient )
 {
-size_t uxSpace;
 size_t uxCount;
 BaseType_t xRc = 0;
 BaseType_t xSockOptValue;

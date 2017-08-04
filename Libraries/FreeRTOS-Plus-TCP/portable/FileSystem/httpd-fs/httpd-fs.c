@@ -111,7 +111,7 @@ uint16_t httpd_fs_count
   uint16_t i;
 
   i = 0;
-  for(f = (struct httpd_fsdata_file_noconst *)FS_ROOT;
+  for(f = (struct httpd_fsdata_file_noconst *)fs_root;
       f != NULL;
       f = (struct httpd_fsdata_file_noconst *)f->next) {
 

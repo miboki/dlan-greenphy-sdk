@@ -8,7 +8,7 @@ import zlib
 import bs4
 
 fsdir = Path('../HTTP/httpd-fs/')
-outfile = Path('../HTTP/httpd-fsdata.c')
+outfile = Path('../HTTP/src/httpd-fsdata.c')
 outfile.touch(exist_ok=True)
 extensions = ['.html', '.css', '.js', '.svg', '.shtml', '.json', '.png', '.gif', '.jpg']
 unify = True

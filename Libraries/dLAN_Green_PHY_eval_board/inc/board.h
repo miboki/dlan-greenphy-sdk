@@ -77,6 +77,17 @@ extern "C" {
 /**
  * Clickboard defines
  */
+typedef enum ClickboardPorts {
+	eClickboardInactive = 0x00,
+	eClickboardPort1    = 0x01,
+	eClickboardPort2    = 0x02,
+	eClickboardAllPorts = ( eClickboardPort1 | eClickboardPort2 )
+} ClickboardPorts_t;
+
+#define BOARD_UNUSED 0
+#define SLOT1 1
+#define SLOT2 2
+
 #define LED0_GPIO_PORT_NUM                      0
 #define LED0_GPIO_BIT_NUM                       6//22
 
