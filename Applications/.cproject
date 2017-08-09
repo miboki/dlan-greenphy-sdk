@@ -36,6 +36,7 @@
 									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
+									<listOptionValue builtIn="false" value="DEBUG"/>
 								</option>
 								<option id="gnu.c.compiler.option.misc.other.1150945176" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
 								<option id="gnu.c.compiler.option.optimization.flags.1356079321" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-common" valueType="string"/>
@@ -80,7 +81,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Clickboards/src/thermo3click.c|Clickboards/src/sysinit.c|Clickboards/src/RelayClick.c|Clickboards/src/main.c|Clickboards/src/lcdDevoloClick.c|Clickboards/src/Expand2Click.c|Clickboards/src/crp.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/clickboardIO.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Clickboards/src/sysinit.c|Clickboards/src/RelayClick.c|Clickboards/src/main.c|Clickboards/src/lcdDevoloClick.c|Clickboards/src/crp.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/clickboardIO.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
