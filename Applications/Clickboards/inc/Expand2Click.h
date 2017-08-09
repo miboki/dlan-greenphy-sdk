@@ -278,13 +278,13 @@
 #define OLATB_OL6 (1<<6)
 #define OLATB_OL7 (1<<7)
 
+#define MASK_GET2Bit 0x03
+#define MASK_SWAPOR2 0x02  // char | 0000 0010 -> second bit of char is one
+#define MASK_SWAPAND1 0xFE // char & 1111 1110 -> lsb of char is null
+#define MASK_SWAPAND2 0xFD;  // char & 1111 1101 -> second bit of char is null
+#define MASK_SWAPOR1 0x01;  // char | 0000 0001 -> lsb of char is one
 
 char get_expand2click(void);
 void set_expand2click(char data);
-
-
-
-xTaskHandle xHandle_Expand2Click = NULL;
-void Expand2Click_Task(void *pvParameters);
 
 #endif /* INC_EXPAND2CLICK_H_ */

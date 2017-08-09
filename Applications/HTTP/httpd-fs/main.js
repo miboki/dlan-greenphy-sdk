@@ -83,10 +83,71 @@ templates['color2'] = `
         </table>
         <div style="width:200px; height:100px;margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
 `;
+// Temolate for thermo3 shows two lists one with the actial values red from the eval Board Memory one one from stored values
+templates['thermo3'] = `
+        <h2>Thermo-3 Clickboard</h2>
+        <p>
+        	<h3>dLAN Green PHY Werte</h3>
+        	<table class="table table-striped">
+        		<tr>
+        			<td>Aktuelle Temperatur</td>
+        			<td>{{temp}}&degC</td>
+        		</tr>
+        		<tr>
+        			<td>H&oumlchste Temperatur</td>
+        			<td>{{high}}&degC</td>
+        		</tr>
+        		<tr>
+        			<td>Niedrigste Temperatur</td>
+        			<td>{{low}}&degC</td>
+        		</tr>
+        	</table>
+        </p>
+        <p>
+        	<h3>Verlauf</h3>
+        	<table class="table table-striped">
+        		{{#history}}<tr><td>{{date}}</td><td>{{val}}&degC</td></tr>{{/history}}
+        	</table>
+        </p>
+`;
+// Template for Expand 2 Click just shows the Value of the Register for now
+templates['expand2'] = `
+        <h2>Expand-2 Clickboard</h2>
+        <p>
+        	<h3>Input Register</h3>
+        	<p>
+        		<table class="table table-striped">
+        			<tr>
+        				<td>Eingangswert</td>
+        				<td>{{bits}}</td>
+        			</tr>
+        			<tr>
+        				<td>Gez&aumlhlte Wassermenge seit Reset</td>
+        				<td>{{amount}} Liter</td>
+        			</tr>
+        			<tr>
+        				<td>Gesetzte Bits:</td>
+			        	<td><input type="checkbox" disabled name="bit7" {{checked7}}>
+    	    			    <input type="checkbox" disabled name="bit6" {{checked6}}>
+        					<input type="checkbox" disabled name="bit5" {{checked5}}>
+			        		<input type="checkbox" disabled name="bit4" {{checked4}}>
+	        				<input type="checkbox" disabled name="bit3" {{checked3}}>
+    	    				<input type="checkbox" disabled name="bit2" {{checked2}}>
+        					<input type="checkbox" disabled name="bit1" {{checked1}}>
+        					<input type="checkbox" disabled name="bit0" {{checked0}}>
+        				</td>
+        			</tr>
+        		</table>
+        	</p>
+        	<h3>Output Register</h3>
+        	not jet implemented
+        </p>
+`;
 
 function toggleLED() {
-  	xhr = $.getJSON('status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
+  	xhr = $.getJSON('http://192.168.1.118/' + 'status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
 }
+
 
 function configSubmit( e ) {
 	/* A clickboard can be active on only one port at a time. */
@@ -94,7 +155,7 @@ function configSubmit( e ) {
   		$('#config_form [name='+this.name+'][value=none]').prop('checked', true);
   	});
     /* Send the form to the GreenPHY Module via GET request. */
-    $.getJSON($('#config_form').attr('action'), $('#config_form').serialize(), function(json) {
+    $.getJSON($('http://192.168.1.118/' + '#config_form').attr('action'), $('#config_form').serialize(), function(json) {
         	renderPage('config', json);
     });
 }
@@ -102,6 +163,12 @@ function configSubmit( e ) {
 function capitalize( string ) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+// temp_history stores the past temperature values
+var temp_history = [];
+var temp_date = [];
+// timerTemp is needed to stop stop the switch Page function from repeating every 60 seconds
+var timerTemp;
 
 function processJSON(page, json) {
 	switch(page) {
@@ -138,6 +205,48 @@ function processJSON(page, json) {
 			json['g_hex'] = json['g_dec'].toString(16);
 			json['b_hex'] = json['b_dec'].toString(16);
 			break;
+		case 'thermo3':
+			var date = new Date();
+			// repeat switch Page every 10 minutes to pull temerature values
+			timerTemp = setInterval( function() { switchPage(); } , 600000 );
+			var history = [];
+			var high = 0.0;
+			var low = 0.0;
+			var temp = 0.0;
+			json['temp'] = json['temp_cur'] / 100;
+			json['high'] = json['temp_high'] / 100;
+			json['low'] = json['temp_low'] / 100;
+			//store temp value in the global history
+			temp_history[temp_history.length] = json['temp'];
+			temp_date[temp_date.length] = date.toLocaleString('de-DE');
+			//convert array of float to array of objects, necessary because mustache needs array of objects
+			for(i = 0; i < temp_history.length; i++)
+			{
+				history.push({ 'date' : temp_date[i], 'val' : temp_history[i] });
+			}				
+			json['history'] = history;
+			break;
+		case 'expand2':
+			// repeat switch Page every 1 second to pull values
+			timerTemp = setInterval( function() { switchPage(); } , 1000 );
+			var val = json['bits'];
+			var checked7 = "";
+			var checked6 = "";
+			var checked5 = "";
+			var checked4 = "";
+			var checked3 = "";
+			var checked2 = "";
+			var checked1 = "";
+			var checked0 = "";
+			if (( val / 128 ) >= 1 ) { json['checked7'] = "checked"; val = val % 128; }
+			if (( val / 64 ) >= 1 ) { json['checked6'] = "checked"; val = val % 64; }
+			if (( val / 32 ) >= 1 ) { json['checked5'] = "checked"; val = val % 32; }
+			if (( val / 16 ) >= 1 ) { json['checked4'] = "checked"; val = val % 16; }
+			if (( val / 8 ) >= 1 ) { json['checked3'] = "checked"; val = val % 8; }
+			if (( val / 4 ) >= 1 ) { json['checked2'] = "checked"; val = val % 4; }
+			if (( val / 2 ) >= 1 ) { json['checked1'] = "checked"; val = val % 2; }
+			if ( val == 1 ) { json['checked0'] = "checked"; }
+			json['amount'] = json['amount'] /10;
 		default:
 			break;
 	}
@@ -167,9 +276,11 @@ function switchPage() {
 		page = 'status';
   	}
 
-  	$.getJSON(page + '.json?action=get', function(json) {
+  	$.getJSON('http://192.168.1.118/' + page + '.json?action=get', function(json) {
   		renderPage(page, json);
   	});
+  	//clear timer each time switch page is called, otherwise there will be chaos
+  	clearInterval(timerTemp);
 }
 
 function link(e) {
@@ -196,7 +307,7 @@ function keydown(e) {
 $("a[href^='#']").click(link);
 $(document).keydown(keydown);
 
-$.getJSON('config.json?action=get', function(json) {
+$.getJSON('http://192.168.1.118/' + 'config.json?action=get', function(json) {
 	processJSON('config', json);
 });
 switchPage();
