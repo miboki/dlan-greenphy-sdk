@@ -5,25 +5,22 @@
  *      Author: devolo AG / mikroelektronika
  */
 
-
-#if defined (__USE_LPCOPEN)
-#if defined(NO_BOARD_LIB)
 #include "chip.h"
-#else
+
+#include "ClickboardConfig.h"
 #include "board.h"
-#endif
-#endif
 
 #include <string.h>
 #include <stdlib.h>
-#include "clickboardIO.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "debug.h"
+
+#include "clickboard_config.h"
+#include "http_query_parser.h"
+#include "http_request.h"
 #include "Expand2Click.h"
-#include "clickboardIO.h"
 
 
 
@@ -73,8 +70,11 @@ void Expander_Write_Byte(char ModuleAddress,char RegAddress, char Data_) {
 }
 
 
-
-
+//Global Variable of the Task Handle
+static TaskHandle_t xClickTaskHandleExpand = NULL;
+char oBits = 0;
+char iBits = 0;
+int amountOfWater = 0;
 
 char get_expand2click(void){
 	return (Expander_Read_Byte(EXPAND_ADDR, GPIOA_BANK0));       // Read expander's PORTA
@@ -84,55 +84,148 @@ void set_expand2click(char data){
 	Expander_Write_Byte(EXPAND_ADDR, OLATB_BANK0, data); // Write PORTD to expander's PORTB
 }
 
-void Expand2Click_Task(void *pvParameters){
-/*Init*/
-
-	if ((int)pvParameters == SLOT1)  	{
-		Chip_GPIO_WriteDirBit(LPC_GPIO, CLICKBOARD1_INT_GPIO_PORT_NUM, CLICKBOARD1_INT_GPIO_BIT_NUM, GPIO_INPUT);
-		/*define reset pin in slot 1*/
-		Chip_GPIO_WriteDirBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM, GPIO_OUTPUT);
-		/*start  reset procedure*/
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM, true);
-		vTaskDelay(5); //Delay_ms(5);
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM, false);
-		vTaskDelay(5); //Delay_ms(5);
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM,	CLICKBOARD1_RST_GPIO_BIT_NUM, true);
-		vTaskDelay(1); //Delay_ms(1);
-	} else if ((int) pvParameters == SLOT2) {
-		Chip_GPIO_WriteDirBit(LPC_GPIO, CLICKBOARD2_INT_GPIO_PORT_NUM, CLICKBOARD2_INT_GPIO_BIT_NUM, GPIO_INPUT);
-		/*define reset pin in slot 1*/
-		Chip_GPIO_WriteDirBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM, GPIO_OUTPUT);
-		/*start  reset procedure*/
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM, true);
-		vTaskDelay(5); //Delay_ms(5);
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM,	CLICKBOARD2_RST_GPIO_BIT_NUM, false);
-		vTaskDelay(5); //Delay_ms(5);
-		Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM,	CLICKBOARD2_RST_GPIO_BIT_NUM, true);
-		vTaskDelay(1); //Delay_ms(1);
-	}
-
-	i2c_init();
-
-  	Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);       // Set Expander's PORTA to be output
-  	Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);       // Set Expander's PORTB to be input
-  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);        // Set pull-ups to all of the Expander's PORTB pins
-
+void vExpand2Click_Task(void *pvParameters)
+{
+	char swap, lastBits;
 	/*Task Work*/
-	int i = 0;
-	char cBits_temp = 0;
-	char cBits = 0;
-
 	while (1){
-		cBits = get_expand2click();
-		if (cBits != cBits_temp){
-			cBits_temp = cBits;
-			i = 0;
+		//Check if iBits changed since last Task call
+		iBits = get_expand2click(); // read input Bits
+		if ( lastBits != ( iBits & MASK_GET2Bit ))
+		{
+			lastBits = iBits & MASK_GET2Bit;
+			// TODO: SEND MQTT message
+			//for now, generate Debug Message and count
+			DEBUGOUT("Saw Tick\n\r");
+			amountOfWater += 2;
 		}
 
-		set_expand2click(i);
-		i++;
-		vTaskDelay(100);
+		//oBits++;
+		//toggle obits each time the Task is called
+		if ( swap == 1)
+		{
+			oBits &= MASK_SWAPAND1;
+			oBits |= MASK_SWAPOR2;
+		}
+		else
+		{
+			oBits &= MASK_SWAPAND2;
+			oBits |= MASK_SWAPOR1;
+		}
+		set_expand2click(oBits);
+		swap = 1 - swap;
+
+		//DEBUGOUT("Expand2Click - Input: %x, Output: %x", iBits, oBits );
+		//DEBUGOUT("\r\n");
+
+		vTaskDelay(1000);
 	}
 }
 
+#if( includeHTTP_DEMO != 0 )
+	BaseType_t xExpand2Click_RequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+	{
+		BaseType_t xCount = 0;
+
+		xCount += sprintf( pcBuffer, "{ \"bits\":%d, \"amount\":%d }", iBits, amountOfWater );
+		return xCount;
+	}
+#endif
+/*******************************************************************/
+
+/********************************************************************
+ *  Initialtisiation and deinitialisation of the Thermo3Click Task
+ *  modified 02-aug-2017 by cdomnik
+ *******************************************************************/
+BaseType_t xExpand2Click_Init ( const char *pcName, BaseType_t xPort )
+{
+	BaseType_t xReturn = pdFALSE;
+
+	if( xClickTaskHandleExpand == NULL )
+	{
+		//Configure GPIO Ports knowing on witch Click Port the Module is
+		if( xPort == eClickboardPort1 )
+		{
+			Chip_GPIO_SetPinDIRInput(LPC_GPIO, CLICKBOARD1_INT_GPIO_PORT_NUM, CLICKBOARD1_INT_GPIO_BIT_NUM);
+			/*define reset pin in slot 1*/
+			Chip_GPIO_SetPinDIROutput(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
+			/*start  reset procedure*/
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM, true);
+			//vTaskDelay(5); //Delay_ms(5);
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM, false);
+			//vTaskDelay(5); //Delay_ms(5);
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM,	CLICKBOARD1_RST_GPIO_BIT_NUM, true);
+			//vTaskDelay(1); //Delay_ms(1);
+		}
+		else if( xPort == eClickboardPort2 )
+		{
+			Chip_GPIO_SetPinDIRInput(LPC_GPIO, CLICKBOARD2_INT_GPIO_PORT_NUM, CLICKBOARD2_INT_GPIO_BIT_NUM);
+			/*define reset pin in slot 1*/
+			Chip_GPIO_SetPinDIROutput(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
+			/*start  reset procedure*/
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM, true);
+			//vTaskDelay(5); //Delay_ms(5);
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM,	CLICKBOARD2_RST_GPIO_BIT_NUM, false);
+			//vTaskDelay(5); //Delay_ms(5);
+			Chip_GPIO_WritePortBit(LPC_GPIO, CLICKBOARD2_RST_GPIO_PORT_NUM,	CLICKBOARD2_RST_GPIO_BIT_NUM, true);
+			//vTaskDelay(1); //Delay_ms(1);
+		}
+		//Initialise i2c
+		Board_I2C_Init( I2C1 );
+		// Initialize Expander board
+		Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);       // Set Expander's PORTA to be output
+		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);       // Set Expander's PORTB to be input
+	  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);        // Set pull-ups to all of the Expander's PORTB pins
+
+
+		//Create a Task for Expander2Click Board
+		if( xTaskCreate( vExpand2Click_Task, /* Expand2Click Task is implemented above */
+						 pcName,			 /*  */
+						 240,
+						 NULL,
+						 ( tskIDLE_PRIORITY + 1 ),
+						 xClickTaskHandleExpand )
+			!= pdPASS )
+		{
+			DEBUGOUT("Fatal Error -> Unable to create Expand2Click Task\r\n");
+			xReturn = pdFAIL;
+		}
+		else
+		{
+			#if( includeHTTP_DEMO != 0 )
+			{
+				//the graphical output is used for debugging purposes
+				xAddRequestHandler( pcName, xExpand2Click_RequestHandler );
+			}
+			#endif
+
+			xReturn = pdTRUE;
+		}
+	}
+	return xReturn;
+}
+
+
+BaseType_t xExpand2Click_Deinit ( void )
+{
+	BaseType_t xReturn = pdFALSE;
+
+	//If Task exists, kill it
+	if( xClickTaskHandleExpand != NULL )
+	{
+		#if( includeHTTP_DEMO != 0 )
+		{
+			//Also kill the RequestHandler for the graphical output
+			xRemoveRequestHandler( pcTaskGetName( xClickTaskHandleExpand ) );
+		}
+		#endif
+		vTaskDelete( xClickTaskHandleExpand );
+
+		/* TODO: Reset I2C and GPIOs. */
+		xReturn = pdTRUE;
+	}
+
+	return xReturn;
+}
+/*******************************************************************/
 
