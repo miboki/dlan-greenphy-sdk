@@ -1,19 +1,30 @@
-#include "ClickboardConfig.h"
-
-#include "board.h"
-
+/* Standard includes. */
 #include <stdio.h>
 #include <string.h>
 
-/* FreeRTOS includes. */
-#include <FreeRTOS.h>
+/* LPCOpen Includes. */
+#include "board.h"
 
-#include "clickboard_config.h"
+/* FreeRTOS includes. */
+#include "FreeRTOS.h"
+
+/* GreenPHY SDK includes. */
+#include "GreenPhySDKConfig.h"
+
+/* Project includes. */
 #include "http_query_parser.h"
 #include "http_request.h"
+#include "clickboard_config.h"
 
 #define ARRAY_SIZE(x) ( BaseType_t ) (sizeof( x ) / sizeof( x )[ 0 ] )
 
+/***************************************
+ *** ADD YOUR OWN CLICKBOARDS BELOW. ***
+ ***************************************/
+
+/*
+ * The clickboard initializer and deinitializer functions.
+ */
 #if ( includeCOLOR2_CLICK != 0 )
 	extern BaseType_t xColor2Click_Init( const char *pcName, BaseType_t xPort );
 	extern BaseType_t xColor2Click_Deinit( void );
@@ -27,18 +38,26 @@
 	extern BaseType_t xExpand2Click_Deinit( void );
 #endif
 
+/* An array that holds all available clickboards, so they can be activated and
+deactivated through the clickboard config interface. */
 static Clickboard_t pxClickboards[ ] =
 {
 #if( includeCOLOR2_CLICK != 0 )
 	{ "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeTHERMO3_CLICK != 0 )
-	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardPort2 },
+	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeEXPAND2_CLICK != 0 )
-	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardPort1 },
+	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 };
+
+/***************************************
+ *** ADD YOUR OWN CLICKBOARDS ABOVE. ***
+ ***************************************/
+
+/*-----------------------------------------------------------*/
 
 Clickboard_t *pxFindClickboard( char *pcName )
 {
@@ -56,6 +75,7 @@ Clickboard_t *pxClickboard = NULL;
 
 	return pxClickboard;
 }
+/*-----------------------------------------------------------*/
 
 Clickboard_t *pxFindClickboardOnPort( BaseType_t xPort )
 {
@@ -73,10 +93,8 @@ Clickboard_t *pxClickboard = NULL;
 
 	return pxClickboard;
 }
+/*-----------------------------------------------------------*/
 
-/* Activate a clickboard by given name and port.
- * If there already is an active clickboard on the given port,
- * it is deinitialized first.  */
 BaseType_t xClickboardActivate( Clickboard_t *pxClickboard, BaseType_t xPort )
 {
 BaseType_t xSuccess = pdFALSE;
@@ -108,6 +126,7 @@ Clickboard_t *pxClickboardOld;
 
 	return xSuccess;
 }
+/*-----------------------------------------------------------*/
 
 BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 {
@@ -123,13 +142,13 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 
 	return xSuccess;
 }
-
+/*-----------------------------------------------------------*/
 
 #if( includeHTTP_DEMO != 0 )
 
 	BaseType_t xRequestHandler_Config( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
-	static const char * const ppcPorts[] = {"port1", "port2"};
+	static const char * const ppcPorts[] = { "port1", "port2" };
 	BaseType_t x, xCount = 0;
 	QueryParam_t *pxParam;
 	Clickboard_t *pxClickboard;
@@ -141,11 +160,14 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 			pxParam = pxFindKeyInQueryParams( ppcPorts[ x ], pxParams, xParamCount );
 			if( pxParam != NULL )
 			{
+				/* Try to find a clickboard with passed name to activate it. */
 				pxClickboard = pxFindClickboard( pxParam->pcValue );
 				if( pxClickboard != NULL )
 				{
 					xClickboardActivate( pxClickboard, ( x + 1 ) );
 				}
+				/* If no clickboard could be found, check if 'none' was passed,
+				to deactivate a currently active clickboard. */
 				else if( strcmp( pxParam->pcValue, "none" ) == 0 )
 				{
 					pxClickboard = pxFindClickboardOnPort( ( x + 1 ) );
@@ -180,10 +202,25 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 	}
 
 #endif /* includeHTTP_DEMO */
+/*-----------------------------------------------------------*/
 
 void xClickboardsInit()
 {
 BaseType_t x;
+
+	for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
+	{
+		/* Ensure init and deinit handlers are set. */
+		configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
+		configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
+
+		if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+		{
+			/* Ensure at max. one clickboard is active on a port. */
+			configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
+			pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+		}
+	}
 
 	#if( includeHTTP_DEMO != 0 )
 	{
@@ -191,15 +228,5 @@ BaseType_t x;
 	}
 	#endif
 
-	for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
-	{
-		configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
-		configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
-
-		if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
-		{
-			configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
-			pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
-		}
-	}
 }
+/*-----------------------------------------------------------*/

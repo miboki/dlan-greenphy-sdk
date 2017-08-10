@@ -88,8 +88,8 @@ typedef enum ClickboardPorts {
 #define SLOT1 1
 #define SLOT2 2
 
-#define LED0_GPIO_PORT_NUM                      0
-#define LED0_GPIO_BIT_NUM                       6//22
+#define LED0_GPIO_PORT_NUM                        0
+#define LED0_GPIO_BIT_NUM                         6
 
 #define BUTTONS_BUTTON1_GPIO_PORT_NUM             2
 #define BUTTONS_BUTTON1_GPIO_BIT_NUM              10
