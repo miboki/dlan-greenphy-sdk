@@ -13,6 +13,8 @@
 
 #define TMP102_I2C_ADDR   0x48 //TMP102 I2C address (ADD0 pin is connected to ground) -> otherwise it is 0x49
 
+#define TASKWAIT_THERMO 10000 ////Task-Delay in ms (10000ms = 10s), change to your preference
+
 float Get_Temperature(void);
 //void Thermo3Click_Task(void *pvParameters);
 

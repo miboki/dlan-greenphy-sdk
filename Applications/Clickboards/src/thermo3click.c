@@ -68,8 +68,8 @@ int temp_cur, temp_high = -10000, temp_low = 10000;
  *******************************************************************/
 void vThermo3Click_Task(void *pvParameters)
 {
-	//Calculate Delay for 1 min = 60 * 1000ms
- 	const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;
+	//Calculate Delay
+ 	const TickType_t xDelay = TASKWAIT_THERMO / portTICK_PERIOD_MS;
 	// Task run in infinite loops
 	while( 1 )
 	{
@@ -121,7 +121,6 @@ BaseType_t xThermo3Click_Init ( const char *pcName, BaseType_t xPort )
 		}
 		//Initialise i2c
 		Board_I2C_Init( I2C1 );
-		// TODO: Initialize termo board from color2click.c actually don't know if necessary
 
 		//Create a Task for Thermo3Click Board
 		if( xTaskCreate( vThermo3Click_Task, /* Termo3Click Task is implemented above */
@@ -129,7 +128,7 @@ BaseType_t xThermo3Click_Init ( const char *pcName, BaseType_t xPort )
 						 300,
 						 NULL,
 						 ( tskIDLE_PRIORITY + 1 ),
-						 xClickTaskHandleThermo )
+						 &xClickTaskHandleThermo )
 			!= pdPASS )
 		{
 			DEBUGOUT("Fatal Error -> Unable to create Thermo3Click Task\r\n");

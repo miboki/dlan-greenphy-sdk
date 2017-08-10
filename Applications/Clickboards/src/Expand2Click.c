@@ -72,7 +72,7 @@ void Expander_Write_Byte(char ModuleAddress,char RegAddress, char Data_) {
 
 //Global Variable of the Task Handle
 static TaskHandle_t xClickTaskHandleExpand = NULL;
-char oBits = 0;
+char oBits = 1;
 char iBits = 0;
 int amountOfWater = 0;
 
@@ -86,7 +86,10 @@ void set_expand2click(char data){
 
 void vExpand2Click_Task(void *pvParameters)
 {
-	char swap, lastBits;
+	char lastBits;
+	//Calculate Delay
+	const TickType_t xDelay = TASKWAIT_EXPAND / portTICK_PERIOD_MS;
+
 	/*Task Work*/
 	while (1){
 		//Check if iBits changed since last Task call
@@ -96,29 +99,16 @@ void vExpand2Click_Task(void *pvParameters)
 			lastBits = iBits & MASK_GET2Bit;
 			// TODO: SEND MQTT message
 			//for now, generate Debug Message and count
-			DEBUGOUT("Saw Tick\n\r");
+			//DEBUGOUT("Saw Tick\n\r");
 			amountOfWater += 2;
 		}
 
-		//oBits++;
-		//toggle obits each time the Task is called
-		if ( swap == 1)
-		{
-			oBits &= MASK_SWAPAND1;
-			oBits |= MASK_SWAPOR2;
-		}
-		else
-		{
-			oBits &= MASK_SWAPAND2;
-			oBits |= MASK_SWAPOR1;
-		}
+		//toggle obits each time the Task is called - just for demo
+		oBits ^= MASK_SWAP12;
+		//DEBUGOUT("%d\n\r", oBits);
 		set_expand2click(oBits);
-		swap = 1 - swap;
 
-		//DEBUGOUT("Expand2Click - Input: %x, Output: %x", iBits, oBits );
-		//DEBUGOUT("\r\n");
-
-		vTaskDelay(1000);
+		vTaskDelay( xDelay );
 	}
 }
 
@@ -184,7 +174,7 @@ BaseType_t xExpand2Click_Init ( const char *pcName, BaseType_t xPort )
 						 240,
 						 NULL,
 						 ( tskIDLE_PRIORITY + 1 ),
-						 xClickTaskHandleExpand )
+						 &xClickTaskHandleExpand )
 			!= pdPASS )
 		{
 			DEBUGOUT("Fatal Error -> Unable to create Expand2Click Task\r\n");
