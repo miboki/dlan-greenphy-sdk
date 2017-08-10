@@ -91,22 +91,22 @@ templates['thermo3'] = `
         	<table class="table table-striped">
         		<tr>
         			<td>Aktuelle Temperatur</td>
-        			<td>{{temp}}&degC</td>
+        			<td>{{temp}}&deg;C</td>
         		</tr>
         		<tr>
-        			<td>H&oumlchste Temperatur</td>
-        			<td>{{high}}&degC</td>
+        			<td>H&ouml;chste Temperatur</td>
+        			<td>{{high}}&deg;C</td>
         		</tr>
         		<tr>
         			<td>Niedrigste Temperatur</td>
-        			<td>{{low}}&degC</td>
+        			<td>{{low}}&deg;C</td>
         		</tr>
         	</table>
         </p>
         <p>
         	<h3>Verlauf</h3>
         	<table class="table table-striped">
-        		{{#history}}<tr><td>{{date}}</td><td>{{val}}&degC</td></tr>{{/history}}
+        		{{#history}}<tr><td>{{date}}</td><td>{{val}}&deg;C</td></tr>{{/history}}
         	</table>
         </p>
 `;
@@ -122,7 +122,7 @@ templates['expand2'] = `
         				<td>{{bits}}</td>
         			</tr>
         			<tr>
-        				<td>Gez&aumlhlte Wassermenge seit Reset</td>
+        				<td>Gez&auml;hlte Wassermenge seit Reset</td>
         				<td>{{amount}} Liter</td>
         			</tr>
         			<tr>
@@ -140,12 +140,12 @@ templates['expand2'] = `
         		</table>
         	</p>
         	<h3>Output Register</h3>
-        	not jet implemented
+        	not yet implemented
         </p>
 `;
 
 function toggleLED() {
-  	xhr = $.getJSON('http://192.168.1.118/' + 'status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
+  	xhr = $.getJSON('status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
 }
 
 
@@ -155,7 +155,7 @@ function configSubmit( e ) {
   		$('#config_form [name='+this.name+'][value=none]').prop('checked', true);
   	});
     /* Send the form to the GreenPHY Module via GET request. */
-    $.getJSON($('http://192.168.1.118/' + '#config_form').attr('action'), $('#config_form').serialize(), function(json) {
+    $.getJSON($('#config_form').attr('action'), $('#config_form').serialize(), function(json) {
         	renderPage('config', json);
     });
 }
@@ -207,12 +207,9 @@ function processJSON(page, json) {
 			break;
 		case 'thermo3':
 			var date = new Date();
-			// repeat switch Page every 10 minutes to pull temerature values
-			timerTemp = setInterval( function() { switchPage(); } , 600000 );
+			// repeat switch Page every 10 seconds to pull temerature values
+			timerTemp = setInterval( function() { switchPage(); } , 10000 );
 			var history = [];
-			var high = 0.0;
-			var low = 0.0;
-			var temp = 0.0;
 			json['temp'] = json['temp_cur'] / 100;
 			json['high'] = json['temp_high'] / 100;
 			json['low'] = json['temp_low'] / 100;
@@ -227,26 +224,15 @@ function processJSON(page, json) {
 			json['history'] = history;
 			break;
 		case 'expand2':
-			// repeat switch Page every 1 second to pull values
-			timerTemp = setInterval( function() { switchPage(); } , 1000 );
+			// repeat switch Page every 500 miliseconds to pull values
+			// if you want to see the Values in real time, use 100ms, CAUTION: may cause failure
+			// In case you access the dlan-greenphy-board not through a local network, please use at least 1 second delay
+			timerTemp = setInterval( function() { switchPage(); } , 500 );
 			var val = json['bits'];
-			var checked7 = "";
-			var checked6 = "";
-			var checked5 = "";
-			var checked4 = "";
-			var checked3 = "";
-			var checked2 = "";
-			var checked1 = "";
-			var checked0 = "";
-			if (( val / 128 ) >= 1 ) { json['checked7'] = "checked"; val = val % 128; }
-			if (( val / 64 ) >= 1 ) { json['checked6'] = "checked"; val = val % 64; }
-			if (( val / 32 ) >= 1 ) { json['checked5'] = "checked"; val = val % 32; }
-			if (( val / 16 ) >= 1 ) { json['checked4'] = "checked"; val = val % 16; }
-			if (( val / 8 ) >= 1 ) { json['checked3'] = "checked"; val = val % 8; }
-			if (( val / 4 ) >= 1 ) { json['checked2'] = "checked"; val = val % 4; }
-			if (( val / 2 ) >= 1 ) { json['checked1'] = "checked"; val = val % 2; }
-			if ( val == 1 ) { json['checked0'] = "checked"; }
-			json['amount'] = json['amount'] /10;
+			for( i = 0; i < 8; i++ ) {
+				if( json['bits'] & ( 1 << i ) ) json['checked' + i] = "checked";
+			}
+			json['amount'] = json['amount'] / 10;
 		default:
 			break;
 	}
@@ -276,7 +262,7 @@ function switchPage() {
 		page = 'status';
   	}
 
-  	$.getJSON('http://192.168.1.118/' + page + '.json?action=get', function(json) {
+  	$.getJSON(page + '.json?action=get', function(json) {
   		renderPage(page, json);
   	});
   	//clear timer each time switch page is called, otherwise there will be chaos
@@ -307,7 +293,7 @@ function keydown(e) {
 $("a[href^='#']").click(link);
 $(document).keydown(keydown);
 
-$.getJSON('http://192.168.1.118/' + 'config.json?action=get', function(json) {
+$.getJSON('config.json?action=get', function(json) {
 	processJSON('config', json);
 });
 switchPage();
