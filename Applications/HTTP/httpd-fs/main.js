@@ -83,10 +83,71 @@ templates['color2'] = `
         </table>
         <div style="width:200px; height:100px;margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
 `;
+// Temolate for thermo3 shows two lists one with the actial values red from the eval Board Memory one one from stored values
+templates['thermo3'] = `
+        <h2>Thermo-3 Clickboard</h2>
+        <p>
+        	<h3>dLAN Green PHY Werte</h3>
+        	<table class="table table-striped">
+        		<tr>
+        			<td>Aktuelle Temperatur</td>
+        			<td>{{temp}}&deg;C</td>
+        		</tr>
+        		<tr>
+        			<td>H&ouml;chste Temperatur</td>
+        			<td>{{high}}&deg;C</td>
+        		</tr>
+        		<tr>
+        			<td>Niedrigste Temperatur</td>
+        			<td>{{low}}&deg;C</td>
+        		</tr>
+        	</table>
+        </p>
+        <p>
+        	<h3>Verlauf</h3>
+        	<table class="table table-striped">
+        		{{#history}}<tr><td>{{date}}</td><td>{{val}}&deg;C</td></tr>{{/history}}
+        	</table>
+        </p>
+`;
+// Template for Expand 2 Click just shows the Value of the Register for now
+templates['expand2'] = `
+        <h2>Expand-2 Clickboard</h2>
+        <p>
+        	<h3>Input Register</h3>
+        	<p>
+        		<table class="table table-striped">
+        			<tr>
+        				<td>Eingangswert</td>
+        				<td>{{bits}}</td>
+        			</tr>
+        			<tr>
+        				<td>Gez&auml;hlte Wassermenge seit Reset</td>
+        				<td>{{amount}} Liter</td>
+        			</tr>
+        			<tr>
+        				<td>Gesetzte Bits:</td>
+			        	<td><input type="checkbox" disabled name="bit7" {{checked7}}>
+    	    			    <input type="checkbox" disabled name="bit6" {{checked6}}>
+        					<input type="checkbox" disabled name="bit5" {{checked5}}>
+			        		<input type="checkbox" disabled name="bit4" {{checked4}}>
+	        				<input type="checkbox" disabled name="bit3" {{checked3}}>
+    	    				<input type="checkbox" disabled name="bit2" {{checked2}}>
+        					<input type="checkbox" disabled name="bit1" {{checked1}}>
+        					<input type="checkbox" disabled name="bit0" {{checked0}}>
+        				</td>
+        			</tr>
+        		</table>
+        	</p>
+        	<h3>Output Register</h3>
+        	not yet implemented
+        </p>
+`;
 
 function toggleLED() {
   	xhr = $.getJSON('status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
 }
+
 
 function configSubmit( e ) {
 	/* A clickboard can be active on only one port at a time. */
@@ -102,6 +163,12 @@ function configSubmit( e ) {
 function capitalize( string ) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+// temp_history stores the past temperature values
+var temp_history = [];
+var temp_date = [];
+// timerTemp is needed to stop stop the switch Page function from repeating every 60 seconds
+var timerTemp;
 
 function processJSON(page, json) {
 	switch(page) {
@@ -138,6 +205,34 @@ function processJSON(page, json) {
 			json['g_hex'] = json['g_dec'].toString(16);
 			json['b_hex'] = json['b_dec'].toString(16);
 			break;
+		case 'thermo3':
+			var date = new Date();
+			// repeat switch Page every 10 seconds to pull temerature values
+			timerTemp = setInterval( function() { switchPage(); } , 10000 );
+			var history = [];
+			json['temp'] = json['temp_cur'] / 100;
+			json['high'] = json['temp_high'] / 100;
+			json['low'] = json['temp_low'] / 100;
+			//store temp value in the global history
+			temp_history[temp_history.length] = json['temp'];
+			temp_date[temp_date.length] = date.toLocaleString('de-DE');
+			//convert array of float to array of objects, necessary because mustache needs array of objects
+			for(i = 0; i < temp_history.length; i++)
+			{
+				history.push({ 'date' : temp_date[i], 'val' : temp_history[i] });
+			}				
+			json['history'] = history;
+			break;
+		case 'expand2':
+			// repeat switch Page every 500 miliseconds to pull values
+			// if you want to see the Values in real time, use 100ms, CAUTION: may cause failure
+			// In case you access the dlan-greenphy-board not through a local network, please use at least 1 second delay
+			timerTemp = setInterval( function() { switchPage(); } , 500 );
+			var val = json['bits'];
+			for( i = 0; i < 8; i++ ) {
+				if( json['bits'] & ( 1 << i ) ) json['checked' + i] = "checked";
+			}
+			json['amount'] = json['amount'] / 10;
 		default:
 			break;
 	}
@@ -170,6 +265,8 @@ function switchPage() {
   	$.getJSON(page + '.json?action=get', function(json) {
   		renderPage(page, json);
   	});
+  	//clear timer each time switch page is called, otherwise there will be chaos
+  	clearInterval(timerTemp);
 }
 
 function link(e) {

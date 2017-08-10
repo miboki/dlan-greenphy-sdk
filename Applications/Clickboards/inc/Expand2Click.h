@@ -278,13 +278,12 @@
 #define OLATB_OL6 (1<<6)
 #define OLATB_OL7 (1<<7)
 
+#define TASKWAIT_EXPAND 100 //Task-Delay in ms (100ms), change to your preference
+
+#define MASK_GET2Bit 0x03
+#define MASK_SWAP12 0x03
 
 char get_expand2click(void);
 void set_expand2click(char data);
-
-
-
-xTaskHandle xHandle_Expand2Click = NULL;
-void Expand2Click_Task(void *pvParameters);
 
 #endif /* INC_EXPAND2CLICK_H_ */
