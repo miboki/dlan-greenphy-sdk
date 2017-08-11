@@ -567,7 +567,7 @@ TickType_t xWriteTimeOut_ms = 100U;
 
 				/* Obtain the DNS server address. */
 				/*_RB_ First parameter to FreeRTOS_GetAddressConfiguration() should not be NULL! */
-				FreeRTOS_GetAddressConfiguration( NULL, NULL, NULL, NULL, &ulIPAddress );
+				FreeRTOS_GetAddressConfiguration( FreeRTOS_FirstEndPoint( NULL ), NULL, NULL, NULL, &ulIPAddress );
 
 				/* Send the DNS message. */
 #if( ipconfigUSE_LLMNR == 1 )
