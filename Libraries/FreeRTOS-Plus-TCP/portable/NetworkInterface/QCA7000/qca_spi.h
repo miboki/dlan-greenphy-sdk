@@ -112,12 +112,8 @@ struct qcaspi {
 	LPC_SSP_T* SSPx;
 	uint8_t sync;
 
-	/* the TX queues, simply a FreeRTOS queue */
-#if GREEN_PHY_SIMPLE_QOS == ON
-	QueueHandle_t txQueues[QCAGP_NO_OF_QUEUES];
-#else
+	/* the TX queue, simply a FreeRTOS queue */
 	QueueHandle_t txQueue;
-#endif
 	NetworkBufferDescriptor_t *rx_desc;
 
 	uint8_t rx_buffer[QCAFRM_TOTAL_HEADER_LEN];

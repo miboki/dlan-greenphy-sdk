@@ -19,8 +19,6 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
-
-/* Project includes. */
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "clickboard_config.h"

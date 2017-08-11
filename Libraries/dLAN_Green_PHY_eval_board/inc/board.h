@@ -333,9 +333,6 @@ void Board_USBD_Init(uint32_t port);
 #include "lpc_gpio_interrupt.h"
 #include "byteorder.h"
 
-/* GreenPHY SDK includes */
-#include "greenPhyModuleConfig.h"
-
 #ifdef __cplusplus
 }
 #endif
