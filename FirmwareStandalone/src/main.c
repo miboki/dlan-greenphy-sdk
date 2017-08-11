@@ -16,6 +16,7 @@
 #include "netConfig.h"
 #include "greenPhyModuleConfig.h"
 #include "clickboard_config.h"
+#include "MQTTEcho_Test.h"
 
 /* The default IP and MAC address used by the demo.  The address configuration
 defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
@@ -102,6 +103,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 	            /*
 	             * Create the tasks here.
 	             */
+	        	vStartMQTTTasks( 420, 3);
 
 	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
@@ -256,8 +258,6 @@ int main(void) {
 	FreeRTOS_IPStart();
 
 	xClickboardsInit();
-
-	vStartMQTTTasks( 420, 3 );
 
 	vTaskStartScheduler();
 

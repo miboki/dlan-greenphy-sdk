@@ -75,7 +75,6 @@ static void prvMQTTEchoTask(void *pvParameters)
 			printf("Return code from yield is %d\n", rc);
 #endif
 	}
-
 	/* do not return */
 }
 

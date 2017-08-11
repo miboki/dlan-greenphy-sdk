@@ -33,10 +33,10 @@ static Clickboard_t pxClickboards[ ] =
 	{ "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeTHERMO3_CLICK != 0 )
-	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardPort2 },
+	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeEXPAND2_CLICK != 0 )
-	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardPort1 },
+	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 };
 
