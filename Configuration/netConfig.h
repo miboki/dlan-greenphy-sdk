@@ -65,28 +65,28 @@
 				 1. \hideinitializer */
 
 /* IP address configuration. */
-#define configIP_ADDR0		192
-#define configIP_ADDR1		168
-#define configIP_ADDR2		1
-#define configIP_ADDR3		200
+#define configIP_ADDR0		172 //192
+#define configIP_ADDR1		16//168
+#define configIP_ADDR2		200//1
+#define configIP_ADDR3		123//200
 
 /* Netmask configuration. */
 #define configNET_MASK0		255
 #define configNET_MASK1		255
-#define configNET_MASK2		255
+#define configNET_MASK2		0 //255
 #define configNET_MASK3		0
 
 /* default router ip address */
-#define configGATEWAY_ADDR0		192
-#define configGATEWAY_ADDR1		168
-#define configGATEWAY_ADDR2		1
-#define configGATEWAY_ADDR3		1
+#define configGATEWAY_ADDR0		127 //192
+#define configGATEWAY_ADDR1		16 //168
+#define configGATEWAY_ADDR2		0 //1
+#define configGATEWAY_ADDR3		1 //1
 
 /* default DNS SERVER ip address */
-#define configDNS_SERVER_ADDR0		192
-#define configDNS_SERVER_ADDR1		168
-#define configDNS_SERVER_ADDR2		1
-#define configDNS_SERVER_ADDR3		1
+#define configDNS_SERVER_ADDR0		172 //192
+#define configDNS_SERVER_ADDR1		25 //168
+#define configDNS_SERVER_ADDR2		1 //1
+#define configDNS_SERVER_ADDR3		12 //1
 
 /* TFTP server address */
 #define configTFTP_IP_ADDR0		192
