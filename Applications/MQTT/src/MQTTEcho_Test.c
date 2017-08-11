@@ -25,6 +25,8 @@ void messageArrived(MessageData* data)
 
 static void prvMQTTEchoTask(void *pvParameters)
 {
+	vTaskDelay(10000); // Wait 10s to dont interrupt the IP Stack StartUp
+
 	/* connect to m2m.eclipse.org, subscribe to a topic, send and receive messages regularly every 1 sec */
 	MQTTClient client;
 	Network network;
@@ -91,3 +93,42 @@ void vStartMQTTTasks(uint16_t usTaskStackSize, UBaseType_t uxTaskPriority)
 			NULL);				/* The task handle is not used. */
 }
 /*-----------------------------------------------------------*/
+
+void vTestTask()
+{
+	vTaskDelay(10000);
+
+	uint32_t ulIPAddress;
+	int8_t cBuffer[ 16 ];
+
+	while(1)
+	{
+		/* Lookup the IP address of the FreeRTOS.org website. */
+		ulIPAddress = FreeRTOS_gethostbyname( "www.freertos.org" );
+
+		if( ulIPAddress != 0 )
+		{
+			/* Convert the IP address to a string. */
+		    FreeRTOS_inet_ntoa( ulIPAddress, ( char * ) cBuffer );
+
+		    /* Print out the IP address. */
+		    printf( "www.FreeRTOS.org is at IP address %s\r\n", cBuffer );
+		}
+		else
+		{
+			printf( "DNS lookup failed. \n\r" );
+		}
+		vTaskDelay(10000);
+	}
+}
+
+
+void vLookUpAddress()
+{
+	xTaskCreate(vTestTask,
+			"MQTTTest",
+			240,
+			NULL,
+			3,
+			NULL);
+}
