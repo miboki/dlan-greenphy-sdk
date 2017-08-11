@@ -257,6 +257,8 @@ int main(void) {
 
 	xClickboardsInit();
 
+	vStartMQTTTasks( 420, 3 );
+
 	vTaskStartScheduler();
 
 	return 0;

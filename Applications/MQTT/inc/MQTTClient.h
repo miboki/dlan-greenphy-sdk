@@ -19,6 +19,8 @@
 #if !defined(__MQTT_CLIENT_C_)
 #define __MQTT_CLIENT_C_
 
+#define MQTT_TASK 1
+
 #if defined(__cplusplus)
  extern "C" {
 #endif
@@ -217,11 +219,11 @@ DLLExport int MQTTYield(MQTTClient* client, int time);
 /** MQTT isConnected
  *  @param client - the client object to use
  *  @return truth value indicating whether the client is connected to the server
- */
+ *
 DLLExport int MQTTIsConnected(MQTTClient* client)
 {
   return client->isconnected;
-}
+}*/
 
 #if defined(MQTT_TASK)
 /** MQTT start background thread for a client.  After this, MQTTYield should not be called.
