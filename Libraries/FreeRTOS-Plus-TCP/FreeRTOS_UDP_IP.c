@@ -193,6 +193,11 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 			if( pxNetworkBuffer->pxEndPoint == NULL )
 			{
 				pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxNetworkBuffer->ulIPAddress, 10 );
+				/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
+				if( pxNetworkBuffer->pxEndPoint == NULL )
+				{
+					pxNetworkBuffer->pxEndPoint = FreeRTOS_FindDefaultEndPoint();
+				}
 				if( pxNetworkBuffer->pxEndPoint == NULL )
 				{
 					FreeRTOS_printf( ( "vProcessGeneratedUDPPacket: No pxEndPoint found???\n" ) );

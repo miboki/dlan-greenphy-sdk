@@ -42,7 +42,7 @@ HTTPRequestHandler_t *pxRequestHandler = NULL;
 	return pxRequestHandler;
 }
 
-BaseType_t xAddRequestHandler( char *pcName, FHTTPRequestHandler fRequestHandler )
+BaseType_t xAddRequestHandler( const char *pcName, FHTTPRequestHandler fRequestHandler )
 {
 BaseType_t x, xSuccess = pdFALSE;
 

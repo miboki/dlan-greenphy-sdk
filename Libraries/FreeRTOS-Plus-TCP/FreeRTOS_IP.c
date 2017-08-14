@@ -2652,6 +2652,11 @@ FreeRTOS_printf( ( "vReturnEthernetFrame: No pxEndPoint yet???\n" ) );
 			#endif /* ipconfigUSE_IPv6 */
 			{
 				pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxIPPacket->xIPHeader.ulDestinationIPAddress, 7 );
+				/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
+				if( pxNetworkBuffer->pxEndPoint == NULL )
+				{
+					pxNetworkBuffer->pxEndPoint = FreeRTOS_FindDefaultEndPoint();
+				}
 			}
 		}
 
@@ -2663,7 +2668,7 @@ FreeRTOS_printf( ( "vReturnEthernetFrame: No pxEndPoint yet???\n" ) );
 			memcpy( ( void * ) &( pxIPPacket->xEthernetHeader.xDestinationAddress ), ( void * ) &( pxIPPacket->xEthernetHeader.xSourceAddress ), sizeof( pxIPPacket->xEthernetHeader.xDestinationAddress ) );
 			memcpy( ( void * ) &( pxIPPacket->xEthernetHeader.xSourceAddress), ( void * ) pxNetworkBuffer->pxEndPoint->xMACAddress.ucBytes, ( size_t ) ipMAC_ADDRESS_LENGTH_BYTES );
 
-			/* Remove the receiving interface pointer, as the NetworkBuffer
+			/* _ML_ Remove the receiving interface pointer, as the NetworkBuffer
 			is used for transmission now. */
 			pxNetworkBuffer->pxInterface = NULL;
 			pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, xReleaseAfterSend );

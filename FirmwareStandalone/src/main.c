@@ -6,210 +6,11 @@
 #include <FreeRTOS.h>
 #include "task.h"
 
-/* FreeRTOS +TCP includes. */
-#include "FreeRTOS_IP.h"
-#include "FreeRTOS_Sockets.h"
-#include "FreeRTOS_Routing.h"
-#include "FreeRTOS_TCP_server.h"
-
 /* GreenPHY SDK includes. */
-#include "netConfig.h"
-#include "greenPhyModuleConfig.h"
+#include "GreenPhySDKConfig.h"
 #include "clickboard_config.h"
-#include "MQTTEcho_Test.h"
+#include "network.h"
 
-/* The default IP and MAC address used by the demo.  The address configuration
-defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
-1 but a DHCP server could not be contacted.  See the online documentation for
-more information. */
-static const uint8_t ucIPAddress[ 4 ] = { configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, configIP_ADDR3 };
-static const uint8_t ucNetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 };
-static const uint8_t ucGatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
-static const uint8_t ucDNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
-
-/* Default MAC address configuration.  The demo creates a virtual network
-connection that uses this MAC address by accessing the raw Ethernet data
-to and from a real network connection on the host PC.  See the
-configNETWORK_INTERFACE_TO_USE definition for information on how to configure
-the real network connection to use. */
-const uint8_t ucMACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 };
-
-static NetworkInterface_t xEthInterface = { 0 };
-static NetworkInterface_t xPlcInterface = { 0 };
-static NetworkInterface_t xBridgeInterface = { 0 };
-static NetworkEndPoint_t  xEndPoint =  { 0 };
-
-/*-----------------------------------------------------------*/
-
-void vApplicationMallocFailedHook(void) {
-//	printToUart("Malloc failed!\r\n");
-	for (;;)
-		;
-}
-
-/*-----------------------------------------------------------*/
-
-void vApplicationTickHook(void) {
-	/* Called from every tick interrupt */
-
-//	DEBUG_EXECUTE(
-//	{
-//		static size_t old_mem = 0;
-//		size_t mem = xPortGetFreeHeapSize();
-//		if(old_mem != mem)
-//		{
-//			DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\r\n",mem,mem);
-//			old_mem = mem;
-//		}
-//	}
-//	);
-}
-
-/*-----------------------------------------------------------*/
-
-void vApplicationIdleHook(void) {
-	/* Called from idle task */
-}
-
-/*-----------------------------------------------------------*/
-
-void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) {
-	/* This function will get called if a task overflows its stack. */
-
-	(void) pxTask;
-	(void) pcTaskName;
-
-	for (;;)
-		;
-}
-
-static void prvServerWorkTask( void *pvParameters );
-
-/*-----------------------------------------------------------*/
-void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEndPoint_t *pxEndPoint  ) {
-	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
-	static BaseType_t xTasksAlreadyCreated = pdFALSE;
-	int8_t cBuffer[ 16 ];
-
-	    /* Check this was a network up event, as opposed to a network down event. */
-	    DEBUGOUT("Network hook\r\n");
-	    if( eNetworkEvent == eNetworkUp )
-	    {
-		    DEBUGOUT("Network up\r\n");
-	        /* Create the tasks that use the TCP/IP stack if they have not already been
-	        created. */
-	        if( xTasksAlreadyCreated == pdFALSE )
-	        {
-	            /*
-	             * Create the tasks here.
-	             */
-
-	        	//vLookUpAddress(); // Activate to test DNS
-	        	vStartMQTTTasks( 420, 3 ); // Activate to test MQTT
-
-	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
-
-	    		xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
-
-
-	            xTasksAlreadyCreated = pdTRUE;
-	        }
-
-	        /* The network is up and configured.  Print out the configuration,
-	        which may have been obtained from a DHCP server. */
-	        FreeRTOS_GetAddressConfiguration( pxEndPoint,
-	                                          &ulIPAddress,
-	                                          &ulNetMask,
-	                                          &ulGatewayAddress,
-	                                          &ulDNSServerAddress );
-
-	        /* Convert the IP address to a string then print it out. */
-	        FreeRTOS_inet_ntoa( ulIPAddress, cBuffer );
-	        DEBUGOUT( "IP Address: %s\r\n", cBuffer );
-
-	        /* Convert the net mask to a string then print it out. */
-	        FreeRTOS_inet_ntoa( ulNetMask, cBuffer );
-	        DEBUGOUT( "Subnet Mask: %s\r\n", cBuffer );
-
-	        /* Convert the IP address of the gateway to a string then print it out. */
-	        FreeRTOS_inet_ntoa( ulGatewayAddress, cBuffer );
-	        DEBUGOUT( "Gateway IP Address: %s\r\n", cBuffer );
-
-	        /* Convert the IP address of the DNS server to a string then print it out. */
-	        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
-	        DEBUGOUT( "DNS server IP Address: %s\r\n", cBuffer );
-	    }
-}
-/*-----------------------------------------------------------*/
-
-const char *pcApplicationHostnameHook( void )
-{
-	return "GreenPHY evalboard II";
-}
-/*-----------------------------------------------------------*/
-
-/*_HT_ introduced this memory-check temporarily for debugging. */
-BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
-{
-	return 0x03;
-}
-/*-----------------------------------------------------------*/
-
-
-void vConfigureTimerForRunTimeStats(void) {
-	/* This function configures a timer that is used as the time base when
-	 collecting run time statistical information - basically the percentage
-	 of CPU time that each task is utilising.  It is called automatically when
-	 the scheduler is started (assuming configGENERATE_RUN_TIME_STATS is set
-	 to 1). */
-
-	/* Power up and feed the timer. */
-	Chip_TIMER_Init(LPC_TIMER0);
-
-	Chip_Clock_SetPCLKDiv(SYSCTL_PCLK_TIMER0, SYSCTL_CLKDIV_1);
-
-	/* Reset Timer 0 */
-	Chip_TIMER_Reset(LPC_TIMER0);
-
-	/* Just count up. */
-	Chip_TIMER_TIMER_SetCountClockSrc(LPC_TIMER0, 0, 0);
-
-	/* Prescale to a frequency that is good enough to get a decent resolution,
-	 but not too fast so as to overflow all the time. */
-	Chip_TIMER_PrescaleSet(LPC_TIMER0, ( configCPU_CLOCK_HZ / 10000UL) - 1UL);
-
-	/* Start the counter. */
-	Chip_TIMER_Enable(LPC_TIMER0);
-}
-
-/*-----------------------------------------------------------*/
-
-static void prvServerWorkTask( void *pvParameters )
-{
-const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 200UL );
-TCPServer_t *pxTCPServer = NULL;
-
-/* A structure that defines the servers to be created.  Which servers are
-included in the structure depends on the mainCREATE_HTTP_SERVER and
-mainCREATE_FTP_SERVER settings at the top of this file. */
-static const struct xSERVER_CONFIG xServerConfiguration[] =
-{
-	/* Server type,		port number,	backlog, 	root dir. */
-	{ eSERVER_HTTP, 	80, 			0, 		"" }
-};
-
-	/* Remove compiler warning about unused parameter. */
-	( void ) pvParameters;
-
-	/* Create the servers defined by the xServerConfiguration array above. */
-	pxTCPServer = FreeRTOS_CreateTCPServer( xServerConfiguration, sizeof( xServerConfiguration ) / sizeof( xServerConfiguration[ 0 ] ) );
-	configASSERT( pxTCPServer );
-
-	for( ;; )
-	{
-		FreeRTOS_TCPServerWork( pxTCPServer, xInitialBlockTime );
-	}
-}
 /*-----------------------------------------------------------*/
 
 int main(void) {
@@ -221,43 +22,22 @@ int main(void) {
 		uint32_t reset_reason = LPC_SYSCTL->RSID;
 		DEBUGOUT("RSID:0x%x", reset_reason);
 		if (!reset_reason)
-			DEBUGOUT("->Bootloader");
+			DEBUGSTR("->Bootloader");
 		if (reset_reason & 0x1)
-			DEBUGOUT("->Power On");
+			DEBUGSTR("->Power On");
 		if (reset_reason & 0x2)
-			DEBUGOUT("->Reset");
+			DEBUGSTR("->Reset");
 		if (reset_reason & 0x4)
-			DEBUGOUT("->Watchdog");
+			DEBUGSTR("->Watchdog");
 		if (reset_reason & 0x8)
-			DEBUGOUT("->BrownOut Detection");
+			DEBUGSTR("->BrownOut Detection");
 		if (reset_reason & 0x10)
-			DEBUGOUT("->JTAG/restart");
-		DEBUGOUT("\r\n");
+			DEBUGSTR("->JTAG/restart");
+		DEBUGSTR("\r\n");
 		LPC_SYSCTL->RSID = reset_reason;
 	}
 
-//	DEBUGOUT("UART0 %s(%s)\r\n", features, version);
-
-	extern NetworkInterface_t *pxBridge_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
-	pxBridge_FillInterfaceDescriptor(0, &xBridgeInterface);
-	FreeRTOS_AddNetworkInterface(&xBridgeInterface);
-
-	extern NetworkInterface_t *pxLPC1758_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
-	pxLPC1758_FillInterfaceDescriptor(0, &xEthInterface);
-	xEthInterface.bits.bIsBridged = 1;
-	FreeRTOS_AddNetworkInterface(&xEthInterface);
-
-	extern NetworkInterface_t *pxQCA7000_FillInterfaceDescriptor( BaseType_t xIndex, NetworkInterface_t *pxInterface );
-	pxQCA7000_FillInterfaceDescriptor(0, &xPlcInterface);
-	xPlcInterface.bits.bIsBridged = 1;
-	FreeRTOS_AddNetworkInterface(&xPlcInterface);
-
-	FreeRTOS_FillEndPoint(&xEndPoint, ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress);
-	xEndPoint.bits.bIsDefault = pdTRUE_UNSIGNED;
-	xEndPoint.bits.bWantDHCP = pdTRUE_UNSIGNED;
-	FreeRTOS_AddEndPoint(&xBridgeInterface, &xEndPoint);
-
-	FreeRTOS_IPStart();
+	vNetworkInit();
 
 	xClickboardsInit();
 

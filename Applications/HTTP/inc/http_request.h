@@ -13,7 +13,7 @@ typedef struct xHTTP_REQUEST_HANDLER
 } HTTPRequestHandler_t;
 
 
-BaseType_t xAddRequestHandler( char *pcName, FHTTPRequestHandler fRequestHandler );
+BaseType_t xAddRequestHandler( const char *pcName, FHTTPRequestHandler fRequestHandler );
 BaseType_t xRemoveRequestHandler( char *pcName );
 
 #endif /* HTTP_REQUEST_H */

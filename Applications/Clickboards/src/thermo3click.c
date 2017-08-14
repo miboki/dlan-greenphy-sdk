@@ -8,31 +8,38 @@
  *  			  By: cdomnik @ devolo AG
  */
 
-#include "chip.h"
-
-#include "ClickboardConfig.h"
-#include "board.h"
-
+/* Standard includes. */
 #include <string.h>
 #include <stdlib.h>
 
+/* LPCOpen Includes. */
+#include "board.h"
+
+/* FreeRTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 
-#include "clickboard_config.h"
+/* GreenPHY SDK includes. */
+#include "GreenPhySDKConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
+#include "clickboard_config.h"
 #include "thermo3click.h"
 
+/* Task-Delay in ms, change to your preference */
+#define TASKWAIT_THERMO3 10000 /* 10s */
 
-
-float Get_Temperature(void)
-{
+/* Temperature offset used to calibrate the sensor. */
 #define TEMP_OFFSET  -2.0
+
+/*****************************************************************************/
+
+int Get_Temperature(void)
+{
 	uint8_t tmp_data[2];
 	int TemperatureSum;
-	float Temperature;
+	int Temperature;
 
 	tmp_data[0] = 0;
 
@@ -50,96 +57,92 @@ float Get_Temperature(void)
 	  if(TemperatureSum & (1 << 11))                             // Test negative bit
 	    TemperatureSum |= 0xF800;                                // Set bits 11 to 15 to logic 1 to get this reading into real two complement
 
-	  Temperature = (float)TemperatureSum * 0.0625;              // Multiply temperature value with 0.0625 (value per bit)
+	  // Temperature = (float)TemperatureSum * 0.0625;              // Multiply temperature value with 0.0625 (value per bit)
+	  Temperature = TemperatureSum * 625 / 100 + (TEMP_OFFSET * 100);    /* _ML_: Use an integer in hundredth of a degree instead of float. Also introduce an offset. */
 
-	  return (Temperature + TEMP_OFFSET);                                        // Return temperature data
+	  return Temperature;                                        // Return temperature data
 }
 
+/*****************************************************************************/
 
-//Global Variable of the Task Handle
-static TaskHandle_t xClickTaskHandleThermo = NULL;
-float temp;
-//high have to be lower than temp could be - low have to be higher than temp could be - mean is initialized with a realistic value
-int temp_cur, temp_high = -10000, temp_low = 10000;
+/* Task handle used to identify the clickboard's task and check if the
+clickboard is activated. */
+static TaskHandle_t xClickTaskHandle = NULL;
 
-/********************************************************************
- * Task and Request Handler of the Thermo3Click Board
- * added 03-aug-2017 by cdomnik
- *******************************************************************/
-void vThermo3Click_Task(void *pvParameters)
+/* Holds current temperature in hundredth of a degree. */
+static int temp_cur;
+
+/* Holds lowest measured temperature in hundredth of a degree.
+Must be initialized to a high value.*/
+static int temp_low = 0x7fffffff;
+
+/* Holds highest measured temperature in hundredth of a degree.
+Must be initialized to a low value. */
+static int temp_high = (~0x7fffffff);
+
+/*-----------------------------------------------------------*/
+
+static void vClickTask(void *pvParameters)
 {
-	//Calculate Delay
- 	const TickType_t xDelay = TASKWAIT_THERMO / portTICK_PERIOD_MS;
-	// Task run in infinite loops
+const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
+
 	while( 1 )
 	{
-		temp = Get_Temperature(); //Pull Temperature from Clickboard with function above
-		temp_cur = ( int ) ( 100 * temp );
-		if( temp_cur < temp_low ) { temp_low = temp_cur; } // If temp is lower than low, temp is new low Value
-		if( temp_cur > temp_high ) { temp_high = temp_cur; } // If temp is higher than high, temp is new high value
+		/* Read temperature in hundredth of a degree. */
+		temp_cur = Get_Temperature();
 
-		DEBUGOUT("Thermo3Click - Temperature: %4.2f,Current: %d, High: %d, Low: %d", temp, temp_cur, temp_high, temp_low );
-		//PrintStatus();
-		DEBUGOUT("\r\n");
+		/* Check for lowest and highest temperatures. */
+		if( temp_cur < temp_low )  temp_low = temp_cur;
+		if( temp_cur > temp_high ) temp_high = temp_cur;
+
+		DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
 
 		vTaskDelay( xDelay );
 	}
 }
+/*-----------------------------------------------------------*/
 
 #if( includeHTTP_DEMO != 0 )
-	BaseType_t xThermo3Click_RequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
-		BaseType_t xCount = 0;
+	BaseType_t xCount = 0;
 
 		xCount += sprintf( pcBuffer, "{\"temp_cur\":%d,\"temp_high\":%d,\"temp_low\":%d}", temp_cur, temp_high, temp_low );
 		return xCount;
 	}
 #endif
-/*******************************************************************/
+/*-----------------------------------------------------------*/
 
-
-
-
-/********************************************************************
- *  Initialtisiation and deinitialisation of the Thermo3Click Task
- *  added 02-oct-2017 by cdomnik
- *******************************************************************/
 BaseType_t xThermo3Click_Init ( const char *pcName, BaseType_t xPort )
 {
-	BaseType_t xReturn = pdFALSE;
+BaseType_t xReturn = pdFALSE;
 
-	if( xClickTaskHandleThermo == NULL )
+	/* Use the task handle to guard against multiple initialization. */
+	if( xClickTaskHandle == NULL )
 	{
-		//Configure GPIO Ports knowing on witch Click Port the Module is
+		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
+			/* Set interrupt pin. */
 			Chip_GPIO_SetPinDIRInput(LPC_GPIO, CLICKBOARD1_INT_GPIO_PORT_NUM, CLICKBOARD1_INT_GPIO_BIT_NUM );
 		}
 		else if( xPort == eClickboardPort2 )
 		{
+			/* Set interrupt pin. */
 			Chip_GPIO_SetPinDIRInput(LPC_GPIO, CLICKBOARD2_INT_GPIO_PORT_NUM, CLICKBOARD2_INT_GPIO_BIT_NUM );
 		}
-		//Initialise i2c
+
+		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
 		Board_I2C_Init( I2C1 );
 
-		//Create a Task for Thermo3Click Board
-		if( xTaskCreate( vThermo3Click_Task, /* Termo3Click Task is implemented above */
-						 pcName,			 /*  */
-						 300,
-						 NULL,
-						 ( tskIDLE_PRIORITY + 1 ),
-						 &xClickTaskHandleThermo )
-			!= pdPASS )
-		{
-			DEBUGOUT("Fatal Error -> Unable to create Thermo3Click Task\r\n");
-			xReturn = pdFAIL;
-		}
-		else
+		/* Create task. */
+		xTaskCreate( vClickTask, pcName, 300, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+		if( xClickTaskHandle != NULL )
 		{
 			#if( includeHTTP_DEMO != 0 )
 			{
-				//the graphical output is used for debugging purposes
-				xAddRequestHandler( pcName, xThermo3Click_RequestHandler );
+				/* Add HTTP request handler. */
+				xAddRequestHandler( pcName, xClickHTTPRequestHandler );
 			}
 			#endif
 
@@ -148,21 +151,25 @@ BaseType_t xThermo3Click_Init ( const char *pcName, BaseType_t xPort )
 	}
 	return xReturn;
 }
+/*-----------------------------------------------------------*/
 
 BaseType_t xThermo3Click_Deinit ( void )
 {
-	BaseType_t xReturn = pdFALSE;
+BaseType_t xReturn = pdFALSE;
 
-	//If Task exists, kill it
-	if( xClickTaskHandleThermo != NULL )
+	if( xClickTaskHandle != NULL )
 	{
 		#if( includeHTTP_DEMO != 0 )
 		{
-			//Also kill the RequestHandler for the graphical output
-			xRemoveRequestHandler( pcTaskGetName( xClickTaskHandleThermo ) );
+			/* Use the task's name to remove the HTTP Request Handler. */
+			xRemoveRequestHandler( pcTaskGetName( xClickTaskHandle ) );
 		}
 		#endif
-		vTaskDelete( xClickTaskHandleThermo );
+
+		/* Delete the task. */
+		vTaskDelete( xClickTaskHandle );
+		/* Set the task handle to NULL, so the clickboard can be reactivated. */
+		xClickTaskHandle = NULL;
 
 		/* TODO: Reset I2C and GPIOs. */
 		xReturn = pdTRUE;
@@ -170,4 +177,4 @@ BaseType_t xThermo3Click_Deinit ( void )
 
 	return xReturn;
 }
-/*******************************************************************/
+/*-----------------------------------------------------------*/

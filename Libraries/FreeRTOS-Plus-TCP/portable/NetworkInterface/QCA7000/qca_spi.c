@@ -490,21 +490,10 @@ qcaspi_flush_txq(struct qcaspi *qca)
 {
 NetworkBufferDescriptor_t * txBuffer = NULL;
 
-#if GREEN_PHY_SIMPLE_QOS == ON
-	int i;
-	for(i=0; i<QCAGP_NO_OF_QUEUES; i+=1)
-	{
-		while(xQueueReceive(qca->txQueues[i],&txBuffer,0))
-		{
-			vReleaseNetworkBufferAndDescriptor(txBuffer);
-		}
-	}
-#else
 	while(xQueueReceive(qca->txQueue,&txBuffer,0))
 	{
 		vReleaseNetworkBufferAndDescriptor(txBuffer);
 	}
-#endif
 }
 
 /*====================================================================*

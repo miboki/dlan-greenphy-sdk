@@ -5,21 +5,26 @@
  *      Author: Jordan McConnell @ SparkFun Electronics / devolo AG
  */
 
-#include "ClickboardConfig.h"
-#include "board.h"
-
+/* Standard includes. */
 #include <string.h>
 #include <stdlib.h>
 
+/* LPCOpen Includes. */
+#include "board.h"
+
+/* FreeRTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 
-#include "clickboard_config.h"
+/* GreenPHY SDK includes. */
+#include "GreenPhySDKConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
+#include "clickboard_config.h"
 #include "color2click.h"
 
+/*****************************************************************************/
 
 uint8_t _addr = 0x44; //ISL29125 default ID;
 
@@ -227,9 +232,13 @@ void ReadColors(void) {
 
 /*****************************************************************************/
 
+/* Task handle used to identify the clickboard's task and check if the
+clickboard is activated. */
 static TaskHandle_t xClickTaskHandle = NULL;
 
-void vColor2Click_Task(void *pvParameters) {
+/*-----------------------------------------------------------*/
+
+static void vClickTask(void *pvParameters) {
 	while( 1 )
 	{
 		ReadColors();
@@ -242,55 +251,63 @@ void vColor2Click_Task(void *pvParameters) {
 		vTaskDelay( 1000 );
 	}
 }
+/*-----------------------------------------------------------*/
 
 #if( includeHTTP_DEMO != 0 )
-	BaseType_t xColor2Click_RequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
 		BaseType_t xCount = 0;
-		int lColorMax = color.red;
-		lColorMax = MAX( lColorMax, color.green );
-		lColorMax = MAX( lColorMax, color.blue );
 
 		xCount += sprintf( pcBuffer, "{\"r\":%d,\"g\":%d,\"b\":%d}",
-//				( ( color.red * 255 ) / lColorMax ),
-//				( ( color.green * 255 ) / lColorMax ),
-//				( ( color.blue * 255 ) / lColorMax ) );
 				color.red, color.green, color.blue );
 
 		return xCount;
 	}
 #endif
+/*-----------------------------------------------------------*/
 
 BaseType_t xColor2Click_Init ( const char *pcName, BaseType_t xPort )
 {
 BaseType_t xReturn = pdFALSE;
 
+	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
+			/* Set interrupt pin. */
 			Chip_GPIO_SetPinDIRInput( LPC_GPIO, CLICKBOARD1_INT_GPIO_PORT_NUM, CLICKBOARD1_INT_GPIO_BIT_NUM );
 		}
 		else if( xPort == eClickboardPort2 )
 		{
+			/* Set interrupt pin. */
 			Chip_GPIO_SetPinDIRInput( LPC_GPIO, CLICKBOARD2_INT_GPIO_PORT_NUM, CLICKBOARD2_INT_GPIO_BIT_NUM );
 		}
 
+		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
 		Board_I2C_Init( I2C1 );
+		/* Initialze the Color2Click chip. */
 		ISL29125_SOFT_init();
 
-		xTaskCreate( vColor2Click_Task, pcName, 240, NULL,	( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
-		#if( includeHTTP_DEMO != 0 )
+		/* Create task. */
+		xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+		if( xClickTaskHandle != NULL )
 		{
-			xAddRequestHandler( pcName, xColor2Click_RequestHandler );
-		}
-		#endif
+			#if( includeHTTP_DEMO != 0 )
+			{
+				/* Add HTTP request handler. */
+				xAddRequestHandler( pcName, xClickHTTPRequestHandler );
+			}
+			#endif
 
-		xReturn = pdTRUE;
+			xReturn = pdTRUE;
+		}
 	}
 
 	return xReturn;
 }
+/*-----------------------------------------------------------*/
 
 BaseType_t xColor2Click_Deinit ( void )
 {
@@ -300,10 +317,14 @@ BaseType_t xReturn = pdFALSE;
 	{
 		#if( includeHTTP_DEMO != 0 )
 		{
+			/* Use the task's name to remove the HTTP Request Handler. */
 			xRemoveRequestHandler( pcTaskGetName( xClickTaskHandle ) );
 		}
 		#endif
+
+		/* Delete the task. */
 		vTaskDelete( xClickTaskHandle );
+		/* Set the task handle to NULL, so the clickboard can be reactivated. */
 		xClickTaskHandle = NULL;
 
 		/* TODO: Reset I2C and GPIOs. */
@@ -312,3 +333,4 @@ BaseType_t xReturn = pdFALSE;
 
 	return xReturn;
 }
+/*-----------------------------------------------------------*/

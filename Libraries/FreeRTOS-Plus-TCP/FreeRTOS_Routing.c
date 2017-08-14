@@ -371,7 +371,8 @@ NetworkEndPoint_t *pxDefault = NULL;
 	{
 		if( pxDefault != NULL )
 		{
-			pxEndPoint = pxDefault;
+			/* _ML_ Do not set the default EndPoint here, if required FreeRTOS_FindDefaultEndPoint will be called. */
+			// pxEndPoint = pxDefault;
 			FreeRTOS_printf( ( "FreeRTOS_FindEndPointOnNetMask: No match for %lxip using %lxip\n",
 				FreeRTOS_ntohl( ulIPAddress ), FreeRTOS_ntohl( pxDefault->ulIPAddress ) ) );
 		}
