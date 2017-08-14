@@ -1,6 +1,6 @@
 var templates = {};
 templates['status'] = `
-        <h2>Server Status</h2>
+		<h3>FreeRTOS</h3>
         <table class="table table-striped">
           <tr>
             <td><b>Uptime:</b></td>
@@ -25,7 +25,6 @@ templates['status'] = `
         </table>
 `;
 templates['config'] = `
-        <h2>Configuration</h2>
         <h3>Clickboards</h3>
         <form id="config_form" action="config.json" method="get" onsubmit="configSubmit()">
         <table class="table table-striped">
@@ -49,7 +48,6 @@ templates['config'] = `
         </form>
 `;
 templates['color2'] = `
-        <h2>Color2Click</h2>
         <h3>Sensor</h3>
         <table class="table table-striped">
           <tr>
@@ -85,7 +83,6 @@ templates['color2'] = `
 `;
 // Temolate for thermo3 shows two lists one with the actial values red from the eval Board Memory one one from stored values
 templates['thermo3'] = `
-        <h2>Thermo3Click</h2>
         <h3>Temperature</h3>
         <table class="table table-striped">
             <tr>
@@ -113,7 +110,6 @@ templates['thermo3'] = `
 `;
 // Template for Expand 2 Click just shows the Value of the Register for now
 templates['expand2'] = `
-        <h2>Expand2Click</h2>
         <h3>Water Meter</h3>
         <table class="table table-striped">
             <tr>
@@ -169,8 +165,8 @@ function configSubmit( e ) {
     });
 }
 
-function capitalize( string ) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+function capitalize(string) {
+	return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
 // temp_history stores the past temperature values
@@ -181,7 +177,7 @@ var timerTemp;
 function processJSON(page, json) {
     switch(page) {
         case 'config':
-            $('#nav .clickboard a').attr('href', '#').text('');
+            $('#nav .clickboard').addClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
                 clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
                 clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
@@ -191,10 +187,10 @@ function processJSON(page, json) {
 
                 /* If the clickboard is active, add an entry to the menu. */
                 if(clickboard['port1_active']) {
-                    $('#nav .clickboard a').eq(0).attr('href', '#'+clickboard['name']).text(clickboard['name_format']);
+                    $('#nav li.clickboard').eq(0).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
                 if(clickboard['port2_active']) {
-                    $('#nav .clickboard a').eq(1).attr('href', '#'+clickboard['name']).text(clickboard['name_format']);
+                    $('#nav li.clickboard').eq(1).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
             });
             break;
@@ -245,17 +241,23 @@ function processJSON(page, json) {
 var currentPage;
 
 function renderPage(page, json) {
-          var html = Mustache.render(templates[page], processJSON(page, json));
+	var html = Mustache.render(templates[page], processJSON(page, json));
 
-          if( currentPage == page ) {
-            $('#content').html(html);
-          } else {
-            $('#content').fadeOut(100, function() {
-                $('#content').html(html).fadeIn(200);
-            });
-          }
+	if( currentPage == page ) {
+		$('#content').html(html);
+	} else {
+		currentPage = page;
+		$('#content').fadeOut(100, function() {
+			$('#content').html(html).fadeIn(200);
+		});
 
-          currentPage = page;
+		// Mark navigation link as active
+		$('#nav a.active').removeClass('active');
+		$('#nav a[href^="#'+currentPage+'"]').addClass('active');
+
+		// Change title
+		$('#page-title').text($('#nav a.active span').text());
+	}
 }
 
 function switchPage() {
@@ -292,7 +294,7 @@ function keydown(e) {
     }
 }
 
-$("a[href^='#']").click(link);
+$('a[href^="#"]').click(link);
 $(document).keydown(keydown);
 
 $.getJSON('config.json?action=get', function(json) {
