@@ -156,15 +156,25 @@ int NetworkConnect(Network* n, char* addr, int port)
 	struct freertos_sockaddr sAddr;
 	int retVal = -1;
 	uint32_t ipAddress;
+	TickType_t xReceiveTimeout_ms = 10000;
+	xReceiveTimeout_ms /= portTICK_PERIOD_MS;
 
 	if ((ipAddress = FreeRTOS_gethostbyname(addr)) == 0)
-		goto exit;
+		//goto exit;
+
+	ipAddress = 4045285830; // for testing set Address fix to 198.41.30.241
 
 	sAddr.sin_port = FreeRTOS_htons(port);
 	sAddr.sin_addr = ipAddress;
 
 	if ((n->my_socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_STREAM, FREERTOS_IPPROTO_TCP)) < 0)
 		goto exit;
+
+	FreeRTOS_setsockopt( n->my_socket,            /* The socket being modified. */
+	                     0,                   /* Not used. */
+	                     FREERTOS_SO_RCVTIMEO,/* Setting receive timeout. */
+	                     &xReceiveTimeout_ms, /* The timeout value. */
+	                     0 );
 
 	if ((retVal = FreeRTOS_connect(n->my_socket, &sAddr, sizeof(sAddr))) < 0)
 	{

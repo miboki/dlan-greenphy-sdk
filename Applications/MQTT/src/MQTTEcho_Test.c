@@ -40,8 +40,10 @@ static void prvMQTTEchoTask(void *pvParameters)
 	MQTTClientInit(&client, &network, 30000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
 
 	char* address = "iot.eclipse.org";
-	if ((rc = NetworkConnect(&network, address, 1883)) != 0)
+	if ((rc = NetworkConnect(&network, address, 1883)) != 0){
 		printf("Return code from network connect is %d\n", rc);
+		goto exit;
+	}
 
 #if defined(MQTT_TASK)
 	if ((rc = MQTTStartTask(&client)) != pdPASS)
@@ -76,7 +78,12 @@ static void prvMQTTEchoTask(void *pvParameters)
 		if ((rc = MQTTYield(&client, 1000)) != 0)
 			printf("Return code from yield is %d\n", rc);
 #endif
+
+		vTaskDelay(1000);
 	}
+
+exit:
+	printf("could not connect\n");
 	/* do not return */
 }
 

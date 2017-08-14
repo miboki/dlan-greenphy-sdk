@@ -104,8 +104,8 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 	             * Create the tasks here.
 	             */
 
-	        	vLookUpAddress(); // Activate to test DNS
-	        	//vStartMQTTTasks( 420, 3 ); // Activate to test MQTT
+	        	//vLookUpAddress(); // Activate to test DNS
+	        	vStartMQTTTasks( 420, 3 ); // Activate to test MQTT
 
 	        	#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
