@@ -1258,6 +1258,11 @@ ProtocolHeaders_t *pxProtocolHeaders;
 			{
 				pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxIPHeader->ulSourceIPAddress, 9 ); /*_RB_ Added. */
 			}
+			/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
+			if( pxEndPoint == NULL )
+			{
+				pxEndPoint = FreeRTOS_FindDefaultEndPoint();
+			}
 			if( pxEndPoint == NULL )
 			{
 				pxIPHeader->ulDestinationIPAddress = pxEndPoint->ulIPAddress; /*_RB_ Access function required to get address? */

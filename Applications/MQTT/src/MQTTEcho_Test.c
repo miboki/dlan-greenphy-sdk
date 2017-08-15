@@ -15,7 +15,10 @@
 
 #include "MQTTClient.h"
 #include "MQTTEcho_Test.h"
+#include "MQTTFreeRTOS.h"
 
+
+static TaskHandle_t xMQTTTaskHandle = NULL;
 
 void messageArrived(MessageData* data)
 {
@@ -23,14 +26,15 @@ void messageArrived(MessageData* data)
 		data->message->payloadlen, data->message->payload);
 }
 
+
 static void prvMQTTEchoTask(void *pvParameters)
 {
-	vTaskDelay(10000); // Wait 10s to dont interrupt the IP Stack StartUp
+	vTaskDelay(10000); // Wait 10s to don't interrupt the IP Stack StartUp
 
 	/* connect to m2m.eclipse.org, subscribe to a topic, send and receive messages regularly every 1 sec */
 	MQTTClient client;
 	Network network;
-	unsigned char sendbuf[80], readbuf[80];
+	unsigned char sendbuf[100], readbuf[20];
 	int rc = 0,
 		count = 0;
 	MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
@@ -39,7 +43,7 @@ static void prvMQTTEchoTask(void *pvParameters)
 	NetworkInit(&network);
 	MQTTClientInit(&client, &network, 30000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
 
-	char* address = "iot.eclipse.org";
+	char* address = MQTT_SERVER;
 	if ((rc = NetworkConnect(&network, address, 1883)) != 0){
 		printf("Return code from network connect is %d\n", rc);
 		goto exit;
@@ -51,15 +55,20 @@ static void prvMQTTEchoTask(void *pvParameters)
 #endif
 
 	connectData.MQTTVersion = 3;
-	connectData.clientID.cstring = "FreeRTOS_sample";
+	connectData.clientID.cstring = MQTT_CLIENTID;
+	connectData.username.cstring = MQTT_USER;
+	connectData.password.cstring = MQTT_PASSWORD;
 
 	if ((rc = MQTTConnect(&client, &connectData)) != 0)
+	{
 		printf("Return code from MQTT connect is %d\n", rc);
+		goto exit;
+	}
 	else
 		printf("MQTT Connected\n");
 
-	if ((rc = MQTTSubscribe(&client, "FreeRTOS/sample/#", 2, messageArrived)) != 0)
-		printf("Return code from MQTT subscribe is %d\n", rc);
+	/*if ((rc = MQTTSubscribe(&client, "FreeRTOS/sample/#", 2, messageArrived)) != 0)
+		printf("Return code from MQTT subscribe is %d\n", rc);*/
 
 	while (++count)
 	{
@@ -69,10 +78,10 @@ static void prvMQTTEchoTask(void *pvParameters)
 		message.qos = 1;
 		message.retained = 0;
 		message.payload = payload;
-		sprintf(payload, "message number %d", count);
+		sprintf(payload, "\"TestValue\":%d", count);
 		message.payloadlen = strlen(payload);
 
-		if ((rc = MQTTPublish(&client, "FreeRTOS/sample/a", &message)) != 0)
+		if ((rc = MQTTPublish(&client, MQTT_TOPIC, &message)) != 0)
 			printf("Return code from MQTT publish is %d\n", rc);
 #if !defined(MQTT_TASK)
 		if ((rc = MQTTYield(&client, 1000)) != 0)
@@ -83,7 +92,24 @@ static void prvMQTTEchoTask(void *pvParameters)
 	}
 
 exit:
+	FreeRTOS_shutdown( network.my_socket, FREERTOS_SHUT_RDWR );
+
+	rc = 0;
+	while( FreeRTOS_recv( network.my_socket, readbuf, 0, 0 ) >= 0 || ( rc == 20 ) )
+    {
+        vTaskDelay( 250 );
+        rc++;
+    }
+
+    /* The socket has shut down and is safe to close. */
+    FreeRTOS_closesocket( network.my_socket );
+
+
 	printf("could not connect\n");
+	if( xMQTTTaskHandle != NULL )
+		vTaskDelete( xMQTTTaskHandle );
+	if( client.thread.task != NULL )
+		vTaskDelete( client.thread.task );
 	/* do not return */
 }
 
@@ -97,7 +123,7 @@ void vStartMQTTTasks(uint16_t usTaskStackSize, UBaseType_t uxTaskPriority)
 			usTaskStackSize,	/* The stack size is defined in FreeRTOSIPConfig.h. */
 			(void *)x,		/* The task parameter, not used in this case. */
 			uxTaskPriority,		/* The priority assigned to the task is defined in FreeRTOSConfig.h. */
-			NULL);				/* The task handle is not used. */
+			&xMQTTTaskHandle);				/* The task handle is not used. */
 }
 /*-----------------------------------------------------------*/
 
@@ -105,26 +131,48 @@ void vTestTask()
 {
 	vTaskDelay(10000);
 
-	uint32_t ulIPAddress;
 	int8_t cBuffer[ 16 ];
+	Socket_t xTCPClientSocket;
+	struct freertos_sockaddr sAddr;
+	int retVal;
 
 	while(1)
 	{
-		/* Lookup the IP address of the FreeRTOS.org website. */
-		ulIPAddress = FreeRTOS_gethostbyname( "www.freertos.org" );
+		//Create Socket for TCP Client
+		xTCPClientSocket = FreeRTOS_socket( FREERTOS_AF_INET,
+		    									FREERTOS_SOCK_STREAM,
+												FREERTOS_IPPROTO_TCP);
 
-		if( ulIPAddress != 0 )
+		if ( xTCPClientSocket != FREERTOS_INVALID_SOCKET )
 		{
-			/* Convert the IP address to a string. */
-		    FreeRTOS_inet_ntoa( ulIPAddress, ( char * ) cBuffer );
+			printf("TCP Socket created.\n");
+			retVal = FreeRTOS_bind( xTCPClientSocket, NULL, sizeof( struct freertos_sockaddr )  );
+			if ( retVal == 0 )
+			{
+				sAddr.sin_port = FreeRTOS_htons( 80 );
+				sAddr.sin_addr = 201398700;
 
-		    /* Print out the IP address. */
-		    printf( "www.FreeRTOS.org is at IP address %s\r\n", cBuffer );
+				/* Convert the IP address to a string. */
+				FreeRTOS_inet_ntoa( sAddr.sin_addr, ( char * ) cBuffer );
+
+				/* Print out the IP address. */
+				printf( "DVT Server is at IP address %s\r\n", cBuffer );
+
+				retVal = FreeRTOS_connect( xTCPClientSocket, &sAddr, sizeof( sAddr ) );
+				if( retVal == 0 )
+				{
+					printf("Finished Test Successfully.\n");
+		    	}
+				else
+					printf("Error, unable to connect to DVT Server\n");
+		    }
+			else
+				printf("Error, unable to bind TCP Socket\n");
 		}
 		else
-		{
-			printf( "DNS lookup failed. \n\r" );
-		}
+			printf("Error creating TCP Socket\n");
+
+		FreeRTOS_closesocket( xTCPClientSocket );
 		vTaskDelay(10000);
 	}
 }
