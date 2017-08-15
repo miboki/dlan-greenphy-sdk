@@ -44,9 +44,9 @@
 
 /* IP stack configuration. */
 #define netconfigUSE_IP                1
-#define netconfigUSE_DHCP              0
-#define netconfigUSE_BRIDGE            0
-#define netconfigIP_INTERFACE          netconfigETH_INTERFACE
+#define netconfigUSE_DHCP              1
+#define netconfigUSE_BRIDGE            1
+#define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE
 
 /* Hostname, used for DHCP */
 #define netconfigHOSTNAME              "GreenPHY evalboard II"
@@ -78,9 +78,9 @@
 #define netconfigGATEWAY_ADDR3         1
 
 /* default DNS SERVER ip address */
-#define netconfigDNS_SERVER_ADDR0      192
-#define netconfigDNS_SERVER_ADDR1      168
-#define netconfigDNS_SERVER_ADDR2      1
-#define netconfigDNS_SERVER_ADDR3      1
+#define netconfigDNS_SERVER_ADDR0      8
+#define netconfigDNS_SERVER_ADDR1      8
+#define netconfigDNS_SERVER_ADDR2      8
+#define netconfigDNS_SERVER_ADDR3      8
 
 #endif /* GREENPHYSDKNETCONFIG_H_ */

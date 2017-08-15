@@ -6,12 +6,29 @@
 #include <FreeRTOS.h>
 #include "task.h"
 
+/* FreeRTOS +TCP includes. */
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
+
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
 #include "clickboard_config.h"
 #include "network.h"
 
 /*-----------------------------------------------------------*/
+static void prvTestTask( void *pvParameters )
+{
+char cBuffer[16];
+uint32_t ip;
+
+	vTaskDelay( 10000 );
+	ip = FreeRTOS_gethostbyname("google.de");
+
+	FreeRTOS_inet_ntoa( ip, cBuffer );
+	DEBUGOUT( "google.de IP Address: %s\r\n", cBuffer );
+
+	vTaskDelete( NULL );
+}
 
 int main(void) {
 	SystemCoreClockUpdate();
@@ -40,6 +57,8 @@ int main(void) {
 	vNetworkInit();
 
 	xClickboardsInit();
+
+	xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
 
 	vTaskStartScheduler();
 
