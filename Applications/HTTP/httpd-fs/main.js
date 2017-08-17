@@ -90,11 +90,11 @@ templates['thermo3'] = `
                 <td>{{cur}}&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature vor&nbsp;{{highTime}}&nbsp;sekunden</td>
+                <td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
                 <td>{{high}}&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature vor&nbsp;{{lowTime}}&nbsp;sekunden</td>
+                <td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
@@ -102,7 +102,7 @@ templates['thermo3'] = `
         <table class="table table-striped">
             {{#history}}
             <tr>
-            	<td>vor&nbsp;{{date}}&nbsp;secunden</td>
+            	<td>{{date}}</td>
             	<td>{{val}}&deg;C</td>
             </tr>
             {{/history}}
@@ -112,13 +112,46 @@ templates['thermo3'] = `
 // Template for Expand 2 Click just shows the Value of the Register for now
 templates['expand2'] = `
         <h3>Water Meter</h3>
-        <table class="table table-striped"> 
-            <tr>
-                <td>Measured quantity of water since {{upTime}}</td>
-                <td>{{quantity}}&nbsp;Liter</td>
-            </tr>
-        </table>
-        <h3>Input Register</h3>
+		<p>
+		<form id="expand_form_wmeter" action="expand2.json" method="get">
+			<table class="table table-striped"> 
+				<tr>
+					<td>Water Meter 1</td>
+					<td>{{quantity1}}&nbsp;Liter</td>
+					<td>
+						<select id="wmeter1Port">
+						{{#options1}}
+							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
+						{{/options1}}
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Water Meter 2</td>
+					<td>{{quantity2}}&nbsp;Liter</td>
+					<td>
+						<select id="wmeter2Port" value="{{wmeterPort2}}">
+						{{#options2}}
+							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
+						{{/options2}}
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Multiplicator</td>
+					<td></td>
+					<td><input type="text" id="waterMultInput" maxlength="4" value="{{waterMultiplicator}}"></td>
+				</tr>
+				<tr>
+					<td><input type="button" value="Set Ports" onclick="expand2Wmeter()"></td>
+					<td></td>
+					<td><input type="button" value="Aktualisieren" onclick="expand2akt()"></td>
+			</table>
+		</form>
+		</p>
+		<br />
+		<br />
+		<h3>Input Register</h3>
 			<table class="table table-striped">
 				<tr>
 					<td>Value</td>
@@ -133,21 +166,25 @@ templates['expand2'] = `
 					</td>
 				</tr>
 			</table>
-        <h3>Output Register</h3>
-		<table class="table table-striped">
-			<tr>
-				<td>Value</td>
-				<td>{{output}}</td>
-			</tr>
-			<tr>
-				<td>Bits</td>
-				<td>
-					{{#outputs}}
-					<input type="checkbox" name="{{name}}" {{#val}}checked{{/val}}>
-					{{/outputs}}
-				</td>
-			</tr>
-		</table>
+		<h3>Output Register</h3>
+		<form id="expand_form_out" action="expand2.json" method="get">
+			<table class="table table-striped">
+				<tr>
+					<td>Value</td>
+					<td><input type="number" id="outVal" min="0" max="255" value={{output}}></td>
+					<td><input type="button" value="Set Output Ports" onclick="expand2Out()">
+				</tr>
+				<tr>
+					<td>Bits</td>
+					<td>
+						{{#outputs}}
+						<input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
+						{{/outputs}}
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</form>
 `;
 
 function toggleLED() {
@@ -191,9 +228,48 @@ function configSubmit( e ) {
     });
 }
 
+var wmeterport1 = 0;
+var wmeterport2 = 0;
+var waterMult = 0.25;
+
+function expand2Wmeter( e ) {
+	wmeterport1 = $( '#wmeter1Port' ).val();
+	wmeterport2 = $( '#wmeter2Port' ).val();
+	
+	if( parseFloat( $( '#waterMultInput' ).val() ) != 0 )
+	waterMult = parseFloat( $( '#waterMultInput' ).val() );
+	
+if(( wmeterport1 != "0" ) && ( wmeterport1 == wmeterport2 ) ) {
+		alert("Both watermeters could ot share one Port! Please select different Ports!");
+	}else{
+		var expandObj = new Object();
+		expandObj.selToggelBits1 = parseInt( wmeterport1 );
+		expandObj.selToggelBits2 = parseInt( wmeterport2 );
+		$.getJSON( $('#expand_form_wmeter').attr('action'), expandObj, function(json) {
+			renderPage('expand2', json);
+		});
+	}
+}
+
+
+function expand2Out( e ) {
+	var expandObj = new Object();
+	expandObj.setOut = $( '#outVal' ).val();
+	$.getJSON( $('#expand_form_out').attr('action'), expandObj, function(json) {
+		renderPage('expand2', json);
+	});
+}
+
+function expand2akt( e ) {
+	switchPage();
+}
+
+
+
 function capitalize(string) {
 	return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
 
 // temp_history stores the past temperature values
 var temp_history = [];
@@ -240,6 +316,7 @@ function processJSON(page, json) {
             json['b_hex'] = json['b_dec'].toString(16);
             break;
         case 'thermo3':
+			var date = new Date();
             // Reload page every 10 seconds
             timerTemp = setInterval( function() { switchPage(); } , 10000 );
 			
@@ -247,29 +324,30 @@ function processJSON(page, json) {
             json['cur'] = json['temp_cur'] / 100;
 			
 			// Check if new high Temp and forward the actual high Value and Time
-			if ( highTemp < ( json['temp_high'] / 100 ) ){
+			if ( highTemp <= ( json['temp_high'] / 100 ) ){
 				highTemp_Time = lastUptime;
 				highTemp = json['temp_high'] / 100;
 			}
             json['high'] = highTemp;
 			// time is in seconds since startup
-			json['highTime'] = highTemp_Time;
+			json['highTime'] = ( lastUptime - highTemp_Time );
 			
 			// Check if new low Temp and forward the actual low Value and Time
-			if ( lowTemp > ( json['temp_low'] / 100 ) ){
+			if ( lowTemp >= ( json['temp_low'] / 100 ) ){
 				lowTemp_Time = lastUptime;
 				lowTemp = json['temp_low'] / 100;
 			}
             json['low'] = lowTemp;
-			json['lowTime'] = lowTemp_Time;
+			json['lowTime'] = ( lastUptime - lowTemp_Time );
 			
             // Store temp value in the global history
-            temp_history.push({ 'date' : lastUptime, 'val' : json['cur'] });
+            temp_history.push({ 'date' : date.toLocaleString('de-DE'), 'val' : json['cur'] });
 			json['history'] = temp_history;
             break;
         case 'expand2':
             // Reload Page every second
-            timerTemp = setInterval( function() { switchPage(); } , 1000 );
+            // timerTemp = setInterval( function() { switchPage(); } , 60000 );
+			var namen = [ 'PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7' ];
             json['inputs'] = [];
             json['outputs'] = [];
             for( i = 0; i < 8; i++ ) {
@@ -277,9 +355,20 @@ function processJSON(page, json) {
                 json['outputs'].unshift({'name':'output'+i, 'val': (json['output'] & ( 1 << i )) });
             }
             // Convert toggle count to water quantity
-            json['quantity'] = json['count'] * 0.25;
-        default:
-            break;
+            json['quantity1'] = json['count1'] * waterMult;
+			json['quantity2'] = json['count2'] * waterMult;
+			json['waterMultiplicator'] = waterMult;
+			
+			json['options1'] = [];
+			json['options2'] = [];
+			
+			json['options1'].unshift({ 'val': 0, 'sel': ( wmeterport1 == 0 ? 1 : 0 ), 'name': 'Off' });
+			json['options2'].unshift({ 'val': 0, 'sel': ( wmeterport2 == 0 ? 1 : 0 ), 'name': 'Off' });
+			
+			for( i = 0; i < 8; i++) {
+				json['options1'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport1 & ( 1 << i )), 'name': namen[i] });
+				json['options2'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport2 & ( 1 << i )), 'name': namen[i] });
+			}
     }
     return json;
 }
@@ -351,6 +440,9 @@ function keydown(e) {
             return false;
         }
     }
+	if (e.keyCode == 13){
+		e.preventDefault();
+	}
 }
 
 $('a[href^="#"]').click(link);

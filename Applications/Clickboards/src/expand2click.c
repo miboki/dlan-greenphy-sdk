@@ -25,15 +25,7 @@
 #include "expand2click.h"
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_EXPAND2 10000
-
-#define MASK_LSB1    0x01
-#define MASK_LSB2    0x02
-#define MASK_TOGGLEL 0x03
-
-#define MASK_MSB1    0x80
-#define MASK_MSB2    0x40
-#define MASK_TOGGLEM 0xc0
+#define TASKWAIT_EXPAND2 1000
 
 /*****************************************************************************/
 
@@ -91,8 +83,11 @@ If a bit is set to 1 the pin is set high. */
 char iBits = 0;
 
 /* Count how often the input bit was toggled. */
-int toggleCount = 0;
+int toggleCount[2] = { 0 , 0 };
 
+/* COnfigurate on witch Port the water meter is connected */
+char toggleBitSelect1 = 0;
+char toggleBitSelect2 = 0;
 /*-----------------------------------------------------------*/
 
 static char get_expand2click(void){
@@ -108,25 +103,28 @@ void set_expand2click(char pins){
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
-char lastBits;
+char lastBits = 0;
 
 	while (1) {
-		/* Check if iBits changed since last task call. */
+		/* Get iBits from board */
 		iBits = get_expand2click(); // read input Bits
-		if ( lastBits != ( iBits & MASK_TOGGLEM ) )
-		{
-			lastBits = ( iBits & MASK_TOGGLEM );
-			toggleCount++;
 
-			// TODO: SEND MQTT message
-		}
+		// is the bit fist water meter bit toggled?
+		if(((( iBits ^ lastBits ) & toggleBitSelect1 ) == toggleBitSelect1 ) && ( toggleBitSelect1 != 0 ))
+			toggleCount[0] += 1;
+
+		// is the bit second water meter bit toggled?
+		if(((( iBits ^ lastBits ) & toggleBitSelect2) == toggleBitSelect2 ) && ( toggleBitSelect2 != 0 ) )
+			toggleCount[1] += 1;
+
+		lastBits = iBits;
+
+		// TODO: SEND MQTT message
 
 		/* Toggle obits each time the Task is called - just for demo. */
-		//oBits ^= MASK_TOGGLEM;
-		oBits ^= 0xff;
 		set_expand2click(oBits);
 
-		DEBUGOUT("in:%x, out:%x\n", iBits, oBits);
+		DEBUGOUT("in:%x, out:%x, counter1:%d, counter2:%d\n", iBits, oBits, toggleCount[0], toggleCount[1]);
 
 		vTaskDelay( xDelay );
 	}
@@ -141,14 +139,26 @@ char lastBits;
 		char input[5];
 		QueryParam_t *pxParam;
 
-		pxParam = pxFindKeyInQueryParams( "input", pxParams, xParamCount );
-			if( pxParam != NULL )
-			{
-				strncpy( input , pxParam->pcValue , 5 );
-				iBits = strtol( input, &end, 10);
-			}
+		// Search input object for 'input' Parameter to get the new Value of oBits
+		pxParam = pxFindKeyInQueryParams( "setOut", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			strncpy( input , pxParam->pcValue , 5 );
+			oBits = strtol( input, &end, 10);
+		}
 
-		xCount += sprintf( pcBuffer, "{\"input\":%d,\"output\":%d,\"count\":%d}", iBits, oBits, toggleCount );
+		pxParam = pxFindKeyInQueryParams( "selToggelBits1", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			strncpy( input , pxParam->pcValue , 5 );
+			toggleBitSelect1 = strtol( input, &end, 10);
+		}
+
+		pxParam = pxFindKeyInQueryParams( "selToggelBits2", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			strncpy( input , pxParam->pcValue , 5 );
+			toggleBitSelect2 = strtol( input, &end, 10);
+		}
+
+		xCount += sprintf( pcBuffer, "{\"input\":%d,\"output\":%d,\"count1\":%d,\"count2\":%d}", iBits, oBits, toggleCount[0], toggleCount[1] );
 		return xCount;
 	}
 #endif
@@ -191,7 +201,7 @@ BaseType_t xReturn = pdFALSE;
 		/* Initialize Expand2Click chip. */
 		Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
 		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);  // Set Expander's PORTA to be input
-	  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
+		//Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
 
 		/* Create task. */
 		xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
