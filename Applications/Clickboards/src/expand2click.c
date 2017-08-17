@@ -169,9 +169,9 @@ BaseType_t xReturn = pdFALSE;
 			/* Set reset pin. */
 			Chip_GPIO_SetPinDIROutput(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
 			/* Start  reset procedure. */
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
-			Chip_GPIO_SetPinOutLow( LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutLow( LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
 		}
 		else if( xPort == eClickboardPort2 )
 		{
@@ -190,7 +190,7 @@ BaseType_t xReturn = pdFALSE;
 
 		/* Initialize Expand2Click chip. */
 		Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
-		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xff);  // Set Expander's PORTA to be input
+		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);  // Set Expander's PORTA to be input
 	  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
 
 		/* Create task. */
