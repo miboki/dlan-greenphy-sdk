@@ -90,11 +90,11 @@ templates['thermo3'] = `
                 <td>{{cur}}&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature vor%20{{highTime}}%20secunden</td>
+                <td>Highest temperature vor&nbsp;{{highTime}}&nbsp;sekunden</td>
                 <td>{{high}}&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature vor%20{{lowTime}}%20secunden</td>
+                <td>Lowest temperature vor&nbsp;{{lowTime}}&nbsp;sekunden</td>
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
@@ -102,7 +102,7 @@ templates['thermo3'] = `
         <table class="table table-striped">
             {{#history}}
             <tr>
-            	<td>vor%20{{date}}%20secunden</td>
+            	<td>vor&nbsp;{{date}}&nbsp;secunden</td>
             	<td>{{val}}&deg;C</td>
             </tr>
             {{/history}}
@@ -115,7 +115,7 @@ templates['expand2'] = `
         <table class="table table-striped"> 
             <tr>
                 <td>Measured quantity of water since {{upTime}}</td>
-                <td>{{quantity}} Liter</td>
+                <td>{{quantity}}&nbsp;Liter</td>
             </tr>
         </table>
         <h3>Input Register</h3>
@@ -160,7 +160,7 @@ function toggleLED() {
 var lastUptime = 0;
 var module_StartupTime;
 //var assumedUptime;
-var timerAlive = setInterval( function() { askAlive(); } , 1000 );
+var timerAlive = setInterval( function() { askAlive(); } , 5000 );
 
 
 /*******************************************
@@ -171,9 +171,12 @@ function askAlive() {
 	$.getJSON( 'status.json?action=get', function(json) {
 		if ( lastUptime == 0 ) {
 			module_StartupTime = new Date();
-			module_StartupTime.setTime( module_StartupTime.getTime() - ( json['uptime'].parseInt() * 1000 ) );
+			module_StartupTime.setTime( module_StartupTime.getTime() - ( parseInt( json['uptime'] ) * 1000 ) );
 		}
-        lastUptime = json['uptime'].parseInt();
+        lastUptime = parseInt( json['uptime'] );
+		if ( currentPage == 'status' ) {
+			renderPage( 'status', json );
+		}
     });
 }
 
@@ -249,7 +252,8 @@ function processJSON(page, json) {
 				highTemp = json['temp_high'] / 100;
 			}
             json['high'] = highTemp;
-			json['highTime'] = highTemp_Time; // in seconds
+			// time is in seconds since startup
+			json['highTime'] = highTemp_Time;
 			
 			// Check if new low Temp and forward the actual low Value and Time
 			if ( lowTemp > ( json['temp_low'] / 100 ) ){
