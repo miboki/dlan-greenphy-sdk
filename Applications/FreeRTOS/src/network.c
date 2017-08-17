@@ -15,6 +15,7 @@
 #include "GreenPhySDKNetConfig.h"
 #include "network.h"
 
+
 /* Verify network configuration is sane. */
 #if( ( netconfigUSE_BRIDGE == 0 ) && ( netconfigUSE_IP != 0 ) && ( netconfigIP_INTERFACE == netconfigBRIDGE_INTERFACE ) )
 	#error "netconfigBRIDGE_INTERFACE used for IP stack, but netconfigUSE_BRIDGE not defined"
@@ -100,7 +101,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				 * Create the tasks here.
 				 */
 
-				vStartMQTTTasks(420, 3);
+				//vStartMQTTTasks(420, 3);
 				//vLookUpAddress();
 
 				#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
@@ -142,6 +143,9 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 const char *pcApplicationHostnameHook( void )
 {
+	/*char nameBuffer[4], retName[11] = netconfigHOSTNAME;
+	snprintf( nameBuffer, 5 , "%x%x" , ucMACAddress[4] , ucMACAddress[5] );
+	strcat( retName , (nameBuffer + 1) );*/
 	return netconfigHOSTNAME;
 }
 /*-----------------------------------------------------------*/

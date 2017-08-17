@@ -90,11 +90,11 @@ templates['thermo3'] = `
                 <td>{{cur}}&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature</td>
+                <td>Highest temperature vor%20{{highTime}}%20secunden</td>
                 <td>{{high}}&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature</td>
+                <td>Lowest temperature vor%20{{lowTime}}%20secunden</td>
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
@@ -102,57 +102,80 @@ templates['thermo3'] = `
         <table class="table table-striped">
             {{#history}}
             <tr>
-            	<td>{{date}}</td>
+            	<td>vor%20{{date}}%20secunden</td>
             	<td>{{val}}&deg;C</td>
             </tr>
             {{/history}}
         </table>
 `;
+
 // Template for Expand 2 Click just shows the Value of the Register for now
 templates['expand2'] = `
         <h3>Water Meter</h3>
-        <table class="table table-striped">
+        <table class="table table-striped"> 
             <tr>
-                <td>Measured quantity of water since last reset</td>
+                <td>Measured quantity of water since {{upTime}}</td>
                 <td>{{quantity}} Liter</td>
             </tr>
         </table>
         <h3>Input Register</h3>
-        <table class="table table-striped">
-            <tr>
-                <td>Value</td>
-                <td>{{input}}</td>
-            </tr>
-            <tr>
-                <td>Bits</td>
-                <td>
-                    {{#inputs}}
-                    <input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
-                    {{/inputs}}
-                </td>
-            </tr>
-        </table>
+			<table class="table table-striped">
+				<tr>
+					<td>Value</td>
+					<td>{{input}}</td>
+				</tr>
+				<tr>
+					<td>Bits</td>
+					<td>
+						{{#inputs}}
+						<input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
+						{{/inputs}}
+					</td>
+				</tr>
+			</table>
         <h3>Output Register</h3>
-        <table class="table table-striped">
-            <tr>
-                <td>Value</td>
-                <td>{{output}}</td>
-            </tr>
-            <tr>
-                <td>Bits</td>
-                <td>
-                    {{#outputs}}
-                    <input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
-                    {{/outputs}}
-                </td>
-            </tr>
-        </table>
+		<table class="table table-striped">
+			<tr>
+				<td>Value</td>
+				<td>{{output}}</td>
+			</tr>
+			<tr>
+				<td>Bits</td>
+				<td>
+					{{#outputs}}
+					<input type="checkbox" name="{{name}}" {{#val}}checked{{/val}}>
+					{{/outputs}}
+				</td>
+			</tr>
+		</table>
 `;
 
 function toggleLED() {
       xhr = $.getJSON('status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
 }
 
+/*******************************************
+** Global used Variables
+*******************************************/
+var lastUptime = 0;
+var module_StartupTime;
+//var assumedUptime;
+var timerAlive = setInterval( function() { askAlive(); } , 1000 );
+
+
+/*******************************************
+** Ask if GreenPHY Module is still alive
+** Easiest version: get status.json, so no new EventHandler is needed
+*******************************************/
+function askAlive() {
+	$.getJSON( 'status.json?action=get', function(json) {
+		if ( lastUptime == 0 ) {
+			module_StartupTime = new Date();
+			module_StartupTime.setTime( module_StartupTime.getTime() - ( json['uptime'].parseInt() * 1000 ) );
+		}
+        lastUptime = json['uptime'].parseInt();
+    });
+}
 
 function configSubmit( e ) {
     /* A clickboard can be active on only one port at a time. */
@@ -173,6 +196,10 @@ function capitalize(string) {
 var temp_history = [];
 // timerTemp is needed to stop stop the switch Page function from repeating every 60 seconds
 var timerTemp;
+var highTemp = -100;
+var highTemp_Time = 0;
+var lowTemp = 100;
+var lowTemp_Time = 0;
 
 function processJSON(page, json) {
     switch(page) {
@@ -210,15 +237,31 @@ function processJSON(page, json) {
             json['b_hex'] = json['b_dec'].toString(16);
             break;
         case 'thermo3':
-            var date = new Date();
             // Reload page every 10 seconds
             timerTemp = setInterval( function() { switchPage(); } , 10000 );
+			
+			// Set current Time, division by 100 is because all Tempvals are stored as Integer intern
             json['cur'] = json['temp_cur'] / 100;
-            json['high'] = json['temp_high'] / 100;
-            json['low'] = json['temp_low'] / 100;
+			
+			// Check if new high Temp and forward the actual high Value and Time
+			if ( highTemp < ( json['temp_high'] / 100 ) ){
+				highTemp_Time = lastUptime;
+				highTemp = json['temp_high'] / 100;
+			}
+            json['high'] = highTemp;
+			json['highTime'] = highTemp_Time; // in seconds
+			
+			// Check if new low Temp and forward the actual low Value and Time
+			if ( lowTemp > ( json['temp_low'] / 100 ) ){
+				lowTemp_Time = lastUptime;
+				lowTemp = json['temp_low'] / 100;
+			}
+            json['low'] = lowTemp;
+			json['lowTime'] = lowTemp_Time;
+			
             // Store temp value in the global history
-            temp_history.push({ 'date' : date.toLocaleString('de-DE'), 'val' : json['cur'] });
-            json['history'] = temp_history;
+            temp_history.push({ 'date' : lastUptime, 'val' : json['cur'] });
+			json['history'] = temp_history;
             break;
         case 'expand2':
             // Reload Page every second
@@ -230,7 +273,7 @@ function processJSON(page, json) {
                 json['outputs'].unshift({'name':'output'+i, 'val': (json['output'] & ( 1 << i )) });
             }
             // Convert toggle count to water quantity
-            json['quantity'] = json['count'] * 0.2;
+            json['quantity'] = json['count'] * 0.25;
         default:
             break;
     }
@@ -256,7 +299,19 @@ function renderPage(page, json) {
 		$('#nav a[href^="#'+currentPage+'"]').addClass('active');
 
 		// Change title
-		$('#page-title').text($('#nav a.active span').text());
+		$('#page-title').find('span').text($('#nav a.active span').text());
+		switch ( page ) {
+			case 'status':
+				$('#hostname').text(json['hostname']).text();
+				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-info');
+				break;
+			case 'config':
+				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-cogs');
+				break;
+			default:
+				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-tree');
+				break;
+		}
 	}
 }
 

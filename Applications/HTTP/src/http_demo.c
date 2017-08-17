@@ -31,9 +31,9 @@ QueryParam_t *pxParam;
 	}
 
 	xCount = snprintf( pcBuffer, uxBufferLength,
-			"{\"uptime\":\"%ds\",\"free_heap\":\"%d bytes\",\"led\":%s}",
+			"{\"uptime\":\"%ds\",\"free_heap\":\"%d bytes\",\"led\":%s,\"hostname\":\"%s\"}",
 			( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ), xPortGetFreeHeapSize(),
-			(Board_LED_Test( LEDS_LED0 ) ? "true" : "false" ) );
+			(Board_LED_Test( LEDS_LED0 ) ? "true" : "false" ), pcApplicationHostnameHook() );
 
 	return xCount;
 }

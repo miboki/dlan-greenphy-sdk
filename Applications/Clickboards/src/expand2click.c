@@ -25,10 +25,15 @@
 #include "expand2click.h"
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_EXPAND2 100
+#define TASKWAIT_EXPAND2 10000
 
 #define MASK_LSB1    0x01
 #define MASK_LSB2    0x02
+#define MASK_TOGGLEL 0x03
+
+#define MASK_MSB1    0x80
+#define MASK_MSB2    0x40
+#define MASK_TOGGLEM 0xc0
 
 /*****************************************************************************/
 
@@ -80,7 +85,7 @@ static TaskHandle_t xClickTaskHandle = NULL;
 
 /* Output bits managed by the Expand2Click task.
 If a bit is set to 1 the pin is set high. */
-char oBits = 1;
+char oBits = 0;
 /* Input bits managed by the Expand2Click task.
 If a bit is set to 1 the pin is set high. */
 char iBits = 0;
@@ -108,17 +113,20 @@ char lastBits;
 	while (1) {
 		/* Check if iBits changed since last task call. */
 		iBits = get_expand2click(); // read input Bits
-		if ( lastBits != ( iBits & MASK_LSB1 ) )
+		if ( lastBits != ( iBits & MASK_TOGGLEM ) )
 		{
-			lastBits = ( iBits & MASK_LSB1 );
+			lastBits = ( iBits & MASK_TOGGLEM );
 			toggleCount++;
 
 			// TODO: SEND MQTT message
 		}
 
 		/* Toggle obits each time the Task is called - just for demo. */
-		oBits ^= MASK_LSB1;
+		//oBits ^= MASK_TOGGLEM;
+		oBits ^= 0xff;
 		set_expand2click(oBits);
+
+		DEBUGOUT("in:%x, out:%x\n", iBits, oBits);
 
 		vTaskDelay( xDelay );
 	}
@@ -128,7 +136,17 @@ char lastBits;
 #if( includeHTTP_DEMO != 0 )
 	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
-	BaseType_t xCount = 0;
+		BaseType_t xCount = 0;
+		char *end;
+		char input[5];
+		QueryParam_t *pxParam;
+
+		pxParam = pxFindKeyInQueryParams( "input", pxParams, xParamCount );
+			if( pxParam != NULL )
+			{
+				strncpy( input , pxParam->pcValue , 5 );
+				iBits = strtol( input, &end, 10);
+			}
 
 		xCount += sprintf( pcBuffer, "{\"input\":%d,\"output\":%d,\"count\":%d}", iBits, oBits, toggleCount );
 		return xCount;
@@ -172,7 +190,7 @@ BaseType_t xReturn = pdFALSE;
 
 		/* Initialize Expand2Click chip. */
 		Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
-		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);  // Set Expander's PORTA to be input
+		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xff);  // Set Expander's PORTA to be input
 	  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
 
 		/* Create task. */
