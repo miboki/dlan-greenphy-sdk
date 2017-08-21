@@ -84,29 +84,32 @@ templates['color2'] = `
 // Temolate for thermo3 shows two lists one with the actial values red from the eval Board Memory one one from stored values
 templates['thermo3'] = `
         <h3>Temperature</h3>
-        <table class="table table-striped">
-            <tr>
-                <td>Current temperature</td>
-                <td>{{cur}}&deg;C</td>
-            </tr>
-            <tr>
-                <td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
-                <td>{{high}}&deg;C</td>
-            </tr>
-            <tr>
-                <td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
-                <td>{{low}}&deg;C</td>
-            </tr>
-        </table>
-        <h3>History</h3>
-        <table class="table table-striped">
-            {{#history}}
-            <tr>
-            	<td>{{date}}</td>
-            	<td>{{val}}&deg;C</td>
-            </tr>
-            {{/history}}
-        </table>
+		<form id="thermo_reset" action="thermo3.json" method="get">
+			<table class="table table-striped">
+				<tr>
+					<td>Current temperature</td>
+					<td>{{cur}}&deg;C</td>
+				</tr>
+				<tr>
+					<td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
+					<td>{{high}}&deg;C</td>
+				</tr>
+				<tr>
+					<td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
+					<td>{{low}}&deg;C</td>
+				</tr>
+			</table>
+			<h3>History</h3>
+			<table class="table table-striped">
+				{{#history}}
+				<tr>
+					<td>{{date}}</td>
+					<td>{{val}}&deg;C</td>
+				</tr>
+				{{/history}}
+			</table>
+			<input type="button" id="resetTemp" value="Reset" onclick="resetTempHist()">
+		</form>
 `;
 
 // Template for Expand 2 Click just shows the Value of the Register for now
@@ -119,7 +122,7 @@ templates['expand2'] = `
 					<td>Water Meter 1</td>
 					<td>{{quantity1}}&nbsp;Liter</td>
 					<td>
-						<select id="wmeter1Port">
+						<select id="wmeter1Port" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)">
 						{{#options1}}
 							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
 						{{/options1}}
@@ -130,7 +133,7 @@ templates['expand2'] = `
 					<td>Water Meter 2</td>
 					<td>{{quantity2}}&nbsp;Liter</td>
 					<td>
-						<select id="wmeter2Port" value="{{wmeterPort2}}">
+						<select id="wmeter2Port" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)">
 						{{#options2}}
 							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
 						{{/options2}}
@@ -140,12 +143,8 @@ templates['expand2'] = `
 				<tr>
 					<td>Multiplicator</td>
 					<td></td>
-					<td><input type="text" id="waterMultInput" maxlength="4" value="{{waterMultiplicator}}"></td>
+					<td><input type="text" id="waterMultInput" maxlength="4" value="{{waterMultiplicator}}" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)"></td>
 				</tr>
-				<tr>
-					<td><input type="button" value="Set Ports" onclick="expand2Wmeter()"></td>
-					<td></td>
-					<td><input type="button" value="Aktualisieren" onclick="expand2akt()"></td>
 			</table>
 		</form>
 		</p>
@@ -161,7 +160,7 @@ templates['expand2'] = `
 					<td>Bits</td>
 					<td>
 						{{#inputs}}
-						<input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
+						<input type="checkbox" disabled id="{{name}}" {{#val}}checked{{/val}}>
 						{{/inputs}}
 					</td>
 				</tr>
@@ -171,17 +170,18 @@ templates['expand2'] = `
 			<table class="table table-striped">
 				<tr>
 					<td>Value</td>
-					<td><input type="number" id="outVal" min="0" max="255" value={{output}}></td>
-					<td><input type="button" value="Set Output Ports" onclick="expand2Out()">
+					<td>{{output}}</td>
 				</tr>
 				<tr>
 					<td>Bits</td>
 					<td>
+					<ul>
 						{{#outputs}}
-						<input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>
+						<li>
+							<input type="checkbox" id="{{name}}" onchange="expand2Out()" {{#val}}checked{{/val}}><label for="{{name}}">{{label}}</label>
+						</li>
 						{{/outputs}}
 					</td>
-					<td></td>
 				</tr>
 			</table>
 		</form>
@@ -235,13 +235,16 @@ var waterMult = 0.25;
 function expand2Wmeter( e ) {
 	wmeterport1 = $( '#wmeter1Port' ).val();
 	wmeterport2 = $( '#wmeter2Port' ).val();
+	var val = parseFloat( $( '#waterMultInput' ).val() );
 	
-	if( parseFloat( $( '#waterMultInput' ).val() ) != 0 )
-	waterMult = parseFloat( $( '#waterMultInput' ).val() );
-	
-if(( wmeterport1 != "0" ) && ( wmeterport1 == wmeterport2 ) ) {
-		alert("Both watermeters could ot share one Port! Please select different Ports!");
-	}else{
+	if( val != 0 ) {
+		waterMult = val;
+	}
+
+if(( wmeterport1 != '0' ) && ( wmeterport1 == wmeterport2 ) ) {
+		alert("Watermeters on same Port! Please select different Ports!");
+	}
+	else {
 		var expandObj = new Object();
 		expandObj.selToggelBits1 = parseInt( wmeterport1 );
 		expandObj.selToggelBits2 = parseInt( wmeterport2 );
@@ -254,16 +257,19 @@ if(( wmeterport1 != "0" ) && ( wmeterport1 == wmeterport2 ) ) {
 
 function expand2Out( e ) {
 	var expandObj = new Object();
-	expandObj.setOut = $( '#outVal' ).val();
+	var namenB = [ '#PB0', '#PB1', '#PB2', '#PB3', '#PB4', '#PB5', '#PB6', '#PB7' ];
+	var sum = 0;
+	
+	for( i = 0; i < 8; i++ ) {
+		if( $( namenB[i] ).prop( 'checked' ) ) {
+			sum += Math.pow( 2 , i );
+		}
+	}
+	expandObj.setOut = sum;	
 	$.getJSON( $('#expand_form_out').attr('action'), expandObj, function(json) {
 		renderPage('expand2', json);
 	});
 }
-
-function expand2akt( e ) {
-	switchPage();
-}
-
 
 
 function capitalize(string) {
@@ -275,10 +281,18 @@ function capitalize(string) {
 var temp_history = [];
 // timerTemp is needed to stop stop the switch Page function from repeating every 60 seconds
 var timerTemp;
-var highTemp = -100;
-var highTemp_Time = 0;
-var lowTemp = 100;
-var lowTemp_Time = 0;
+
+
+function resetTempHist( e ) {
+	var thermoObj = new Object();
+	temp_history = [];
+	
+	thermoObj.clear = 1;
+	$.getJSON( $('#thermo_reset').attr('action'), thermoObj, function(json) {
+		renderPage('thermo3', json);
+	});
+}
+
 
 function processJSON(page, json) {
     switch(page) {
@@ -318,27 +332,17 @@ function processJSON(page, json) {
         case 'thermo3':
 			var date = new Date();
             // Reload page every 10 seconds
-            timerTemp = setInterval( function() { switchPage(); } , 10000 );
+			clearInterval(timerTemp);
+            timerTemp = setInterval( function() { switchPage(); } , 60000 );
 			
 			// Set current Time, division by 100 is because all Tempvals are stored as Integer intern
             json['cur'] = json['temp_cur'] / 100;
 			
-			// Check if new high Temp and forward the actual high Value and Time
-			if ( highTemp <= ( json['temp_high'] / 100 ) ){
-				highTemp_Time = lastUptime;
-				highTemp = json['temp_high'] / 100;
-			}
-            json['high'] = highTemp;
-			// time is in seconds since startup
-			json['highTime'] = ( lastUptime - highTemp_Time );
+            json['high'] = json['temp_high'] / 100;
+			json['highTime'] = json['temp_high_time'];
 			
-			// Check if new low Temp and forward the actual low Value and Time
-			if ( lowTemp >= ( json['temp_low'] / 100 ) ){
-				lowTemp_Time = lastUptime;
-				lowTemp = json['temp_low'] / 100;
-			}
-            json['low'] = lowTemp;
-			json['lowTime'] = ( lastUptime - lowTemp_Time );
+            json['low'] = json['temp_low'] / 100;
+			json['lowTime'] = json['temp_low_time'];
 			
             // Store temp value in the global history
             temp_history.push({ 'date' : date.toLocaleString('de-DE'), 'val' : json['cur'] });
@@ -346,13 +350,16 @@ function processJSON(page, json) {
             break;
         case 'expand2':
             // Reload Page every second
-            // timerTemp = setInterval( function() { switchPage(); } , 60000 );
-			var namen = [ 'PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7' ];
+			clearInterval(timerTemp);
+            timerTemp = setInterval( function() { switchPage(); } , 1000 );
+			var namenA = [ 'PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7' ];
+			var namenB = [ 'PB0', 'PB1', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7' ];
             json['inputs'] = [];
             json['outputs'] = [];
+			json['label'] = [];
             for( i = 0; i < 8; i++ ) {
-                json['inputs'].unshift({'name':'input'+i, 'val': (json['input'] & ( 1 << i )) });
-                json['outputs'].unshift({'name':'output'+i, 'val': (json['output'] & ( 1 << i )) });
+                json['inputs'].unshift({'name':namenA[i], 'val': (json['input'] & ( 1 << i )) });
+                json['outputs'].unshift({'name':namenB[i], 'val': (json['output'] & ( 1 << i )), 'label': i });
             }
             // Convert toggle count to water quantity
             json['quantity1'] = json['count1'] * waterMult;
@@ -366,9 +373,11 @@ function processJSON(page, json) {
 			json['options2'].unshift({ 'val': 0, 'sel': ( wmeterport2 == 0 ? 1 : 0 ), 'name': 'Off' });
 			
 			for( i = 0; i < 8; i++) {
-				json['options1'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport1 & ( 1 << i )), 'name': namen[i] });
-				json['options2'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport2 & ( 1 << i )), 'name': namen[i] });
+				json['options1'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport1 & ( 1 << i )), 'name': namenA[i] });
+				json['options2'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport2 & ( 1 << i )), 'name': namenA[i] });
 			}
+		default:
+			break;
     }
     return json;
 }
@@ -381,7 +390,8 @@ function renderPage(page, json) {
 
 	if( currentPage == page ) {
 		$('#content').html(html);
-	} else {
+	}
+	else {
 		currentPage = page;
 		$('#content').fadeOut(100, function() {
 			$('#content').html(html).fadeIn(200);
@@ -417,8 +427,6 @@ function switchPage() {
       $.getJSON(page + '.json?action=get', function(json) {
           renderPage(page, json);
       });
-      //clear timer each time switch page is called, otherwise there will be chaos
-      clearInterval(timerTemp);
 }
 
 function link(e) {
@@ -441,7 +449,14 @@ function keydown(e) {
         }
     }
 	if (e.keyCode == 13){
-		e.preventDefault();
+		// 13 = Enter
+		
+		if (e.preventDefault) {
+            e.preventDefault();
+        }
+        else {
+            return false;
+        }
 	}
 }
 

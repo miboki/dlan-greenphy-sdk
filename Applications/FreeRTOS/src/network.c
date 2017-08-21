@@ -101,9 +101,6 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				 * Create the tasks here.
 				 */
 
-				//vStartMQTTTasks(420, 3);
-				//vLookUpAddress();
-
 				#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
 				xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
@@ -143,9 +140,6 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 const char *pcApplicationHostnameHook( void )
 {
-	/*char nameBuffer[4], retName[11] = netconfigHOSTNAME;
-	snprintf( nameBuffer, 5 , "%x%x" , ucMACAddress[4] , ucMACAddress[5] );
-	strcat( retName , (nameBuffer + 1) );*/
 	return netconfigHOSTNAME;
 }
 /*-----------------------------------------------------------*/

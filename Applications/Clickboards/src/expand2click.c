@@ -25,7 +25,7 @@
 #include "expand2click.h"
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_EXPAND2 1000
+#define TASKWAIT_EXPAND2 100
 
 /*****************************************************************************/
 
@@ -124,7 +124,7 @@ char lastBits = get_expand2click();
 		/* Toggle obits each time the Task is called - just for demo. */
 		set_expand2click(oBits);
 
-		DEBUGOUT("in:%x, out:%x, counter1:%d, counter2:%d\n", iBits, oBits, toggleCount[0], toggleCount[1]);
+		//DEBUGOUT("in:%x, out:%x, counter1:%d, counter2:%d\n", iBits, oBits, toggleCount[0], toggleCount[1]);
 
 		vTaskDelay( xDelay );
 	}

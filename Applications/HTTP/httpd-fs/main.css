@@ -131,6 +131,18 @@ main {
   text-decoration: none;
 }
 
+#expand_form_out ul {
+	list-style-type: none;
+}
+
+#expand_form_out li {
+	display:inline-block;
+}
+
+#expand_form_out input, #expand_form_out label {
+	display:block;
+}
+
 .onoffswitch {
     position: relative; width: 60px;
     -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
