@@ -27,9 +27,6 @@
 /* Task-Delay in ms, change to your preference */
 #define TASKWAIT_EXPAND2 100
 
-#define MASK_LSB1    0x01
-#define MASK_LSB2    0x02
-
 /*****************************************************************************/
 
 #define EXPAND_ADDR (0x00)   /*jumper A0;A1;A2 on expand2click board*/
@@ -79,14 +76,20 @@ clickboard is activated. */
 static TaskHandle_t xClickTaskHandle = NULL;
 
 /* Output bits managed by the Expand2Click task.
-If a bit is set to 1 the pin is set high. */
-char oBits = 1;
-/* Input bits managed by the Expand2Click task.
-If a bit is set to 1 the pin is set high. */
-char iBits = 0;
+If a bit is set to 1 the pin is low. */
+static char oBits = 0;
 
-/* Count how often the input bit was toggled. */
-int toggleCount = 0;
+/* Input bits managed by the Expand2Click task.
+If a bit is set to 1 the pin is low. */
+static char iBits = 0;
+
+/* Configurate on witch pins the water meter is connected */
+static char togglePins[2] = { 0, 0 };
+
+/* Count how often the input bits were toggled. */
+static int toggleCount[2] = { 0, 0 };
+
+static int multiplicator = 250;
 
 /*-----------------------------------------------------------*/
 
@@ -103,22 +106,27 @@ void set_expand2click(char pins){
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
-char lastBits;
+char lastBits = get_expand2click();
+//char count = 0;
 
 	while (1) {
-		/* Check if iBits changed since last task call. */
-		iBits = get_expand2click(); // read input Bits
-		if ( lastBits != ( iBits & MASK_LSB1 ) )
-		{
-			lastBits = ( iBits & MASK_LSB1 );
-			toggleCount++;
+		/* Toggle obits once per second - just for demo. */
+//		if( count++ % 10 == 0 )
+//			oBits ^= ( togglePins[0] | togglePins[1] );
+//		set_expand2click(oBits);
 
-			// TODO: SEND MQTT message
-		}
+		/* Get iBits from board */
+		iBits = get_expand2click();
 
-		/* Toggle obits each time the Task is called - just for demo. */
-		oBits ^= MASK_LSB1;
-		set_expand2click(oBits);
+		/* First water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[0] )
+			toggleCount[0] += 1;
+
+		/* Second water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[1] )
+			toggleCount[1] += 1;
+
+		lastBits = iBits;
 
 		vTaskDelay( xDelay );
 	}
@@ -128,9 +136,49 @@ char lastBits;
 #if( includeHTTP_DEMO != 0 )
 	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
-	BaseType_t xCount = 0;
+		BaseType_t xCount = 0;
+		QueryParam_t *pxParam;
 
-		xCount += sprintf( pcBuffer, "{\"input\":%d,\"output\":%d,\"count\":%d}", iBits, oBits, toggleCount );
+		// Search input object for 'input' Parameter to get the new Value of oBits
+		pxParam = pxFindKeyInQueryParams( "output", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			oBits = strtol( pxParam->pcValue, NULL, 10 );
+		}
+
+		pxParam = pxFindKeyInQueryParams( "pin0", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			toggleCount[0] = 0;
+			togglePins[0] = strtol( pxParam->pcValue, NULL, 10 );
+		}
+
+		pxParam = pxFindKeyInQueryParams( "pin1", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			toggleCount[1] = 0;
+			togglePins[1] = strtol( pxParam->pcValue, NULL, 10 );
+		}
+
+		pxParam = pxFindKeyInQueryParams( "multi", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			multiplicator = strtol( pxParam->pcValue, NULL, 10 );
+		}
+
+		xCount += sprintf( pcBuffer, "{"
+				"\"input\":"  "%d,"
+				"\"output\":" "%d,"
+				"\"count0\":" "%d,"
+				"\"count1\":" "%d,"
+				"\"pin0\":"   "%d,"
+				"\"pin1\":"   "%d,"
+				"\"multi\":"  "%d"
+			"}",
+			iBits,
+			oBits,
+			toggleCount[0],
+			toggleCount[1],
+			togglePins[0],
+			togglePins[1],
+			multiplicator
+		);
 		return xCount;
 	}
 #endif
@@ -151,9 +199,9 @@ BaseType_t xReturn = pdFALSE;
 			/* Set reset pin. */
 			Chip_GPIO_SetPinDIROutput(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
 			/* Start  reset procedure. */
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
-			Chip_GPIO_SetPinOutLow( LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD2_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutLow( LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, CLICKBOARD1_RST_GPIO_PORT_NUM, CLICKBOARD1_RST_GPIO_BIT_NUM);
 		}
 		else if( xPort == eClickboardPort2 )
 		{
@@ -173,7 +221,7 @@ BaseType_t xReturn = pdFALSE;
 		/* Initialize Expand2Click chip. */
 		Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
 		Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);  // Set Expander's PORTA to be input
-	  	Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
+		Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
 
 		/* Create task. */
 		xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );

@@ -212,8 +212,8 @@ static UBaseType_t uxCurrentCount;
 		/* The logging produced below may be helpful
 		while tuning +TCP: see how many buffers are in use. */
 		uxLastBufferCount = uxCurrentCount;
-		FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
-			uxCurrentCount, uxGetMinimumFreeNetworkBuffers() ) );
+		//FreeRTOS_printf( ( "Network buffers: %lu lowest %lu\n",
+		//	uxCurrentCount, uxGetMinimumFreeNetworkBuffers() ) );
 	}
 }
 /*-----------------------------------------------------------*/

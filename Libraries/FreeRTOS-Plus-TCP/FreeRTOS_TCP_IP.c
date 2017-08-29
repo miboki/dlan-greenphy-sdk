@@ -1059,7 +1059,7 @@ FreeRTOS_printf( ( "prvTCPReturnPacket: No pxEndPoint yet???\n" ) );
 		}
 		#endif
 
-		/* Remove the receiving interface as this is a transmission network buffer now. */
+		/* _ML_ Remove the receiving interface as this is a transmission network buffer now. */
 		pxNetworkBuffer->pxInterface = NULL;
 
 //FreeRTOS_printf( ( "prvTCPReturnPacket: from %xip to %xip\n",
@@ -1257,6 +1257,11 @@ ProtocolHeaders_t *pxProtocolHeaders;
 			if( pxEndPoint == NULL )
 			{
 				pxEndPoint = FreeRTOS_FindEndPointOnNetMask( pxIPHeader->ulSourceIPAddress, 9 ); /*_RB_ Added. */
+			}
+			/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
+			if( pxEndPoint == NULL )
+			{
+				pxEndPoint = FreeRTOS_FindDefaultEndPoint();
 			}
 			if( pxEndPoint == NULL )
 			{

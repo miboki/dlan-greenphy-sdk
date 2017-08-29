@@ -264,6 +264,11 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 			/* 'ulIPAddress' might have become the address of the Gateway.
 			Find the route again. */
 			pxNetworkBuffer->pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 11 );
+			/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
+			if( pxNetworkBuffer->pxEndPoint == NULL )
+			{
+				pxNetworkBuffer->pxEndPoint = FreeRTOS_FindDefaultEndPoint();
+			}
 			vARPGenerateRequestPacket( pxNetworkBuffer );
 		}
 		else
@@ -298,6 +303,9 @@ uint32_t ulIPAddress = pxNetworkBuffer->ulIPAddress;
 				}
 			}
 			#endif
+
+			/* _ML_ Remove the receiving interface as this is a transmission network buffer now. */
+			pxNetworkBuffer->pxInterface = NULL;
 
 			pxInterface->pfOutput( pxInterface->pvArgument, pxNetworkBuffer, pdTRUE );
 		}

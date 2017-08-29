@@ -75,10 +75,12 @@ static int temp_cur;
 /* Holds lowest measured temperature in hundredth of a degree.
 Must be initialized to a high value.*/
 static int temp_low = 0x7fffffff;
+static int temp_low_time = 0;
 
 /* Holds highest measured temperature in hundredth of a degree.
 Must be initialized to a low value. */
 static int temp_high = (~0x7fffffff);
+static int temp_high_time = 0;
 
 /*-----------------------------------------------------------*/
 
@@ -92,8 +94,14 @@ const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
 		temp_cur = Get_Temperature();
 
 		/* Check for lowest and highest temperatures. */
-		if( temp_cur < temp_low )  temp_low = temp_cur;
-		if( temp_cur > temp_high ) temp_high = temp_cur;
+		if( temp_cur < temp_low ) {
+			temp_low = temp_cur;
+			temp_low_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
+		if( temp_cur > temp_high ) {
+			temp_high = temp_cur;
+			temp_high_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
 
 		DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
 
@@ -106,8 +114,22 @@ const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
 	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
 	BaseType_t xCount = 0;
+	QueryParam_t *pxParam;
+	int time =( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
-		xCount += sprintf( pcBuffer, "{\"temp_cur\":%d,\"temp_high\":%d,\"temp_low\":%d}", temp_cur, temp_high, temp_low );
+		pxParam = pxFindKeyInQueryParams( "clear", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			temp_cur = Get_Temperature();
+			temp_low = temp_cur;
+			temp_high = temp_cur;
+			temp_low_time = time;
+			temp_high_time = time;
+
+		}
+
+		xCount += snprintf( pcBuffer, uxBufferLength,
+				"{\"temp_cur\":%d,\"temp_high\":%d,\"temp_low\":%d,\"temp_high_time\":%d,\"temp_low_time\":%d}",
+				temp_cur, temp_high, temp_low, ( time - temp_high_time ), ( time - temp_low_time ) );
 		return xCount;
 	}
 #endif

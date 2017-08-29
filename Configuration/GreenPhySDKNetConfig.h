@@ -49,7 +49,7 @@
 #define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE
 
 /* Hostname, used for DHCP */
-#define netconfigHOSTNAME              "GreenPHY evalboard II"
+#define netconfigHOSTNAME              "devolo-d9a"  //old name "GreenPHY evalboard II"
 
 /* MAC address configuration. */
 #define netconfigMAC_ADDR0	           0x00

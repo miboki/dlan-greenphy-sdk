@@ -131,6 +131,18 @@ main {
   text-decoration: none;
 }
 
+#expand_form_out ul {
+	list-style-type: none;
+}
+
+#expand_form_out li {
+	display:inline-block;
+}
+
+#expand_form_out input, #expand_form_out label {
+	display:block;
+}
+
 .onoffswitch {
     position: relative; width: 60px;
     -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
@@ -187,8 +199,8 @@ main {
 
 .icon {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin-right: 10px;
 
   stroke-width: 0;
@@ -197,8 +209,21 @@ main {
   vertical-align: text-bottom;
 }
 
+#page-title .icon {
+  width: 30px;
+  height: 30px;
+}
+
 .clickboard .icon {
   width:20px;
   margin-right: 8px;
   margin-left: -2px;
+}
+
+.bits label {
+  display:inline-block;
+  text-align:center;
+}
+.bits input {
+  display: block;
 }

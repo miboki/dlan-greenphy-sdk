@@ -3,6 +3,10 @@
 
 /* FreeRTOS includes. */
 #include <FreeRTOS.h>
+#include "task.h"
+
+/* FreeRTOS +TCP includes. */
+#include "FreeRTOS_IP.h"
 
 #include "board.h"
 
@@ -31,9 +35,19 @@ QueryParam_t *pxParam;
 	}
 
 	xCount = snprintf( pcBuffer, uxBufferLength,
-			"{\"uptime\":\"%ds\",\"free_heap\":\"%d bytes\",\"led\":%s}",
-			( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ), xPortGetFreeHeapSize(),
-			(Board_LED_Test( LEDS_LED0 ) ? "true" : "false" ) );
+			"{"
+				"\"uptime\":"    "%d,"
+				"\"free_heap\":" "%d,"
+				"\"led\":"       "%s,"
+				"\"button\":"    "%s,"
+				"\"hostname\":"  "\"%s\""
+			"}",
+			( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ),
+			xPortGetFreeHeapSize(),
+			( Board_LED_Test( LEDS_LED0 ) ? "true" : "false" ),
+			( ( Buttons_GetStatus() != 0 ) ? "true" : "false" ),
+			pcApplicationHostnameHook()
+	);
 
 	return xCount;
 }

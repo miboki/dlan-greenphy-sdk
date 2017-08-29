@@ -15,6 +15,7 @@
 #include "GreenPhySDKNetConfig.h"
 #include "network.h"
 
+
 /* Verify network configuration is sane. */
 #if( ( netconfigUSE_BRIDGE == 0 ) && ( netconfigUSE_IP != 0 ) && ( netconfigIP_INTERFACE == netconfigBRIDGE_INTERFACE ) )
 	#error "netconfigBRIDGE_INTERFACE used for IP stack, but netconfigUSE_BRIDGE not defined"
