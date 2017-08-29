@@ -1,6 +1,6 @@
 var templates = {};
 templates['status'] = `
-		<h3>FreeRTOS</h3>
+        <h3>FreeRTOS</h3>
         <table class="table table-striped">
           <tr>
             <td><b>Uptime:</b></td>
@@ -14,7 +14,7 @@ templates['status'] = `
             <td><b>LED state:</b></td>
             <td>
               <div class="onoffswitch">
-                <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="led-switch" onclick="toggleLED()" {{#led}}checked{{/led}}>
+                <input type="checkbox" name="led" class="onoffswitch-checkbox" id="led-switch" {{#led}}checked{{/led}}>
                 <label class="onoffswitch-label" for="led-switch">
                   <span class="onoffswitch-inner"></span>
                   <span class="onoffswitch-switch"></span>
@@ -26,7 +26,6 @@ templates['status'] = `
 `;
 templates['config'] = `
         <h3>Clickboards</h3>
-        <form id="config_form" action="config.json" method="get" onsubmit="configSubmit()">
         <table class="table table-striped">
           <tr>
             <th>Clickboard</td>
@@ -40,12 +39,11 @@ templates['config'] = `
           {{#clickboards}}
           <tr>
             <td>{{name_format}}</td>
-            <td><input type="radio" name="port1" value="{{name}}" {{#port1_active}}checked="checked"{{/port1_active}} {{^port1_available}}disabled="disabled"{{/port1_available}} onchange="configSubmit(this)"></td>
-            <td><input type="radio" name="port2" value="{{name}}" {{#port2_active}}checked="checked"{{/port2_active}} {{^port2_available}}disabled="disabled"{{/port2_available}} onchange="configSubmit(this)"></td>
+            <td><input type="radio" name="port1" value="{{name}}" {{#port1_active}}checked="checked"{{/port1_active}} {{^port1_available}}disabled="disabled"{{/port1_available}}></td>
+            <td><input type="radio" name="port2" value="{{name}}" {{#port2_active}}checked="checked"{{/port2_active}} {{^port2_available}}disabled="disabled"{{/port2_available}}></td>
           </tr>
           {{/clickboards}}
         </table>
-        </form>
 `;
 templates['color2'] = `
         <h3>Sensor</h3>
@@ -75,227 +73,119 @@ templates['color2'] = `
         <h3>Color</h3>
         <table class="table table-striped">
             <tr>
-            	<td><b>Hex:</b></td>
-            	<td>#{{r_hex}}{{g_hex}}{{b_hex}}</td>
-        	</tr>
+                <td><b>Hex:</b></td>
+                <td>#{{r_hex}}{{g_hex}}{{b_hex}}</td>
+            </tr>
         </table>
-        <div style="width:200px; height:100px;margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
+        <div style="width:200px; height:100px; margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
 `;
-// Temolate for thermo3 shows two lists one with the actial values red from the eval Board Memory one one from stored values
 templates['thermo3'] = `
         <h3>Temperature</h3>
-		<form id="thermo_reset" action="thermo3.json" method="get">
-			<table class="table table-striped">
-				<tr>
-					<td>Current temperature</td>
-					<td>{{cur}}&deg;C</td>
-				</tr>
-				<tr>
-					<td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
-					<td>{{high}}&deg;C</td>
-				</tr>
-				<tr>
-					<td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
-					<td>{{low}}&deg;C</td>
-				</tr>
-			</table>
-			<h3>History</h3>
-			<table class="table table-striped">
-				{{#history}}
-				<tr>
-					<td>{{date}}</td>
-					<td>{{val}}&deg;C</td>
-				</tr>
-				{{/history}}
-			</table>
-			<input type="button" id="resetTemp" value="Reset" onclick="resetTempHist()">
-		</form>
+        <table class="table table-striped">
+            <tr>
+                <td>Current temperature</td>
+                <td>{{cur}}&deg;C</td>
+            </tr>
+            <tr>
+                <td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
+                <td>{{high}}&deg;C</td>
+            </tr>
+            <tr>
+                <td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
+                <td>{{low}}&deg;C</td>
+            </tr>
+        </table>
+        <h3>History</h3>
+        <table class="table table-striped">
+            {{#history}}
+            <tr>
+                <td>{{date}}</td>
+                <td>{{val}}&deg;C</td>
+            </tr>
+            {{/history}}
+        </table>
+    <input type="button" id="resetTemp" value="Reset" onclick="resetTempHist()">
 `;
-
-// Template for Expand 2 Click just shows the Value of the Register for now
 templates['expand2'] = `
         <h3>Water Meter</h3>
-		<p>
-		<form id="expand_form_wmeter" action="expand2.json" method="get">
-			<table class="table table-striped"> 
-				<tr>
-					<td>Water Meter 1</td>
-					<td>{{quantity1}}&nbsp;Liter</td>
-					<td>
-						<select id="wmeter1Port" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)">
-						{{#options1}}
-							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
-						{{/options1}}
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>Water Meter 2</td>
-					<td>{{quantity2}}&nbsp;Liter</td>
-					<td>
-						<select id="wmeter2Port" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)">
-						{{#options2}}
-							<option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
-						{{/options2}}
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>Multiplicator</td>
-					<td></td>
-					<td><input type="text" id="waterMultInput" maxlength="4" value="{{waterMultiplicator}}" onchange="expand2Wmeter()" onclick="clearInterval(timerTemp)"></td>
-				</tr>
-			</table>
-		</form>
-		</p>
-		<br />
-		<br />
-		<h3>Input Register</h3>
-			<table class="table table-striped">
-				<tr>
-					<td>Value</td>
-					<td>{{input}}</td>
-				</tr>
-				<tr>
-					<td>Bits</td>
-					<td>
-						{{#inputs}}
-						<input type="checkbox" disabled id="{{name}}" {{#val}}checked{{/val}}>
-						{{/inputs}}
-					</td>
-				</tr>
-			</table>
-		<h3>Output Register</h3>
-		<form id="expand_form_out" action="expand2.json" method="get">
-			<table class="table table-striped">
-				<tr>
-					<td>Value</td>
-					<td>{{output}}</td>
-				</tr>
-				<tr>
-					<td>Bits</td>
-					<td>
-					<ul>
-						{{#outputs}}
-						<li>
-							<input type="checkbox" id="{{name}}" onchange="expand2Out()" {{#val}}checked{{/val}}><label for="{{name}}">{{label}}</label>
-						</li>
-						{{/outputs}}
-					</td>
-				</tr>
-			</table>
-		</form>
+        <table class="table table-striped">
+            {{#watermeter}}
+            <tr>
+                <td>Water Meter {{name}}</td>
+                <td>{{quantity}}&nbsp;Liter</td>
+                <td>
+                    <select name="pin{{index}}">
+                        {{#options}}
+                        <option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
+                        {{/options}}
+                    </select>
+                </td>
+            </tr>
+            {{/watermeter}}
+            <tr>
+                <td>Multiplicator</td>
+                <td></td>
+                <td><input type="number" name="multi" min="0" step="10" value="{{multi}}"> ml</td>
+            </tr>
+        </table>
+        <h3>Input Register</h3>
+        <table class="table table-striped">
+            <tr>
+                <td>Value</td>
+                <td>{{input}}</td>
+            </tr>
+            <tr>
+                <td>Bits</td>
+                <td class="bits">
+                    {{#inputs}}
+                    <label><input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>{{number}}</label>
+                    {{/inputs}}
+                </td>
+            </tr>
+        </table>
+        <h3>Output Register</h3>
+        <table class="table table-striped">
+            <tr>
+                <td>Value</td>
+                <td><input type="number" name="output" min="0" max="255" step="1" value="{{output}}"></td>
+            </tr>
+            <tr>
+                <td>Bits</td>
+                <td class="bits">
+                    {{#outputs}}
+                    <label><input type="checkbox" name="output[]" onchange="toggleBit(this, event)" {{#val}}checked{{/val}}>{{number}}</label>
+                    {{/outputs}}
+                </td>
+            </tr>
+        </table>
 `;
 
-function toggleLED() {
-      xhr = $.getJSON('status.json?action=set&led=' + ($('#led-switch').is(":checked") ? 'on' : 'off'), function(json) {});
-}
-
-/*******************************************
-** Global used Variables
-*******************************************/
-var lastUptime = 0;
-var module_StartupTime;
-//var assumedUptime;
-var timerAlive = setInterval( function() { askAlive(); } , 5000 );
-
-
-/*******************************************
-** Ask if GreenPHY Module is still alive
-** Easiest version: get status.json, so no new EventHandler is needed
-*******************************************/
-function askAlive() {
-	$.getJSON( 'status.json?action=get', function(json) {
-		if ( lastUptime == 0 ) {
-			module_StartupTime = new Date();
-			module_StartupTime.setTime( module_StartupTime.getTime() - ( parseInt( json['uptime'] ) * 1000 ) );
-		}
-        lastUptime = parseInt( json['uptime'] );
-		if ( currentPage == 'status' ) {
-			renderPage( 'status', json );
-		}
+function toggleBit( element, event ) {
+    var x = 0;
+    $($('input[name="'+element.name+'"').get().reverse()).each(function(i, v) {
+        console.log(v);
+        $(v).prop('checked') && ( x += 2**i );
     });
+    $('input[name="'+element.name.substring(0, element.name.lastIndexOf('['))+'"]').val(x).change();
+
+    event.stopPropagation();
 }
-
-function configSubmit( e ) {
-    /* A clickboard can be active on only one port at a time. */
-    $('#config_form [value='+e.value+']:checked').not(e).each(function() {
-          $('#config_form [name='+this.name+'][value=none]').prop('checked', true);
-      });
-    /* Send the form to the GreenPHY Module via GET request. */
-    $.getJSON($('#config_form').attr('action'), $('#config_form').serialize(), function(json) {
-            renderPage('config', json);
-    });
-}
-
-var wmeterport1 = 0;
-var wmeterport2 = 0;
-var waterMult = 0.25;
-
-function expand2Wmeter( e ) {
-	wmeterport1 = $( '#wmeter1Port' ).val();
-	wmeterport2 = $( '#wmeter2Port' ).val();
-	var val = parseFloat( $( '#waterMultInput' ).val() );
-	
-	if( val != 0 ) {
-		waterMult = val;
-	}
-
-if(( wmeterport1 != '0' ) && ( wmeterport1 == wmeterport2 ) ) {
-		alert("Watermeters on same Port! Please select different Ports!");
-	}
-	else {
-		var expandObj = new Object();
-		expandObj.selToggelBits1 = parseInt( wmeterport1 );
-		expandObj.selToggelBits2 = parseInt( wmeterport2 );
-		$.getJSON( $('#expand_form_wmeter').attr('action'), expandObj, function(json) {
-			renderPage('expand2', json);
-		});
-	}
-}
-
-
-function expand2Out( e ) {
-	var expandObj = new Object();
-	var namenB = [ '#PB0', '#PB1', '#PB2', '#PB3', '#PB4', '#PB5', '#PB6', '#PB7' ];
-	var sum = 0;
-	
-	for( i = 0; i < 8; i++ ) {
-		if( $( namenB[i] ).prop( 'checked' ) ) {
-			sum += Math.pow( 2 , i );
-		}
-	}
-	expandObj.setOut = sum;	
-	$.getJSON( $('#expand_form_out').attr('action'), expandObj, function(json) {
-		renderPage('expand2', json);
-	});
-}
-
 
 function capitalize(string) {
-	return string.charAt(0).toUpperCase() + string.slice(1);
+    return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-
-// temp_history stores the past temperature values
-var temp_history = [];
-// timerTemp is needed to stop stop the switch Page function from repeating every 60 seconds
-var timerTemp;
-
-
-function resetTempHist( e ) {
-	var thermoObj = new Object();
-	temp_history = [];
-	
-	thermoObj.clear = 1;
-	$.getJSON( $('#thermo_reset').attr('action'), thermoObj, function(json) {
-		renderPage('thermo3', json);
-	});
-}
-
+// thermo3click variables
+var tempHistory = [];
+// expand2click variables
+var wmeterPin = [0,0];
+var wmeterMultiplicator = 0.25;
 
 function processJSON(page, json) {
     switch(page) {
+        case 'status':
+            $("#hostname").text(json['hostname']);
+            break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
@@ -330,140 +220,123 @@ function processJSON(page, json) {
             json['b_hex'] = json['b_dec'].toString(16);
             break;
         case 'thermo3':
-			var date = new Date();
-            // Reload page every 10 seconds
-			clearInterval(timerTemp);
-            timerTemp = setInterval( function() { switchPage(); } , 60000 );
-			
-			// Set current Time, division by 100 is because all Tempvals are stored as Integer intern
             json['cur'] = json['temp_cur'] / 100;
-			
             json['high'] = json['temp_high'] / 100;
-			json['highTime'] = json['temp_high_time'];
-			
             json['low'] = json['temp_low'] / 100;
-			json['lowTime'] = json['temp_low_time'];
-			
             // Store temp value in the global history
-            temp_history.push({ 'date' : date.toLocaleString('de-DE'), 'val' : json['cur'] });
-			json['history'] = temp_history;
+            tempHistory.unshift({ 'date' : new Date().toLocaleString('de-DE'), 'val' : json['cur'] });
+            json['history'] = tempHistory;
             break;
         case 'expand2':
-            // Reload Page every second
-			clearInterval(timerTemp);
-            timerTemp = setInterval( function() { switchPage(); } , 1000 );
-			var namenA = [ 'PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7' ];
-			var namenB = [ 'PB0', 'PB1', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7' ];
             json['inputs'] = [];
             json['outputs'] = [];
-			json['label'] = [];
-            for( i = 0; i < 8; i++ ) {
-                json['inputs'].unshift({'name':namenA[i], 'val': (json['input'] & ( 1 << i )) });
-                json['outputs'].unshift({'name':namenB[i], 'val': (json['output'] & ( 1 << i )), 'label': i });
+            for( var i = 0; i < 8; i++ ) {
+                json['inputs'].unshift({'number': i, 'val': (json['input'] & ( 1 << i )) });
+                json['outputs'].unshift({'number':i, 'val': (json['output'] & ( 1 << i )) });
             }
             // Convert toggle count to water quantity
-            json['quantity1'] = json['count1'] * waterMult;
-			json['quantity2'] = json['count2'] * waterMult;
-			json['waterMultiplicator'] = waterMult;
-			
-			json['options1'] = [];
-			json['options2'] = [];
-			
-			json['options1'].unshift({ 'val': 0, 'sel': ( wmeterport1 == 0 ? 1 : 0 ), 'name': 'Off' });
-			json['options2'].unshift({ 'val': 0, 'sel': ( wmeterport2 == 0 ? 1 : 0 ), 'name': 'Off' });
-			
-			for( i = 0; i < 8; i++) {
-				json['options1'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport1 & ( 1 << i )), 'name': namenA[i] });
-				json['options2'].unshift({ 'val': Math.pow(2, i) , 'sel': ( wmeterport2 & ( 1 << i )), 'name': namenA[i] });
-			}
-		default:
-			break;
+            json['watermeter'] = [];
+            for( var x = 0; x < 2; x++ ) {
+                var options = [{ 'val': 0, 'sel': (!json['pin'+x] ? 1 : 0), 'name': 'Off' }];
+                for( var i = 0; i < 8; i++) {
+                    options.push({ 'val': Math.pow(2, i) , 'sel': (json['pin'+x] & ( 1 << i )), 'name': 'PA'+i});
+                }
+                json['watermeter'].push({
+                    'index': x,
+                    'name': x+1,
+                    'quantity': (json['count'+x] * json['multi'] / 1000).toFixed(3),
+                    'options': options
+                });
+            }
+        default:
+            break;
     }
     return json;
 }
 
-/* Store the currently visible page for page switch animation. */
+function sendRequest(page, data, success) {
+    var domain = 'http://172.16.201.3/';
+    if( !data ) data = { action: 'get' };
+    $.getJSON(domain + page + '.json', data, success)
+            .fail(function(xhr, text_status, error_thrown) {
+                    // Retry after 3s, unless request was explicitly aborted
+                    console.log(text_status);
+                    console.log(error_thrown);
+                    if( text_status != "abort" ) {
+                        setTimeout( function() { sendRequest(page, data, success) }, 3000 );
+                    }
+            });
+}
+
+// Store the currently visible page
 var currentPage;
-
 function renderPage(page, json) {
-	var html = Mustache.render(templates[page], processJSON(page, json));
+    var html = Mustache.render(templates[page], processJSON(page, json));
 
-	if( currentPage == page ) {
-		$('#content').html(html);
-	}
-	else {
-		currentPage = page;
-		$('#content').fadeOut(100, function() {
-			$('#content').html(html).fadeIn(200);
-		});
+    if( currentPage == page ) {
+        $('#content').html(html);
+    } else {
+        currentPage = page;
+//        $('#content').fadeOut(100, function() {
+//            $('#content').html(html).fadeIn(200);
+//        });
+        $('#content').html(html)
+        // Mark navigation link as active
+        $('#nav a.active').removeClass('active');
+        $('#nav a[href^="#' + page + '"]').addClass('active');
 
-		// Mark navigation link as active
-		$('#nav a.active').removeClass('active');
-		$('#nav a[href^="#'+currentPage+'"]').addClass('active');
-
-		// Change title
-		$('#page-title').find('span').text($('#nav a.active span').text());
-		switch ( page ) {
-			case 'status':
-				$('#hostname').text(json['hostname']).text();
-				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-info');
-				break;
-			case 'config':
-				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-cogs');
-				break;
-			default:
-				$('#page-title').find('svg').removeClass('hidden').find('use').attr('xlink:href', '#icon-tree');
-				break;
-		}
-	}
-}
-
-function switchPage() {
-      var page = window.location.hash.substr(1);
-      if( !(page in templates) ) {
-        page = 'status';
-      }
-
-      $.getJSON(page + '.json?action=get', function(json) {
-          renderPage(page, json);
-      });
-}
-
-function link(e) {
-    e.preventDefault();
-    window.location.hash = this.hash;
-    switchPage();
-}
-
-function keydown(e) {
-    if (e.ctrlKey && e.keyCode == 82) {
-        // 82 = r
-
-        switchPage();
-
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
-        else {
-            return false;
-        }
+        // Change title
+        $('#page-title').html($('#nav a.active').html());
     }
-	if (e.keyCode == 13){
-		// 13 = Enter
-		
-		if (e.preventDefault) {
-            e.preventDefault();
-        }
-        else {
-            return false;
-        }
-	}
 }
 
-$('a[href^="#"]').click(link);
-$(document).keydown(keydown);
+var timeout;
+function updatePage(page, data) {
+    if( timeout ) clearTimeout(timeout);
 
-$.getJSON('config.json?action=get', function(json) {
+    if( !page ) {
+      page = window.location.hash.substr(1);
+    } else {
+        window.location.hash = '#' + page;
+    }
+    if( !(page in templates) ) {
+        page = 'status';
+    }
+
+    sendRequest(page, data, function(json) {
+        renderPage(page, json);
+        timeout = setTimeout(updatePage, 1000);
+    });
+}
+
+// Handle internal links by JQuery
+$(document).on('click', 'a[href^="#"]', function(event) {
+    event.preventDefault();
+    updatePage(this.hash.substr(1));
+});
+
+// Submit input fields on change
+$(document).on('change', 'input, select', function() {
+    console.log(this);
+    console.log($(this));
+    console.log($(this).serialize());
+    updatePage(undefined, $(this).serialize());
+});
+
+// Stop auto refresh when focusing input fields
+$(document).on('focus', 'input, select', function() {
+    if( timeout ) clearTimeout(timeout);
+});
+
+// Refresh page when leaving input fields
+$(document).on('focusout', 'input, select', function() {
+    updatePage();
+});
+
+// Load config once to add current clickboards to menu
+sendRequest('config', undefined, function(json) {
     processJSON('config', json);
 });
-switchPage();
+
+// Initialize current page
+updatePage();

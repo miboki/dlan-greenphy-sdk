@@ -76,18 +76,21 @@ clickboard is activated. */
 static TaskHandle_t xClickTaskHandle = NULL;
 
 /* Output bits managed by the Expand2Click task.
-If a bit is set to 1 the pin is set high. */
-char oBits = 0;
+If a bit is set to 1 the pin is low. */
+static char oBits = 0;
+
 /* Input bits managed by the Expand2Click task.
-If a bit is set to 1 the pin is set high. */
-char iBits = 0;
+If a bit is set to 1 the pin is low. */
+static char iBits = 0;
 
-/* Count how often the input bit was toggled. */
-int toggleCount[2] = { 0 , 0 };
+/* Configurate on witch pins the water meter is connected */
+static char togglePins[2] = { 0, 0 };
 
-/* COnfigurate on witch Port the water meter is connected */
-char toggleBitSelect1 = 0;
-char toggleBitSelect2 = 0;
+/* Count how often the input bits were toggled. */
+static int toggleCount[2] = { 0, 0 };
+
+static int multiplicator = 250;
+
 /*-----------------------------------------------------------*/
 
 static char get_expand2click(void){
@@ -104,27 +107,26 @@ static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
 char lastBits = get_expand2click();
+//char count = 0;
 
 	while (1) {
-		/* Get iBits from board */
-		iBits = get_expand2click(); // read input Bits
+		/* Toggle obits once per second - just for demo. */
+//		if( count++ % 10 == 0 )
+//			oBits ^= ( togglePins[0] | togglePins[1] );
+//		set_expand2click(oBits);
 
-		// is the bit fist water meter bit toggled?
-		if(((( iBits ^ lastBits ) & toggleBitSelect1 ) == toggleBitSelect1 ) && ( toggleBitSelect1 != 0 ))
+		/* Get iBits from board */
+		iBits = get_expand2click();
+
+		/* First water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[0] )
 			toggleCount[0] += 1;
 
-		// is the bit second water meter bit toggled?
-		if(((( iBits ^ lastBits ) & toggleBitSelect2) == toggleBitSelect2 ) && ( toggleBitSelect2 != 0 ) )
+		/* Second water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[1] )
 			toggleCount[1] += 1;
 
 		lastBits = iBits;
-
-		// TODO: SEND MQTT message
-
-		/* Toggle obits each time the Task is called - just for demo. */
-		set_expand2click(oBits);
-
-		//DEBUGOUT("in:%x, out:%x, counter1:%d, counter2:%d\n", iBits, oBits, toggleCount[0], toggleCount[1]);
 
 		vTaskDelay( xDelay );
 	}
@@ -135,30 +137,48 @@ char lastBits = get_expand2click();
 	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
 		BaseType_t xCount = 0;
-		char *end;
-		char input[5];
 		QueryParam_t *pxParam;
 
 		// Search input object for 'input' Parameter to get the new Value of oBits
-		pxParam = pxFindKeyInQueryParams( "setOut", pxParams, xParamCount );
+		pxParam = pxFindKeyInQueryParams( "output", pxParams, xParamCount );
 		if( pxParam != NULL ) {
-			strncpy( input , pxParam->pcValue , 5 );
-			oBits = strtol( input, &end, 10);
+			oBits = strtol( pxParam->pcValue, NULL, 10 );
 		}
 
-		pxParam = pxFindKeyInQueryParams( "selToggelBits1", pxParams, xParamCount );
+		pxParam = pxFindKeyInQueryParams( "pin0", pxParams, xParamCount );
 		if( pxParam != NULL ) {
-			strncpy( input , pxParam->pcValue , 5 );
-			toggleBitSelect1 = strtol( input, &end, 10);
+			toggleCount[0] = 0;
+			togglePins[0] = strtol( pxParam->pcValue, NULL, 10 );
 		}
 
-		pxParam = pxFindKeyInQueryParams( "selToggelBits2", pxParams, xParamCount );
+		pxParam = pxFindKeyInQueryParams( "pin1", pxParams, xParamCount );
 		if( pxParam != NULL ) {
-			strncpy( input , pxParam->pcValue , 5 );
-			toggleBitSelect2 = strtol( input, &end, 10);
+			toggleCount[1] = 0;
+			togglePins[1] = strtol( pxParam->pcValue, NULL, 10 );
 		}
 
-		xCount += sprintf( pcBuffer, "{\"input\":%d,\"output\":%d,\"count1\":%d,\"count2\":%d}", iBits, oBits, toggleCount[0], toggleCount[1] );
+		pxParam = pxFindKeyInQueryParams( "multi", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			multiplicator = strtol( pxParam->pcValue, NULL, 10 );
+		}
+
+		xCount += sprintf( pcBuffer, "{"
+				"\"input\":"  "%d,"
+				"\"output\":" "%d,"
+				"\"count0\":" "%d,"
+				"\"count1\":" "%d,"
+				"\"pin0\":"   "%d,"
+				"\"pin1\":"   "%d,"
+				"\"multi\":"  "%d"
+			"}",
+			iBits,
+			oBits,
+			toggleCount[0],
+			toggleCount[1],
+			togglePins[0],
+			togglePins[1],
+			multiplicator
+		);
 		return xCount;
 	}
 #endif
