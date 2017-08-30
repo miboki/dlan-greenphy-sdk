@@ -42,8 +42,8 @@ static void prvMQTTEchoTask(void *pvParameters)
 	MQTTClientInit(&client, &network, 20000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
 	client.thread.task = NULL;
 
-	char* address = MQTT_SERVER;
-	//char* address = "iot.eclipse.org";
+	// char* address = MQTT_SERVER;
+	char *address = "broker.hivemq.com";
 	rc = NetworkConnect( &network, address, 1883 );
 	printf("Return code from network connect is %d\n", rc);
 	if ( rc != 0 )
@@ -54,11 +54,11 @@ static void prvMQTTEchoTask(void *pvParameters)
 
 	connectData.MQTTVersion = 4;
 	connectData.clientID.cstring = MQTT_CLIENTID;
-	connectData.keepAliveInterval = 180;
+	connectData.keepAliveInterval = 300;
 	connectData.cleansession = 1;
 	connectData.willFlag = 0;
-	connectData.username.cstring = MQTT_USER;
-	connectData.password.cstring = MQTT_PASSWORD;
+	//connectData.username.cstring = MQTT_USER;
+	//connectData.password.cstring = MQTT_PASSWORD;
 
 	rc = MQTTConnect(&client, &connectData);
 	printf("Return code from MQTT connect is %d\n", rc);
@@ -77,10 +77,12 @@ static void prvMQTTEchoTask(void *pvParameters)
 		message.qos = 0;
 		message.retained = 0;
 		message.payload = payload;
-		sprintf(payload, "{\"meaning\":\"TestValue\", \"value\":%d}", count);
+		//sprintf(payload, "{\"meaning\":\"TestValue\", \"value\":%d}", count);
+		sprintf(payload, "Message:%d", count);
 		message.payloadlen = strlen(payload);
 
-		rc = MQTTPublish(&client, MQTT_TOPIC, &message);
+		//rc = MQTTPublish(&client, MQTT_TOPIC, &message);
+		rc = MQTTPublish(&client, "testtopic/5", &message);
 		printf("Return code from MQTT publish is %d\n", rc);
 		if ( rc != 0 ) {
 			MQTTDisconnect( &client );
@@ -125,64 +127,3 @@ void vStartMQTTTasks(uint16_t usTaskStackSize, UBaseType_t uxTaskPriority)
 			NULL);				/* The task handle is not used. */
 }
 /*-----------------------------------------------------------*/
-
-void vTestTask()
-{
-	vTaskDelay(10000);
-
-	int8_t cBuffer[ 16 ];
-	Socket_t xTCPClientSocket;
-	struct freertos_sockaddr sAddr;
-	int retVal;
-
-	while(1)
-	{
-		//Create Socket for TCP Client
-		xTCPClientSocket = FreeRTOS_socket( FREERTOS_AF_INET,
-		    								FREERTOS_SOCK_STREAM,
-											FREERTOS_IPPROTO_TCP);
-
-		if ( xTCPClientSocket != FREERTOS_INVALID_SOCKET )
-		{
-			printf("TCP Socket created.\n");
-			retVal = FreeRTOS_bind( xTCPClientSocket, NULL, sizeof( struct freertos_sockaddr )  );
-			if ( retVal == 0 )
-			{
-				sAddr.sin_port = FreeRTOS_htons( 80 );
-				sAddr.sin_addr = 1845602496;
-
-				/* Convert the IP address to a string. */
-				FreeRTOS_inet_ntoa( sAddr.sin_addr, ( char * ) cBuffer );
-
-				/* Print out the IP address. */
-				printf( "DVT Server is at IP address %s\r\n", cBuffer );
-
-				retVal = FreeRTOS_connect( xTCPClientSocket, &sAddr, sizeof( sAddr ) );
-				if( retVal == 0 )
-				{
-					printf("Finished Test Successfully.\n");
-		    	}
-				else
-					printf("Error, unable to connect to DVT Server\n");
-		    }
-			else
-				printf("Error, unable to bind TCP Socket\n");
-		}
-		else
-			printf("Error creating TCP Socket\n");
-
-		FreeRTOS_closesocket( xTCPClientSocket );
-		vTaskDelete( NULL );
-	}
-}
-
-
-void vLookUpAddress()
-{
-	xTaskCreate(vTestTask,
-			"MQTTTest",
-			240,
-			NULL,
-			3,
-			NULL);
-}

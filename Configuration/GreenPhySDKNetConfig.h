@@ -47,6 +47,7 @@
 #define netconfigUSE_DHCP              1
 #define netconfigUSE_BRIDGE            1
 #define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE
+#define useMQTT                        0
 
 /* Hostname, used for DHCP */
 #define netconfigHOSTNAME              "devolo-d9a"  //old name "GreenPHY evalboard II"

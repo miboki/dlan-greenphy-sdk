@@ -255,7 +255,9 @@ function processJSON(page, json) {
 }
 
 function sendRequest(page, data, success) {
-    var domain = 'http://172.16.201.3/';
+    /* Do not use the domain, only for testing purposes!!! */
+    //var domain = 'http://172.16.201.3/';
+    var domain = '';
     if( !data ) data = { action: 'get' };
     $.getJSON(domain + page + '.json', data, success)
             .fail(function(xhr, text_status, error_thrown) {
@@ -280,7 +282,7 @@ function renderPage(page, json) {
 //        $('#content').fadeOut(100, function() {
 //            $('#content').html(html).fadeIn(200);
 //        });
-        $('#content').html(html)
+        $('#content').html(html);
         // Mark navigation link as active
         $('#nav a.active').removeClass('active');
         $('#nav a[href^="#' + page + '"]').addClass('active');
@@ -305,7 +307,7 @@ function updatePage(page, data) {
 
     sendRequest(page, data, function(json) {
         renderPage(page, json);
-        timeout = setTimeout(updatePage, 1000);
+        timeout = setTimeout(updatePage, 2000);
     });
 }
 

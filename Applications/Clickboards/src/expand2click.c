@@ -33,7 +33,7 @@
 
 //sbit EXPAND_RST at GPIOC_ODR.B2;
 
-unsigned char i = 0, old_res = 0, res;
+// unsigned char i = 0, old_res = 0, res;
 
 //extern sfr sbit EXPAND_RST;
 
@@ -113,7 +113,8 @@ char lastBits = get_expand2click();
 		/* Toggle obits once per second - just for demo. */
 //		if( count++ % 10 == 0 )
 //			oBits ^= ( togglePins[0] | togglePins[1] );
-//		set_expand2click(oBits);
+		/* _CD_ send output bits to board */
+		set_expand2click(oBits);
 
 		/* Get iBits from board */
 		iBits = get_expand2click();
@@ -139,7 +140,7 @@ char lastBits = get_expand2click();
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
 
-		// Search input object for 'input' Parameter to get the new Value of oBits
+		// Search object for 'output' Parameter to get the new Value of oBits
 		pxParam = pxFindKeyInQueryParams( "output", pxParams, xParamCount );
 		if( pxParam != NULL ) {
 			oBits = strtol( pxParam->pcValue, NULL, 10 );
