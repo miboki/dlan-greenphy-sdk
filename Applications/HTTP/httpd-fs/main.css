@@ -209,20 +209,21 @@ main {
   vertical-align: text-bottom;
 }
 
-.icon-menue {
-  display: inline-block;
+#page-title .icon {
   width: 30px;
   height: 30px;
-  margin-right: 10px;
-
-  stroke-width: 0;
-  stroke: currentColor;
-  fill: currentColor;
-  vertical-align: text-bottom;
 }
 
 .clickboard .icon {
   width:20px;
   margin-right: 8px;
   margin-left: -2px;
+}
+
+.bits label {
+  display:inline-block;
+  text-align:center;
+}
+.bits input {
+  display: block;
 }

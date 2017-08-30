@@ -637,11 +637,6 @@ NetworkEndPoint_t *pxEndPoint;
 	if( pxEndPoint == NULL )
 	{
 		pxEndPoint = FreeRTOS_FindEndPointOnNetMask( ulIPAddress, 5 );
-		/* _ML_ Removed default EndPoint from FreeRTOS_FindEndPointOnNetMask, so get it here if needed. */
-		if( pxEndPoint == NULL )
-		{
-			pxEndPoint = FreeRTOS_FindDefaultEndPoint();
-		}
 	}
 	if( pxEndPoint != NULL )
 	{
