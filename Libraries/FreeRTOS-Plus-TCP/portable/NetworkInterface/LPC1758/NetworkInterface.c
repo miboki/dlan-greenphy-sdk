@@ -97,12 +97,12 @@
 	#define configUSE_RMII 1
 #endif
 
-#ifndef configNUM_RX_DESCRIPTORS
-	#error please define configNUM_RX_DESCRIPTORS in your FreeRTOSIPConfig.h
+#ifndef ipconfigNUM_RX_DESCRIPTORS
+	#error please define ipconfigNUM_RX_DESCRIPTORS in your FreeRTOSIPConfig.h
 #endif
 
-#ifndef configNUM_TX_DESCRIPTORS
-	#error please define configNUM_TX_DESCRIPTORS in your FreeRTOSIPConfig.h
+#ifndef ipconfigNUM_TX_DESCRIPTORS
+	#error please define ipconfigNUM_TX_DESCRIPTORS in your FreeRTOSIPConfig.h
 #endif
 
 #ifndef NETWORK_IRQHandler
@@ -170,19 +170,19 @@ the task can be notified when new packets arrive. */
 static TaskHandle_t xEMACTaskHandle = NULL;
 
 /* xTXDescriptorSemaphore is a counting semaphore with
-a maximum count of configNUM_TX_DESCRIPTORS, which is the number of
+a maximum count of ipconfigNUM_TX_DESCRIPTORS, which is the number of
 DMA TX descriptors. */
 static SemaphoreHandle_t xTXDescriptorSemaphore = NULL;
 
 /* The EMAC DMA descriptors are stored in AHB SRAM for faster access */
 static __attribute__ ((section(".bss.$RAM2")))
-		ENET_RXDESC_T xDMARxDescriptors[configNUM_RX_DESCRIPTORS];
+		ENET_RXDESC_T xDMARxDescriptors[ipconfigNUM_RX_DESCRIPTORS];
 static __attribute__ ((section(".bss.$RAM2")))
-		ENET_RXSTAT_T xDMARxStatus[configNUM_RX_DESCRIPTORS];
+		ENET_RXSTAT_T xDMARxStatus[ipconfigNUM_RX_DESCRIPTORS];
 static __attribute__ ((section(".bss.$RAM2")))
-		ENET_TXDESC_T xDMATxDescriptors[configNUM_TX_DESCRIPTORS];
+		ENET_TXDESC_T xDMATxDescriptors[ipconfigNUM_TX_DESCRIPTORS];
 static __attribute__ ((section(".bss.$RAM2")))
-		ENET_TXSTAT_T xDMATxStatus[configNUM_TX_DESCRIPTORS];
+		ENET_TXSTAT_T xDMATxStatus[ipconfigNUM_TX_DESCRIPTORS];
 
 /*-----------------------------------------------------------*/
 
@@ -236,7 +236,7 @@ static void prvSetupTxDescriptors( void )
 	memset( ( void * ) xDMATxDescriptors, 0, sizeof( xDMATxDescriptors ) );
 
 	/* Build TX descriptors for local buffers */
-	for (x = 0; x < configNUM_TX_DESCRIPTORS; x++) {
+	for (x = 0; x < ipconfigNUM_TX_DESCRIPTORS; x++) {
 		#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
 		{
 			/* Nothing to do, Packet pointer will be set when data is ready to transmit.
@@ -261,7 +261,7 @@ static void prvSetupTxDescriptors( void )
 	}
 
 	/* Point the DMA to the base of the descriptor list. */
-	Chip_ENET_InitTxDescriptors(LPC_ETHERNET, xDMATxDescriptors, xDMATxStatus, configNUM_TX_DESCRIPTORS);
+	Chip_ENET_InitTxDescriptors(LPC_ETHERNET, xDMATxDescriptors, xDMATxStatus, ipconfigNUM_TX_DESCRIPTORS);
 }
 /*-----------------------------------------------------------*/
 
@@ -276,7 +276,7 @@ BaseType_t x;
 	memset( ( void * )  xDMARxDescriptors, 0, sizeof( xDMARxDescriptors ) );
 
 	/* Build RX descriptors for local buffers */
-	for( x = 0; x < configNUM_RX_DESCRIPTORS; x++ )
+	for( x = 0; x < ipconfigNUM_RX_DESCRIPTORS; x++ )
 	{
 		/* Allocate a buffer of the largest	possible frame size as it is not
 		known what size received frames will be. */
@@ -287,7 +287,7 @@ BaseType_t x;
 
 			/* During start-up there should be enough Network Buffers available,
 			so it is safe to use configASSERT().
-			In case this assert fails, please check: configNUM_RX_DESCRIPTORS,
+			In case this assert fails, please check: ipconfigNUM_RX_DESCRIPTORS,
 			ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS, and in case BufferAllocation_2.c
 			is included, check the amount of available heap. */
 			configASSERT( pxNetworkBuffer != NULL );
@@ -313,7 +313,7 @@ BaseType_t x;
 	}
 
 	/* Point the DMA to the base of the descriptor list. */
-	Chip_ENET_InitRxDescriptors(LPC_ETHERNET, xDMARxDescriptors, xDMARxStatus, configNUM_RX_DESCRIPTORS);
+	Chip_ENET_InitRxDescriptors(LPC_ETHERNET, xDMARxDescriptors, xDMARxStatus, ipconfigNUM_RX_DESCRIPTORS);
 }
 /*-----------------------------------------------------------*/
 
@@ -391,7 +391,6 @@ BaseType_t xReturn;
 
 BaseType_t xLPC1758_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
-static BaseType_t xInitialised = pdFALSE;
 const TickType_t xAutoNegotiateDelay = pdMS_TO_TICKS( 2000UL );
 BaseType_t xReturn = pdPASS;
 NetworkEndPoint_t *pxEndPoint;
@@ -403,7 +402,7 @@ NetworkEndPoint_t *pxEndPoint;
 	Chip_ENET_RXDisable(LPC_ETHERNET);
 	Chip_ENET_TXDisable(LPC_ETHERNET);
 
-	if( xInitialised == pdFALSE )
+	if( pxInterface->bits.bInterfaceInitialised == pdFALSE_UNSIGNED )
 	{
 		/* Call the LPCOpen function to initialise the hardware. */
 		#if( configUSE_RMII == 1 )
@@ -416,6 +415,7 @@ NetworkEndPoint_t *pxEndPoint;
 		}
 		#endif
 
+		/* _ML_ TODO: Ethernet driver needs to wait until GreenPHY has read its MAC. */
 //	#if( ipconfigUSE_BRIDGE != 0 )
 //		if( pxInterface->bits.bIsBridged != 0 )
 //		{
@@ -471,9 +471,8 @@ NetworkEndPoint_t *pxEndPoint;
 			prvSetupTxDescriptors();
 			prvSetupRxDescriptors();
 
-			/* Create a counting semaphore, with a value of 'configNUM_TX_DESCRIPTORS'
-			and a maximum of 'configNUM_TX_DESCRIPTORS'. */
-			xTXDescriptorSemaphore = xSemaphoreCreateCounting( ( UBaseType_t ) configNUM_TX_DESCRIPTORS, ( UBaseType_t ) configNUM_TX_DESCRIPTORS );
+			/* Create a semaphore which counts free TX descriptors. */
+			xTXDescriptorSemaphore = xSemaphoreCreateCounting( ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS, ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS );
 			configASSERT( xTXDescriptorSemaphore );
 		}
 
@@ -483,7 +482,7 @@ NetworkEndPoint_t *pxEndPoint;
 			prvUpdatePHYLinkStatus( xAutoNegotiateDelay );
 		}
 
-		xInitialised = pdTRUE;
+		pxInterface->bits.bInterfaceInitialised = pdTRUE_UNSIGNED;
 	}
 
 	if( xReturn != pdFAIL )
@@ -761,7 +760,7 @@ IPStackEvent_t xIPStackEvent;
 
 		/* Check if TX needs cleanup. */
 		ulTxCleanupCount = uxSemaphoreGetCount( xTXDescriptorSemaphore );
-		while( ulTxCleanupCount != configNUM_TX_DESCRIPTORS )
+		while( ulTxCleanupCount != ipconfigNUM_TX_DESCRIPTORS )
 		{
 			#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
 			{
@@ -784,7 +783,7 @@ IPStackEvent_t xIPStackEvent;
 
 			/* Advance to the next descriptor, wrapping if necessary */
 			++ulTxCleanupIndex;
-			if( ulTxCleanupIndex >= configNUM_TX_DESCRIPTORS )
+			if( ulTxCleanupIndex >= ipconfigNUM_TX_DESCRIPTORS )
 			{
 				ulTxCleanupIndex = 0;
 			}

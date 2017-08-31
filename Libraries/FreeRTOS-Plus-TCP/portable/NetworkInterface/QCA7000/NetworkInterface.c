@@ -79,7 +79,7 @@
 #include "FreeRTOS_Routing.h"
 #include "NetworkBufferManagement.h"
 
-#if configREAD_MAC_FROM_GREENPHY
+#if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 	#include "mme_handler.h"
 	#include "qca_vs_mme.h"
 #endif
@@ -112,11 +112,12 @@ extern void qcaspi_spi_thread(void *data);
 BaseType_t xQCA7000_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
-#if configREAD_MAC_FROM_GREENPHY
+#if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 	NetworkEndPoint_t *pxEndPoint;
 	NetworkBufferDescriptor_t *pxDescriptor;
 	uint16_t usMMType;
 	struct CCMMEFrame *pxMMEFrame;
+	BaseType_t xRetries = 10;
 #endif
 
 	if( xGreenPHYTaskHandle == NULL )
@@ -139,34 +140,51 @@ BaseType_t xReturn = pdPASS;
 		/* QCA7000 reset pin setup */
 		Chip_GPIO_SetPinDIROutput(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 
-		xTaskCreate( qcaspi_spi_thread, "GreenPhy", 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
+		xTaskCreate( qcaspi_spi_thread, pxInterface->pcName, 240, &qca, tskIDLE_PRIORITY+4, &xGreenPHYTaskHandle);
 
-		registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
+		{
+			registerInterruptHandlerGPIO(GREENPHY_INT_PORT, GREENPHY_INT_PIN, GreenPHY_GPIO_IRQHandler);
+		}
 
 		/* Wait for sync. */
-		vTaskDelay( pdMS_TO_TICKS( 2000) );
+		vTaskDelay( pdMS_TO_TICKS( 6000 ) );
 
-		#if configREAD_MAC_FROM_GREENPHY
+		#if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 		{
-			/* Create GetSwVersion MME */
-			pxDescriptor = qcaspi_create_get_sw_version_mme( pxInterface, &usMMType );
-
-			if( pxDescriptor != NULL ) {
-				/* Send MME and receive answer */
-				pxDescriptor = send_receive_mme_blocking( pxInterface, pxDescriptor, usMMType );
+			while( xRetries-- > 0 )
+			{
+				/* Create GetSwVersion MME */
+				pxDescriptor = qcaspi_create_get_sw_version_mme( pxInterface, &usMMType );
 
 				if( pxDescriptor != NULL ) {
-					/* Received MME, extract MAC. */
-					pxMMEFrame = (struct CCMMEFrame *) pxDescriptor->pucEthernetBuffer;
-					pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
-					memcpy( pxEndPoint->xMACAddress.ucBytes, pxMMEFrame->mOSA, sizeof( MACAddress_t ) );
+					/* Send MME and receive answer */
+					pxDescriptor = send_receive_mme_blocking( pxInterface, pxDescriptor, usMMType );
 
-					/* Release the Network Buffer, as we are responsible for it. */
-					vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+					if( pxDescriptor != NULL ) {
+						/* Received MME, extract MAC. */
+						pxMMEFrame = (struct CCMMEFrame *) pxDescriptor->pucEthernetBuffer;
+						pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+						if( pxEndPoint == NULL )
+						{
+							pxEndPoint = FreeRTOS_FindDefaultEndPoint();
+						}
+						if( pxEndPoint != NULL )
+						{
+							memcpy( pxEndPoint->xMACAddress.ucBytes, pxMMEFrame->mOSA, sizeof( MACAddress_t ) );
+							/* Toggle 2nd bit of first byte to indicate a locally administered MAC. */
+							pxEndPoint->xMACAddress.ucBytes[0] ^= (1 << 2);
+						}
+
+						/* Release the Network Buffer, as we are responsible for it. */
+						vReleaseNetworkBufferAndDescriptor( pxDescriptor );
+						xRetries = 0;
+					}
 				}
 			}
 		}
 		#endif
+
+		pxInterface->bits.bInterfaceInitialised = pdTRUE_UNSIGNED;
 
 	}
 
@@ -190,8 +208,13 @@ static BaseType_t xQCA7000_GetPhyLinkStatus( NetworkInterface_t *pxInterface )
 BaseType_t xReturn = pdPASS;
 
 	/* _ML_ The link is maintained by the QCA7k chip itself, is
-	there a simple way to figure out wether the device is paired
+	there a simple way to figure out whether the device is paired
 	or not? */
+
+	if( pxInterface->bits.bInterfaceInitialised == pdFALSE_UNSIGNED )
+	{
+		xReturn = pdFAIL;
+	}
 
 	return xReturn;
 }

@@ -189,6 +189,38 @@ BaseType_t x;
 
 #endif /* ipconfigUSE_FORWARDING_TABLE != 0 */
 
+NetworkInterface_t *FreeRTOS_FirstNetworkInterfaceInBridge( void )
+{
+NetworkInterface_t *pxInterface = FreeRTOS_FirstNetworkInterface();
+
+	while( pxInterface != NULL )
+	{
+		if( pxInterface->bits.bIsBridged != 0 )
+		{
+			break;
+		}
+		pxInterface = pxInterface->pxNext;
+	}
+
+	return pxInterface;
+}
+/*-----------------------------------------------------------*/
+
+NetworkInterface_t *FreeRTOS_NextNetworkInterfaceInBridge( NetworkInterface_t *pxInterface )
+{
+	while( pxInterface != NULL )
+	{
+		pxInterface = pxInterface->pxNext;
+		if( pxInterface->bits.bIsBridged != 0 )
+		{
+			break;
+		}
+	}
+
+	return pxInterface;
+}
+/*-----------------------------------------------------------*/
+
 BaseType_t xBridge_Process( NetworkBufferDescriptor_t * const pxNetworkBuffer )
 {
 BaseType_t xReturn = pdFAIL;
@@ -231,8 +263,10 @@ BaseType_t xIsBroadcast = pdFALSE;
 	if( pxSendToInterface == NULL )
 	{
 		/* Send frame to all interfaces except the receiving one. */
-		pxInterface = FreeRTOS_FirstNetworkInterface();
-		while( pxInterface != NULL )
+
+		for( pxInterface = FreeRTOS_FirstNetworkInterfaceInBridge();
+			 pxInterface != NULL;
+			 pxInterface = FreeRTOS_NextNetworkInterfaceInBridge( pxInterface ) )
 		{
 			/* Do not send to Interfaces whose forwarding table is fully known,
 			unless it's a broadcast packet.
@@ -263,8 +297,6 @@ BaseType_t xIsBroadcast = pdFALSE;
 					}
 				}
 			}
-
-			pxInterface = pxInterface->pxNext;
 		}
 	}
 

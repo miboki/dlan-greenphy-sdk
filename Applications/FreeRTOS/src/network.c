@@ -27,6 +27,12 @@
 	#error "netconfigUSE_IP defined, but no netconfigIP_INTERFACE"
 #endif
 
+#if( ( ipconfigREAD_MAC_FROM_GREENPHY != 0 ) && ( netconfigIP_INTERFACE == netconfigETH_INTERFACE ) )
+	#error "ipconfigREAD_MAC_FROM_GREENPHY defined, but not supported for use with ethernet interface only. \
+			Please set netconfigIP_INTERFACE to netconfigPLC_INTERFACE or netconfigBRIDGE_INTERFACE or disable \
+			ipconfigREAD_MAC_FROM_GREENPHY."
+#endif
+
 /* Storage for the network interfaces in use. */
 #if( ( netconfigUSE_BRIDGE != 0 ) || ( ( netconfigUSE_IP != 0 ) && ( netconfigIP_INTERFACE == netconfigETH_INTERFACE ) ) )
 	static NetworkInterface_t xEthInterface    = { 0 };

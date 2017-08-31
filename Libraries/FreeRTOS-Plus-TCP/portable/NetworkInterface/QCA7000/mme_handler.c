@@ -122,7 +122,7 @@ BaseType_t filter_rx_mme( NetworkBufferDescriptor_t *pxDescriptor )
 NetworkBufferDescriptor_t *send_receive_mme_blocking( NetworkInterface_t *pxInterface, NetworkBufferDescriptor_t *pxDescriptor, uint16_t usResponseMMType )
 {
 	NetworkBufferDescriptor_t* pxRxDescriptor = NULL;
-	const TickType_t xBlockTime = pdMS_TO_TICKS( 250 );
+	const TickType_t xBlockTime = pdMS_TO_TICKS( 1000 );
 
 	/* The caller of this method should ensure the frame is an MME. */
 	configASSERT( is_frame_mme( (struct CCMMEFrame *) pxDescriptor->pucEthernetBuffer ) );
