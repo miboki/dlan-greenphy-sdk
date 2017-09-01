@@ -55,6 +55,11 @@
 	const uint8_t ucMACAddress[ 6 ] = { netconfigMAC_ADDR0, netconfigMAC_ADDR1, netconfigMAC_ADDR2, netconfigMAC_ADDR3, netconfigMAC_ADDR4, netconfigMAC_ADDR5 };
 #endif
 
+#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
+	static char hostname[] = "devolo-000";
+#endif
+
+
 /*-----------------------------------------------------------*/
 
 #if( netconfigUSE_IP != 0 )
@@ -115,6 +120,13 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				xTasksAlreadyCreated = pdTRUE;
 			}
 
+			/* Update hostname based on MAC address. */
+			#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
+				snprintf( &hostname[7], 3, "%X%X",
+						 ( pxEndPoint->xMACAddress.ucBytes[4] & 0x0F ),
+						 pxEndPoint->xMACAddress.ucBytes[5] );
+			#endif
+
 			/* The network is up and configured.  Print out the configuration,
 			which may have been obtained from a DHCP server. */
 			FreeRTOS_GetAddressConfiguration( pxEndPoint,
@@ -146,7 +158,11 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 const char *pcApplicationHostnameHook( void )
 {
-	return netconfigHOSTNAME;
+#if( netconfigUSE_DYNAMIC_HOSTNAME == 0 )
+	char *hostname = netconfigHOSTNAME;
+#endif
+
+	return hostname;
 }
 /*-----------------------------------------------------------*/
 
@@ -157,7 +173,7 @@ BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
 }
 /*-----------------------------------------------------------*/
 
-void *vNetworkInit( void )
+void vNetworkInit( void )
 {
 	#if( netconfigUSE_BRIDGE != 0 )
 	{
