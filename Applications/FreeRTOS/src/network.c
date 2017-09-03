@@ -120,13 +120,6 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				xTasksAlreadyCreated = pdTRUE;
 			}
 
-			/* Update hostname based on MAC address. */
-			#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
-				snprintf( &hostname[7], 3, "%X%X",
-						 ( pxEndPoint->xMACAddress.ucBytes[4] & 0x0F ),
-						 pxEndPoint->xMACAddress.ucBytes[5] );
-			#endif
-
 			/* The network is up and configured.  Print out the configuration,
 			which may have been obtained from a DHCP server. */
 			FreeRTOS_GetAddressConfiguration( pxEndPoint,
@@ -171,6 +164,19 @@ BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
 {
 	return 0x03;
 }
+/*-----------------------------------------------------------*/
+
+#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
+
+	void vUpdateHostname( NetworkEndPoint_t *pxEndPoint )
+	{
+		/* Update hostname based on MAC address. */
+			snprintf( &hostname[7], (sizeof(hostname) - 7), "%X%X",
+					 ( pxEndPoint->xMACAddress.ucBytes[4] & 0x0F ),
+					 pxEndPoint->xMACAddress.ucBytes[5] );
+	}
+
+#endif
 /*-----------------------------------------------------------*/
 
 void vNetworkInit( void )

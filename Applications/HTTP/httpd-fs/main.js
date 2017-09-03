@@ -11,6 +11,13 @@ templates['status'] = `
             <td>{{free_heap}}</td>
           </tr>
           <tr>
+            <td><b>Build:</b></td>
+            <td>{{build}}</td>
+          </tr>
+        </table>
+        <h3>EvalBoard</h3>
+        <table class="table table-striped">
+          <tr>
             <td><b>LED state:</b></td>
             <td>
               <div class="onoffswitch">
@@ -21,6 +28,37 @@ templates['status'] = `
                 </label>
               </div>
             </td>
+          </tr>
+          <tr>
+            <td><b>Button:</b></td>
+            <td>{{button}}</td>
+          </tr>
+        </table>
+        <h3>Network</h3>
+        <table class="table table-striped">
+          <tr>
+            <td><b>Hostname:</b></td>
+            <td>{{hostname}}</td>
+          </tr>
+          <tr>
+            <td><b>MAC:</b></td>
+            <td>{{mac}}</td>
+          </tr>
+          <tr>
+            <td><b>Ip:</b></td>
+            <td>{{ip}}</td>
+          </tr>
+          <tr>
+            <td><b>Netmask:</b></td>
+            <td>{{netmask}}</td>
+          </tr>
+          <tr>
+            <td><b>Gateway:</b></td>
+            <td>{{gateway}}</td>
+          </tr>
+          <tr>
+            <td><b>DNS:</b></td>
+            <td>{{dns}}</td>
           </tr>
         </table>
 `;
