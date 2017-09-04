@@ -22,13 +22,19 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
+#include "GreenPhySDKNetConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "clickboard_config.h"
 #include "thermo3click.h"
 
+#if( netconfigUSEMQTT != 0 )
+	/* MQTT includes */
+	#include "mqtt.h"
+#endif
+
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_THERMO3 10000 /* 10s */
+#define TASKWAIT_THERMO3 60000 /* 60s */
 
 /* Temperature offset used to calibrate the sensor. */
 #define TEMP_OFFSET  -2.0
@@ -87,11 +93,18 @@ static int temp_high_time = 0;
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
+#if( netconfigUSEMQTT != 0 )
+	char buffer[40];
+#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	while( 1 )
 	{
 		/* Read temperature in hundredth of a degree. */
 		temp_cur = Get_Temperature();
+		#if( netconfigUSEMQTT != 0 )
+			sprintf(buffer, "{\"meaning\":\"temperature\",\"value\":%d}", temp_cur);
+			xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 1 );
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		/* Check for lowest and highest temperatures. */
 		if( temp_cur < temp_low ) {

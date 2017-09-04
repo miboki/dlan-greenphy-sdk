@@ -29,7 +29,6 @@ static void prvMQTTEchoTask(void *pvParameters)
 {
 	vTaskDelay(10000); // Wait 10s to don't interrupt the IP Stack StartUp
 
-	/* connect to m2m.eclipse.org, subscribe to a topic, send and receive messages regularly every 1 sec */
 	MQTTClient client;
 	Network network;
 	unsigned char sendbuf[100], readbuf[10];
@@ -40,8 +39,9 @@ static void prvMQTTEchoTask(void *pvParameters)
 	pvParameters = 0;
 	NetworkInit(&network);
 	MQTTClientInit(&client, &network, 20000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
+#if defined(MQTT_TASK)
 	client.thread.task = NULL;
-
+#endif
 	// char* address = MQTT_SERVER;
 	char *address = "broker.hivemq.com";
 	rc = NetworkConnect( &network, address, 1883 );
@@ -49,8 +49,10 @@ static void prvMQTTEchoTask(void *pvParameters)
 	if ( rc != 0 )
 		goto exit;
 
+#if defined(MQTT_TASK)
 	if ((rc = MQTTStartTask(&client)) != pdPASS)
 		printf("Return code from start tasks is %d\n", rc);
+#endif
 
 	connectData.MQTTVersion = 4;
 	connectData.clientID.cstring = MQTT_CLIENTID;
@@ -88,6 +90,14 @@ static void prvMQTTEchoTask(void *pvParameters)
 			MQTTDisconnect( &client );
 			goto exit;
 		}
+#if !defined(MQTT_TASK)
+		rc = MQTTYield(&client, 1000);
+		printf("Return code from MQTT yield is %d\n", rc);
+		if ( rc != 0 ) {
+			MQTTDisconnect( &client );
+			goto exit;
+		}
+#endif
 
 		vTaskDelay(1000);
 	}
@@ -107,10 +117,10 @@ exit:
 
 
 	printf("could not connect\n");
-
+#if defined(MQTT_TASK)
 	if( client.thread.task != NULL )
 		vTaskDelete( client.thread.task );
-
+#endif
 	vTaskDelete( NULL );
 }
 

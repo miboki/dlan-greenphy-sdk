@@ -10,6 +10,8 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/Clickboards/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/HTTP/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/FreeRTOS/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Applications/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Applications" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -86,8 +88,9 @@
 							<tool id="com.crt.advproject.ar.lib.debug.1960059227" name="MCU Archiver" superClass="com.crt.advproject.ar.lib.debug"/>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="com.crt.advproject.config.lib.debug.1946804125.392794613" name="MQTTEcho_Test.h" rcbsApplicability="disable" resourcePath="MQTT/inc/MQTTEcho_Test.h" toolsToInvoke=""/>
 					<sourceEntries>
-						<entry excluding="Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="MQTT/src/MQTTEcho_Test.c|MQTT/inc/MQTTEcho_Test.h|Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

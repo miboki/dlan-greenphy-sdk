@@ -19,10 +19,16 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
+#include "GreenPhySDKNetConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "clickboard_config.h"
 #include "expand2click.h"
+
+#if( netconfigUSEMQTT != 0 )
+	/* MQTT includes */
+	#include "mqtt.h"
+#endif
 
 /* Task-Delay in ms, change to your preference */
 #define TASKWAIT_EXPAND2 100
@@ -91,6 +97,8 @@ static int toggleCount[2] = { 0, 0 };
 
 static int multiplicator = 250;
 
+static unsigned char newVal = 0;
+
 /*-----------------------------------------------------------*/
 
 static char get_expand2click(void){
@@ -102,12 +110,16 @@ void set_expand2click(char pins){
 	Expander_Write_Byte(EXPAND_ADDR, OLATB_BANK0, pins);    // Write pins to expander's PORTB
 }
 /*-----------------------------------------------------------*/
+BaseType_t xExpand2Click_Deinit ( void );
 
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
 char lastBits = get_expand2click();
 //char count = 0;
+#if( netconfigUSEMQTT != 0 )
+	char buffer[40];
+#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	while (1) {
 		/* Toggle obits once per second - just for demo. */
@@ -120,12 +132,22 @@ char lastBits = get_expand2click();
 		iBits = get_expand2click();
 
 		/* First water meter pin toggled? */
-		if( ( iBits ^ lastBits ) & togglePins[0] )
+		if( ( iBits ^ lastBits ) & togglePins[0] ){
 			toggleCount[0] += 1;
+			#if( netconfigUSEMQTT != 0 )
+				sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d}", toggleCount[0]);
+				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
+			#endif /* #if( netconfigUSEMQTT != 0 ) */
+		}
 
 		/* Second water meter pin toggled? */
-		if( ( iBits ^ lastBits ) & togglePins[1] )
+		if( ( iBits ^ lastBits ) & togglePins[1] ){
 			toggleCount[1] += 1;
+			#if( netconfigUSEMQTT != 0 )
+				sprintf(buffer, "{\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[1]);
+				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
+			#endif /* #if( netconfigUSEMQTT != 0 ) */
+		}
 
 		lastBits = iBits;
 
@@ -237,6 +259,10 @@ BaseType_t xReturn = pdFALSE;
 
 			xReturn = pdTRUE;
 		}
+
+		/* _CD_ Initialize Config for debugging */
+		togglePins[0] = 0x01; //PA0
+		togglePins[1] = 0x10; //PA4
 	}
 
 	return xReturn;
@@ -264,7 +290,6 @@ BaseType_t xReturn = pdFALSE;
 		/* TODO: Reset I2C and GPIOs. */
 		xReturn = pdTRUE;
 	}
-
 	return xReturn;
 }
 /*-----------------------------------------------------------*/

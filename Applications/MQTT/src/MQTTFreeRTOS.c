@@ -157,12 +157,11 @@ int NetworkConnect(Network* n, char* addr, int port)
 	int retVal = -1;
 	uint32_t ipAddress;
 	TickType_t xReceiveTimeout_ms = 10000;
+	WinProperties_t xMQTTWinProps; // Use Window Properties to limit the Socket Tx and RX Streams
 	xReceiveTimeout_ms /= portTICK_PERIOD_MS;
 
 	if ((ipAddress = FreeRTOS_gethostbyname(addr)) == 0)
 		goto exit;
-
-	//ipAddress = 4045285830; // for testing set Address fix to 198.41.30.241
 
 	sAddr.sin_port = FreeRTOS_htons(port);
 	sAddr.sin_addr = ipAddress;
@@ -175,6 +174,19 @@ int NetworkConnect(Network* n, char* addr, int port)
 	                     FREERTOS_SO_RCVTIMEO,/* Setting receive timeout. */
 	                     &xReceiveTimeout_ms, /* The timeout value. */
 	                     0 );
+
+	/* _CD_ Set required Tx and RX Streams */
+	xMQTTWinProps.lTxBufSize = 512; /* In Byte */
+	xMQTTWinProps.lTxWinSize = 1; /* In MSS */
+	xMQTTWinProps.lRxBufSize = 256; /* In Byte */
+	xMQTTWinProps.lRxWinSize = 1; /* In MSS */
+
+	/* _CD_ Now set Window size option in socket */
+	FreeRTOS_setsockopt(n->my_socket,					/* Socket the Options should be set to */
+						0,								/* unused */
+						FREERTOS_SO_WIN_PROPERTIES,		/* Specify option to be set (windowsize) */
+						( void * ) &xMQTTWinProps,		/* Pointer to structure which contains the options */
+						sizeof( xMQTTWinProps ));		/* Size of the option structure */
 
 	if ((retVal = FreeRTOS_connect(n->my_socket, &sAddr, sizeof(sAddr))) < 0)
 	{

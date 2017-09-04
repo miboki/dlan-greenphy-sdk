@@ -19,7 +19,7 @@
 #if !defined(__MQTT_CLIENT_C_)
 #define __MQTT_CLIENT_C_
 
-#define MQTT_TASK 1
+//#define MQTT_TASK 1
 
 #if defined(__cplusplus)
  extern "C" {

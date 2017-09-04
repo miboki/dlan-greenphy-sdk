@@ -47,7 +47,7 @@
 #define netconfigUSE_DHCP              1
 #define netconfigUSE_BRIDGE            1
 #define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE
-#define useMQTT                        0
+#define netconfigUSEMQTT               1
 
 /* Hostname, used for DHCP */
 #define netconfigHOSTNAME              "devolo-d9a"  //old name "GreenPHY evalboard II"
@@ -83,5 +83,18 @@
 #define netconfigDNS_SERVER_ADDR1      8
 #define netconfigDNS_SERVER_ADDR2      8
 #define netconfigDNS_SERVER_ADDR3      8
+
+/* MQTT Credentials */
+#define netconfigMQTT_BROKER           "mqtt.relayr.io"
+#define netconfigMQTT_PORT             1883
+#define netconfigMQTT_CLIENT           "Tvv/BR4JXTxOPY2juXEmfXQ"
+#define netconfigMQTT_USER             "beffc147-8257-4f13-8f63-68ee5c499f5d"
+#define netconfigMQTT_PASSWORT         "O4kZrKTegLZe"
+#define netconfigMQTT_USEWILL          0
+#define netconfigMQTT_WILL_QOS         1
+#define netconfigMQTT_WILL_RETAIN      1
+#define netconfigMQTT_WILL_TOPIC       NULL
+#define netconfigMQTT_WILL_MESSAGE     NULL
+#define netconfigMQTT_TOPIC            "/v1/beffc147-8257-4f13-8f63-68ee5c499f5d/data"
 
 #endif /* GREENPHYSDKNETCONFIG_H_ */
