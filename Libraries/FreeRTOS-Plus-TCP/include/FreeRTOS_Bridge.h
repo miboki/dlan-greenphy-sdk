@@ -79,6 +79,16 @@ void vRefreshForwardingTableEntry( const MACAddress_t *pxMACAddress, NetworkInte
 void vAgeForwardingTable( void );
 
 /*
+ * Get the first bridged interface.
+ */
+NetworkInterface_t *FreeRTOS_FirstNetworkInterfaceInBridge( void );
+
+/*
+ * Get the next bridged interface.
+ */
+NetworkInterface_t *FreeRTOS_NextNetworkInterfaceInBridge( NetworkInterface_t *pxInterface );
+
+/*
  * Forward a frame to the bridged interfaces. Returns pdTRUE if the frame was
  * successfully forwarded to one or multiple interfaces and pdFALSE if not. If
  * the frame could not be forwarded it is the caller's responsibility to return

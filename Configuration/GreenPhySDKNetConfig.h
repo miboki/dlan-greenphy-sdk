@@ -46,11 +46,13 @@
 #define netconfigUSE_IP                1
 #define netconfigUSE_DHCP              1
 #define netconfigUSE_BRIDGE            1
-#define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE
+#define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE /* Select one of the three defines above. */
 #define netconfigUSEMQTT               1
 
 /* Hostname, used for DHCP */
-#define netconfigHOSTNAME              "devolo-d9a"  //old name "GreenPHY evalboard II"
+#define netconfigUSE_DYNAMIC_HOSTNAME  1  /* If defined hostname will be "devolo-MAC" with MAC being the last
+										   three characters of the hex formatted MAC address. */
+#define netconfigHOSTNAME              "GreenPHY evalboard II"  /* Used, if dynamic hostname is disabled. */
 
 /* MAC address configuration. */
 #define netconfigMAC_ADDR0	           0x00

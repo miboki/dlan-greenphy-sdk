@@ -4,6 +4,6 @@
 /*
  * Initializer for the network interfaces.
  */
-void *vNetworkInit( void );
+void vNetworkInit( void );
 
 #endif /* NETWORK_H */

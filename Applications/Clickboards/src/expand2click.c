@@ -125,7 +125,7 @@ char lastBits = get_expand2click();
 		/* Toggle obits once per second - just for demo. */
 //		if( count++ % 10 == 0 )
 //			oBits ^= ( togglePins[0] | togglePins[1] );
-		/* _CD_ send output bits to board */
+
 		set_expand2click(oBits);
 
 		/* Get iBits from board */

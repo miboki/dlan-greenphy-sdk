@@ -99,6 +99,7 @@ typedef struct xNetworkInterface
 				bIsBridged : 1,
 				bForwardingTableKnown : 1,
 			#endif
+			bInterfaceInitialised : 1,
 			bInterfaceUp : 1;
 	} bits;
 

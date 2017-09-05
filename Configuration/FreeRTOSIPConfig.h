@@ -352,10 +352,10 @@ FTP and HTTP servers both execute in the standard server task. */
 #define ipconfigTCP_FILE_BUFFER_SIZE             512
 
 #define NETWORK_IRQHandler                       ETH_IRQHandler
-#define configNUM_RX_DESCRIPTORS                 4
-#define configNUM_TX_DESCRIPTORS                 4
+#define ipconfigNUM_RX_DESCRIPTORS                 4
+#define ipconfigNUM_TX_DESCRIPTORS                 4
 
-#define configREAD_MAC_FROM_GREENPHY             0
+#define ipconfigREAD_MAC_FROM_GREENPHY             1
 
 /* If ipconfigUSE_BRIDGE is set to 1 multiple interfaces can be bridged.
 Ethernet frames arriving on one interface are forwarded to the other bridged
@@ -391,10 +391,10 @@ shorted in the Windows simulator as simulated time is not real time. */
 #define iptraceNETWORK_BUFFER_OBTAINED( pxBufferAddress ) //FreeRTOS_debug_printf( ( "%s obtain buffer\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
 #define iptraceETHERNET_RX_EVENT_LOST()                   //FreeRTOS_debug_printf( ( "%s lost RX Event\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
 #define iptraceSTACK_TX_EVENT_LOST( xEvent )              //FreeRTOS_debug_printf( ( "%s lost TX Event\n", pcTaskGetName( xTaskGetCurrentTaskHandle() ) ) )
-#define iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxInterfaceTo ) \
+#define iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxInterfaceTo ) /* \
 		FreeRTOS_debug_printf( ( "BRIDGE 0x%04X %s -> %s\n", \
 			FreeRTOS_ntohs((( EthernetHeader_t * ) ( pxNetworkBuffer->pucEthernetBuffer ))->usFrameType), \
-			pxNetworkBuffer->pxInterface->pcName, pxInterfaceTo->pcName ) )
+			pxNetworkBuffer->pxInterface->pcName, pxInterfaceTo->pcName ) ) */
 
 #define ipconfigHTTP_HAS_HANDLE_REQUEST_HOOK     1
 #define ipconfigHTTP_REQUEST_CHARACTER           '?'

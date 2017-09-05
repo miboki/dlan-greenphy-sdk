@@ -60,7 +60,7 @@
 #include "qca_framing.h"
 #include "qca_7k.h"
 
-#if configREAD_MAC_FROM_GREENPHY
+#if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 	#include "mme_handler.h"
 #endif
 
@@ -408,7 +408,7 @@ IPStackEvent_t xRxEvent = { eNetworkRxEvent, NULL };
 			/* Data was received and stored.  Send a message to the IP
 			task to let it know. */
 
-		#if configREAD_MAC_FROM_GREENPHY
+		#if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 			/* Check if frame is an MME which is handled elsewhere. */
 			if( !filter_rx_mme( qca->rx_desc ) )
 		#endif

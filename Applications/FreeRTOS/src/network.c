@@ -28,6 +28,12 @@
 	#error "netconfigUSE_IP defined, but no netconfigIP_INTERFACE"
 #endif
 
+#if( ( ipconfigREAD_MAC_FROM_GREENPHY != 0 ) && ( netconfigIP_INTERFACE == netconfigETH_INTERFACE ) )
+	#error "ipconfigREAD_MAC_FROM_GREENPHY defined, but not supported for use with ethernet interface only. \
+			Please set netconfigIP_INTERFACE to netconfigPLC_INTERFACE or netconfigBRIDGE_INTERFACE or disable \
+			ipconfigREAD_MAC_FROM_GREENPHY."
+#endif
+
 /* Storage for the network interfaces in use. */
 #if( ( netconfigUSE_BRIDGE != 0 ) || ( ( netconfigUSE_IP != 0 ) && ( netconfigIP_INTERFACE == netconfigETH_INTERFACE ) ) )
 	static NetworkInterface_t xEthInterface    = { 0 };
@@ -49,6 +55,11 @@
 
 	const uint8_t ucMACAddress[ 6 ] = { netconfigMAC_ADDR0, netconfigMAC_ADDR1, netconfigMAC_ADDR2, netconfigMAC_ADDR3, netconfigMAC_ADDR4, netconfigMAC_ADDR5 };
 #endif
+
+#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
+	static char hostname[] = "devolo-000";
+#endif
+
 
 /*-----------------------------------------------------------*/
 
@@ -124,6 +135,13 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				xTasksAlreadyCreated = pdTRUE;
 			}
 
+			/* Update hostname based on MAC address. */
+			#if( netconfigUSE_DYNAMIC_HOSTNAME != 0 )
+				snprintf( &hostname[7], 3, "%X%X",
+						 ( pxEndPoint->xMACAddress.ucBytes[4] & 0x0F ),
+						 pxEndPoint->xMACAddress.ucBytes[5] );
+			#endif
+
 			/* The network is up and configured.  Print out the configuration,
 			which may have been obtained from a DHCP server. */
 			FreeRTOS_GetAddressConfiguration( pxEndPoint,
@@ -155,7 +173,11 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 
 const char *pcApplicationHostnameHook( void )
 {
-	return netconfigHOSTNAME;
+#if( netconfigUSE_DYNAMIC_HOSTNAME == 0 )
+	char *hostname = netconfigHOSTNAME;
+#endif
+
+	return hostname;
 }
 /*-----------------------------------------------------------*/
 
@@ -166,7 +188,7 @@ BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
 }
 /*-----------------------------------------------------------*/
 
-void *vNetworkInit( void )
+void vNetworkInit( void )
 {
 	#if( netconfigUSE_BRIDGE != 0 )
 	{

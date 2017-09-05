@@ -82,12 +82,30 @@
 static BaseType_t xBridge_NetworkInterfaceInitialise( NetworkInterface_t *pxInterface )
 {
 BaseType_t xReturn = pdPASS;
-NetworkEndPoint_t *pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+NetworkInterface_t *pxBridgedInterface;
+NetworkEndPoint_t *pxEndPoint;
 
-	if( pxEndPoint != NULL )
+	/* Do not initialise the bridge interface unless all bridged interfaces are up. */
+	for( pxBridgedInterface = FreeRTOS_FirstNetworkInterfaceInBridge();
+		 pxBridgedInterface != NULL;
+		 pxBridgedInterface = FreeRTOS_NextNetworkInterfaceInBridge( pxBridgedInterface ) )
 	{
-		/* Add the EndPoints MAC address to the forwarding table. */
-		vRefreshForwardingTableEntry( &pxEndPoint->xMACAddress, pxInterface, INFINITE_FORWARDING_TABLE_AGE );
+		if( pxBridgedInterface->bits.bInterfaceInitialised == pdFALSE_UNSIGNED  )
+		{
+			xReturn = pdFAIL;
+			break;
+		}
+	}
+
+	if( xReturn != pdFAIL )
+	{
+		pxEndPoint = FreeRTOS_FirstEndPoint( pxInterface );
+		if( pxEndPoint != NULL )
+		{
+			/* Add the EndPoints MAC address to the forwarding table. */
+			vRefreshForwardingTableEntry( &pxEndPoint->xMACAddress, pxInterface, INFINITE_FORWARDING_TABLE_AGE );
+		}
+		pxInterface->bits.bInterfaceInitialised = pdTRUE_UNSIGNED;
 	}
 
 	return xReturn;
