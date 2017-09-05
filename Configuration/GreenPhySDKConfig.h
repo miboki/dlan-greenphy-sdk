@@ -11,7 +11,7 @@ extern const char const * features;
 
 
 /* Includes. */
-#define includeHTTP_DEMO       0
+#define includeHTTP_DEMO       1
 
 /* Clickboard defines. */
 #define includeCOLOR2_CLICK    1

@@ -24,6 +24,11 @@
 #include "clickboard_config.h"
 #include "color2click.h"
 
+#if( netconfigUSEMQTT != 0 )
+	/* MQTT includes */
+	#include "mqtt.h"
+#endif
+
 /*****************************************************************************/
 
 uint8_t _addr = 0x44; //ISL29125 default ID;
@@ -239,9 +244,19 @@ static TaskHandle_t xClickTaskHandle = NULL;
 /*-----------------------------------------------------------*/
 
 static void vClickTask(void *pvParameters) {
+#if( netconfigUSEMQTT != 0 )
+	char buffer[60];
+#endif /* #if( netconfigUSEMQTT != 0 ) */
+
 	while( 1 )
 	{
 		ReadColors();
+
+		#if( netconfigUSEMQTT != 0 )
+				sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}",
+						color.red, color.green, color.blue);
+				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
 				color.green, color.blue);
