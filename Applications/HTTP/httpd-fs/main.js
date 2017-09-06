@@ -1,24 +1,24 @@
 var templates = {};
 templates['status'] = `
-        <h3>FreeRTOS</h3>
-        <table class="table table-striped">
+        <h3>System</h3>
+        <table class="mui-table mui-table--bordered">
           <tr>
-            <td><b>Uptime:</b></td>
+            <td><b>Uptime</b></td>
             <td>{{uptime}}</td>
           </tr>
           <tr>
-            <td><b>Free heap:</b></td>
+            <td><b>Free heap</b></td>
             <td>{{free_heap}}</td>
           </tr>
           <tr>
-            <td><b>Build:</b></td>
+            <td><b>Build</b></td>
             <td>{{build}}</td>
           </tr>
         </table>
         <h3>EvalBoard</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
-            <td><b>LED state:</b></td>
+            <td><bUSR LED</b></td>
             <td>
               <div class="onoffswitch">
                 <input type="checkbox" name="led" class="onoffswitch-checkbox" id="led-switch" {{#led}}checked{{/led}}>
@@ -30,41 +30,49 @@ templates['status'] = `
             </td>
           </tr>
           <tr>
-            <td><b>Button:</b></td>
-            <td>{{button}}</td>
+            <td><b>MINT Button</b></td>
+            <td>
+              <div class="onoffswitch">
+                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="button-switch" disabled="disabled" {{#led}}checked{{/led}}>
+                <label class="onoffswitch-label" for="button-switch">
+                  <span class="onoffswitch-inner"></span>
+                  <span class="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </td>
           </tr>
         </table>
         <h3>Network</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
-            <td><b>Hostname:</b></td>
+            <td><b>Hostname</b></td>
             <td>{{hostname}}</td>
           </tr>
           <tr>
-            <td><b>MAC:</b></td>
+            <td><b>MAC</b></td>
             <td>{{mac}}</td>
           </tr>
           <tr>
-            <td><b>Ip:</b></td>
+            <td><b>Ip</b></td>
             <td>{{ip}}</td>
           </tr>
           <tr>
-            <td><b>Netmask:</b></td>
+            <td><b>Netmask</b></td>
             <td>{{netmask}}</td>
           </tr>
           <tr>
-            <td><b>Gateway:</b></td>
+            <td><b>Gateway</b></td>
             <td>{{gateway}}</td>
           </tr>
           <tr>
-            <td><b>DNS:</b></td>
+            <td><b>DNS</b></td>
             <td>{{dns}}</td>
           </tr>
         </table>
 `;
 templates['config'] = `
         <h3>Clickboards</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
             <th>Clickboard</td>
             <th>Port 1</td>
@@ -72,8 +80,8 @@ templates['config'] = `
           </tr>
           <tr>
               <td>None</td>
-              <td><input type="radio" name="port1" value="none" checked="checked" onchange="configSubmit(this)"></td>
-              <td><input type="radio" name="port2" value="none" checked="checked" onchange="configSubmit(this)"></td>
+              <td><input type="radio" name="port1" value="none" checked="checked"></td>
+              <td><input type="radio" name="port2" value="none" checked="checked"></td>
           {{#clickboards}}
           <tr>
             <td>{{name_format}}</td>
@@ -85,7 +93,7 @@ templates['config'] = `
 `;
 templates['color2'] = `
         <h3>Sensor</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
             <th>Color</th>
             <th>Raw</th>
@@ -109,9 +117,9 @@ templates['color2'] = `
         </table>
 
         <h3>Color</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
-                <td><b>Hex:</b></td>
+                <td><b>Hex</b></td>
                 <td>#{{r_hex}}{{g_hex}}{{b_hex}}</td>
             </tr>
         </table>
@@ -119,7 +127,7 @@ templates['color2'] = `
 `;
 templates['thermo3'] = `
         <h3>Temperature</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Current temperature</td>
                 <td>{{cur}}&deg;C</td>
@@ -134,7 +142,7 @@ templates['thermo3'] = `
             </tr>
         </table>
         <h3>History</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             {{#history}}
             <tr>
                 <td>{{date}}</td>
@@ -146,7 +154,7 @@ templates['thermo3'] = `
 `;
 templates['expand2'] = `
         <h3>Water Meter</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             {{#watermeter}}
             <tr>
                 <td>Water Meter {{name}}</td>
@@ -167,7 +175,7 @@ templates['expand2'] = `
             </tr>
         </table>
         <h3>Input Register</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
                 <td>{{input}}</td>
@@ -182,7 +190,7 @@ templates['expand2'] = `
             </tr>
         </table>
         <h3>Output Register</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
                 <td><input type="number" name="output" min="0" max="255" step="1" value="{{output}}"></td>
@@ -198,14 +206,15 @@ templates['expand2'] = `
         </table>
 `;
 
+// Used by the Expand2Click output bits
 function toggleBit( element, event ) {
     var x = 0;
     $($('input[name="'+element.name+'"').get().reverse()).each(function(i, v) {
-        console.log(v);
         $(v).prop('checked') && ( x += 2**i );
     });
+    // Change the numeric input field, which triggers the request to the GreenPHY module.
     $('input[name="'+element.name.substring(0, element.name.lastIndexOf('['))+'"]').val(x).change();
-
+    // Prevent triggering the request twice.
     event.stopPropagation();
 }
 
@@ -222,7 +231,9 @@ var wmeterMultiplicator = 0.25;
 function processJSON(page, json) {
     switch(page) {
         case 'status':
-            $("#hostname").text(json['hostname']);
+            $('#hostname').text(json['hostname']);
+            json['uptime'] += ' s';
+            json['free_heap'] #= ' B';
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
@@ -233,7 +244,7 @@ function processJSON(page, json) {
                 clickboard['port1_active'] = clickboard['active'] & (1 << 0) ? true : false;
                 clickboard['port2_active'] = clickboard['active'] & (1 << 1) ? true : false;
 
-                /* If the clickboard is active, add an entry to the menu. */
+                // If the clickboard is active, add an entry to the menu.
                 if(clickboard['port1_active']) {
                     $('#nav li.clickboard').eq(0).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
@@ -294,7 +305,7 @@ function processJSON(page, json) {
 
 function sendRequest(page, data, success) {
     // Set domain for testing purposes to GreenPHY module URL like 'http://172.16.201.3/'
-    var domain = '';
+    var domain = 'http://192.168.178.43/';
     if( !data ) data = { action: 'get' };
     $.getJSON(domain + page + '.json', data, success)
             .fail(function(xhr, text_status, error_thrown) {
@@ -316,9 +327,6 @@ function renderPage(page, json) {
         $('#content').html(html);
     } else {
         currentPage = page;
-//        $('#content').fadeOut(100, function() {
-//            $('#content').html(html).fadeIn(200);
-//        });
         $('#content').html(html);
         // Mark navigation link as active
         $('#nav a.active').removeClass('active');
@@ -327,6 +335,15 @@ function renderPage(page, json) {
         // Change title
         $('#page-title').html($('#nav a.active').html());
     }
+}
+
+function setRefreshRate( rate ) {
+    $('input[name="refresh"]').val(rate).trigger('input');
+}
+
+function getRefreshRate() {
+    var rates = [0,0.5, 1, 3, 5, 10, 20, 30, 60];
+    return rates[$('input[name="refresh"]').val()];
 }
 
 var timeout;
@@ -344,7 +361,8 @@ function updatePage(page, data) {
 
     sendRequest(page, data, function(json) {
         renderPage(page, json);
-        timeout = setTimeout(updatePage, 1000);
+        if(getRefreshRate() != 0)
+            timeout = setTimeout(updatePage, getRefreshRate()*1000);
     });
 }
 
@@ -354,12 +372,17 @@ $(document).on('click', 'a[href^="#"]', function(event) {
     updatePage(this.hash.substr(1));
 });
 
+function serialize(element) {
+    var data = $(element).serialize();
+    if( $(element).is(':checkbox') && !element.checked ) {
+        data += element.name + '=off';
+    }
+    return data;
+}
+
 // Submit input fields on change
 $(document).on('change', 'input, select', function() {
-    console.log(this);
-    console.log($(this));
-    console.log($(this).serialize());
-    updatePage(undefined, $(this).serialize());
+    updatePage(undefined, serialize(this));
 });
 
 // Stop auto refresh when focusing input fields
@@ -379,3 +402,14 @@ sendRequest('config', undefined, function(json) {
 
 // Initialize current page
 updatePage();
+
+// Button to open/close top right menu
+$("#menu button").click(function(e) {
+    $("#menu ul").toggle();
+    e.stopPropagation();
+});
+
+// Close menu when clicked outside
+$(document).click(function(){
+  $("#menu ul").hide();
+});
