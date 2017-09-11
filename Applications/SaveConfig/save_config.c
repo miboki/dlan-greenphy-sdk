@@ -251,6 +251,8 @@ BaseType_t x;
 		/* No valid config found, write a new one at the beginning of flash. */
 		ulDestination = (uint32_t) CONFIG_FLASH_AREA_START;
 		ucCount = 0;
+		/* Erase sector in case config was malformed. */
+		vEraseConfig();
 	}
 	else if( ( (uint8_t *) pxConfig + prvSizeOfConfig( pxConfig->usLength ) + prvSizeOfConfig( usLength ) ) > (uint8_t *) CONFIG_FLASH_AREA_END )
 	{

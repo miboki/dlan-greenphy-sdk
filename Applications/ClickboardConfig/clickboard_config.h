@@ -4,6 +4,15 @@
 #define NUM_CLICKBOARD_PORTS   2
 
 /*
+ * Clickboard identifier. Numerical value is PID from MicroElektronika.
+ */
+typedef enum eCLICKBOARD_IDS {
+	eClickboardIdExpand2 = 1838,
+	eClickboardIdThermo3 = 1885,
+	eClickboardIdColor2  = 1988
+} eClickboardId_t;
+
+/*
  * Clickboard initializer function. Called on activation.
  * Returns pdTRUE on success, otherwise pdFALSE.
  */
@@ -20,6 +29,7 @@ typedef BaseType_t ( * FClickboardDeinit ) ( void );
  */
 typedef struct xCLICKBOARD
 {
+	eClickboardId_t xClickboardId; /* MikroE PID to identify the clickboard. */
 	const char *pcName;         /* Lowercase clickboard name, without 'Click'
 								suffix, e.g. 'Color2Click' -> 'color2' */
 	FClickboardInit fClickboardInit;

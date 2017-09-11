@@ -14,6 +14,7 @@
 /* Project includes. */
 #include "http_query_parser.h"
 #include "http_request.h"
+#include "save_config.h"
 #include "clickboard_config.h"
 
 #define ARRAY_SIZE(x) ( BaseType_t ) (sizeof( x ) / sizeof( x )[ 0 ] )
@@ -43,13 +44,13 @@ deactivated through the clickboard config interface. */
 static Clickboard_t pxClickboards[ ] =
 {
 #if( includeCOLOR2_CLICK != 0 )
-	{ "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ eClickboardIdColor2, "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeTHERMO3_CLICK != 0 )
-	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ eClickboardIdThermo3, "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeEXPAND2_CLICK != 0 )
-	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ eClickboardIdExpand2, "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 };
 
@@ -121,6 +122,16 @@ Clickboard_t *pxClickboardOld;
 		pxClickboard->xPortsActive |= xPort;
 		pxClickboard->fClickboardInit( pxClickboard->pcName, xPort );
 
+		/* Change active clickboard in config. */
+		if( xPort == eClickboardPort1 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+		}
+		else if( xPort == eClickboardPort2 )
+		{
+			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+		}
+
 		xSuccess = pdTRUE;
 	}
 
@@ -178,6 +189,12 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 			}
 		}
 
+		pxParam = pxFindKeyInQueryParams( "write", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			xWriteConfig();
+		}
+
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
 		xCount += sprintf( pcBuffer, "{\"clickboards\":[" );
@@ -207,6 +224,10 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 void xClickboardsInit()
 {
 BaseType_t x;
+eClickboardId_t *pxIdPort1, *pxIdPort2;
+
+	pxIdPort1 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort1, NULL );
+	pxIdPort2 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort2, NULL );
 
 	for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 	{
@@ -214,11 +235,33 @@ BaseType_t x;
 		configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
 		configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
 
-		if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+		/* Check if clickboard config was stored in flash. */
+		if( ( pxIdPort1 != NULL ) || ( pxIdPort2 != NULL ) )
 		{
-			/* Ensure at max. one clickboard is active on a port. */
-			configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
-			pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			if( *pxIdPort1 == pxClickboards[ x ].xClickboardId )
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardPort1;
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
+			else if( *pxIdPort2 == pxClickboards[ x ].xClickboardId )
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardPort2;
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
+			else
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardInactive;
+			}
+		}
+		else
+		{
+			if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+			{
+				/* Ensure at max. one clickboard is active on a port. */
+				configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
+
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
 		}
 	}
 

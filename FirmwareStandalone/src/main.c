@@ -12,8 +12,9 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
-#include "clickboard_config.h"
 #include "network.h"
+#include "save_config.h"
+#include "clickboard_config.h"
 
 /*-----------------------------------------------------------*/
 static void prvTestTask( void *pvParameters )
@@ -55,6 +56,8 @@ int main(void) {
 	}
 
 	vNetworkInit();
+
+	xReadConfig();
 
 	xClickboardsInit();
 

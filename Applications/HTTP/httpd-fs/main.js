@@ -18,7 +18,7 @@ templates['status'] = `
         <h3>EvalBoard</h3>
         <table class="mui-table mui-table--bordered">
           <tr>
-            <td><bUSR LED</b></td>
+            <td><b>USR LED</b></td>
             <td>
               <div class="onoffswitch">
                 <input type="checkbox" name="led" class="onoffswitch-checkbox" id="led-switch" {{#led}}checked{{/led}}>
@@ -33,7 +33,7 @@ templates['status'] = `
             <td><b>MINT Button</b></td>
             <td>
               <div class="onoffswitch">
-                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="button-switch" disabled="disabled" {{#led}}checked{{/led}}>
+                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="button-switch" disabled="disabled" {{#button}}checked{{/button}}>
                 <label class="onoffswitch-label" for="button-switch">
                   <span class="onoffswitch-inner"></span>
                   <span class="onoffswitch-switch"></span>
@@ -53,7 +53,7 @@ templates['status'] = `
             <td>{{mac}}</td>
           </tr>
           <tr>
-            <td><b>Ip</b></td>
+            <td><b>IP</b></td>
             <td>{{ip}}</td>
           </tr>
           <tr>
@@ -133,11 +133,11 @@ templates['thermo3'] = `
                 <td>{{cur}}&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
+                <td>Highest temperature&nbsp;{{temp_high_time}}&nbsp;seconds ago</td>
                 <td>{{high}}&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
+                <td>Lowest temperature&nbsp;{{temp_low_time}}&nbsp;seconds ago</td>
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
@@ -233,7 +233,7 @@ function processJSON(page, json) {
         case 'status':
             $('#hostname').text(json['hostname']);
             json['uptime'] += ' s';
-            json['free_heap'] #= ' B';
+            json['free_heap'] += ' B';
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
@@ -305,7 +305,7 @@ function processJSON(page, json) {
 
 function sendRequest(page, data, success) {
     // Set domain for testing purposes to GreenPHY module URL like 'http://172.16.201.3/'
-    var domain = 'http://192.168.178.43/';
+    var domain = '';
     if( !data ) data = { action: 'get' };
     $.getJSON(domain + page + '.json', data, success)
             .fail(function(xhr, text_status, error_thrown) {
@@ -412,4 +412,9 @@ $("#menu button").click(function(e) {
 // Close menu when clicked outside
 $(document).click(function(){
   $("#menu ul").hide();
+});
+
+// Send request to write config to flash
+$('#write-config').click(function() {
+    sendRequest('config', 'write', $.noop );
 });

@@ -11,6 +11,8 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/HTTP/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/FreeRTOS/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/SaveConfig"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Applications/Debug"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Applications" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -56,6 +58,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.304377066" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
@@ -86,7 +89,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSON|Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -168,6 +171,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.1635228045" superClass="com.crt.advproject.compiler.input"/>
 							</tool>
@@ -199,7 +203,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Clickboards/src/Expand2Click.c|Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/thermo3click.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="JSON|Clickboards/src/Expand2Click.c|Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/thermo3click.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
