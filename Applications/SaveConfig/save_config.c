@@ -364,6 +364,11 @@ void vEraseConfig( void )
 {
 const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
 
+	/* Reset config. */
+	prvCleanCache();
+	pxConfig = NULL;
+
+	/* Erase config from flash. */
 	Chip_IAP_PreSectorForReadWrite( ulSector, ulSector );
 	Chip_IAP_EraseSector( ulSector, ulSector );
 }

@@ -53,16 +53,13 @@
 /*-----------------------------------------------------------*/
 static void prvTestTask( void *pvParameters )
 {
-char cBuffer[16];
-uint32_t ip;
 
-	vTaskDelay( 10000 );
-	ip = FreeRTOS_gethostbyname("google.de");
+	DEBUGOUT( "Test task running.\r\n" );
 
-	FreeRTOS_inet_ntoa( ip, cBuffer );
-	DEBUGOUT( "google.de IP Address: %s\r\n", cBuffer );
+	/* Add endless loop here to prevent task deletion. */
 
 	vTaskDelete( NULL );
+
 }
 
 int main(void) {
@@ -89,9 +86,9 @@ int main(void) {
 		LPC_SYSCTL->RSID = reset_reason;
 	}
 
-	vNetworkInit();
-
 	xReadConfig();
+
+	vNetworkInit();
 
 	xClickboardsInit();
 
