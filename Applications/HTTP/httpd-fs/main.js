@@ -1,17 +1,24 @@
 var templates = {};
 templates['status'] = `
-        <h3>FreeRTOS</h3>
-        <table class="table table-striped">
+        <h3>System</h3>
+        <table class="mui-table mui-table--bordered">
           <tr>
-            <td><b>Uptime:</b></td>
+            <td><b>Uptime</b></td>
             <td>{{uptime}}</td>
           </tr>
           <tr>
-            <td><b>Free heap:</b></td>
+            <td><b>Free heap</b></td>
             <td>{{free_heap}}</td>
           </tr>
           <tr>
-            <td><b>LED state:</b></td>
+            <td><b>Build</b></td>
+            <td>{{build}}</td>
+          </tr>
+        </table>
+        <h3>EvalBoard</h3>
+        <table class="mui-table mui-table--bordered">
+          <tr>
+            <td><b>USR LED</b></td>
             <td>
               <div class="onoffswitch">
                 <input type="checkbox" name="led" class="onoffswitch-checkbox" id="led-switch" {{#led}}checked{{/led}}>
@@ -22,11 +29,50 @@ templates['status'] = `
               </div>
             </td>
           </tr>
+          <tr>
+            <td><b>MINT Button</b></td>
+            <td>
+              <div class="onoffswitch">
+                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="button-switch" disabled="disabled" {{#button}}checked{{/button}}>
+                <label class="onoffswitch-label" for="button-switch">
+                  <span class="onoffswitch-inner"></span>
+                  <span class="onoffswitch-switch"></span>
+                </label>
+              </div>
+            </td>
+          </tr>
+        </table>
+        <h3>Network</h3>
+        <table class="mui-table mui-table--bordered">
+          <tr>
+            <td><b>Hostname</b></td>
+            <td>{{hostname}}</td>
+          </tr>
+          <tr>
+            <td><b>MAC</b></td>
+            <td>{{mac}}</td>
+          </tr>
+          <tr>
+            <td><b>IP</b></td>
+            <td>{{ip}}</td>
+          </tr>
+          <tr>
+            <td><b>Netmask</b></td>
+            <td>{{netmask}}</td>
+          </tr>
+          <tr>
+            <td><b>Gateway</b></td>
+            <td>{{gateway}}</td>
+          </tr>
+          <tr>
+            <td><b>DNS</b></td>
+            <td>{{dns}}</td>
+          </tr>
         </table>
 `;
 templates['config'] = `
         <h3>Clickboards</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
             <th>Clickboard</td>
             <th>Port 1</td>
@@ -54,7 +100,7 @@ templates['config'] = `
 `;
 templates['color2'] = `
         <h3>Sensor</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
           <tr>
             <th>Color</th>
             <th>Raw</th>
@@ -78,9 +124,9 @@ templates['color2'] = `
         </table>
 
         <h3>Color</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
-                <td><b>Hex:</b></td>
+                <td><b>Hex</b></td>
                 <td>#{{r_hex}}{{g_hex}}{{b_hex}}</td>
             </tr>
         </table>
@@ -88,22 +134,22 @@ templates['color2'] = `
 `;
 templates['thermo3'] = `
         <h3>Temperature</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Current temperature</td>
                 <td>{{cur}}&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature&nbsp;{{highTime}}&nbsp;seconds ago</td>
+                <td>Highest temperature&nbsp;{{temp_high_time}}&nbsp;seconds ago</td>
                 <td>{{high}}&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature&nbsp;{{lowTime}}&nbsp;seconds ago</td>
+                <td>Lowest temperature&nbsp;{{temp_low_time}}&nbsp;seconds ago</td>
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
         <h3>History</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             {{#history}}
             <tr>
                 <td>{{date}}</td>
@@ -115,7 +161,7 @@ templates['thermo3'] = `
 `;
 templates['expand2'] = `
         <h3>Water Meter</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             {{#watermeter}}
             <tr>
                 <td>Water Meter {{name}}</td>
@@ -136,7 +182,7 @@ templates['expand2'] = `
             </tr>
         </table>
         <h3>Input Register</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
                 <td>{{input}}</td>
@@ -151,7 +197,7 @@ templates['expand2'] = `
             </tr>
         </table>
         <h3>Output Register</h3>
-        <table class="table table-striped">
+        <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
                 <td><input type="number" name="output" min="0" max="255" step="1" value="{{output}}"></td>
@@ -231,6 +277,7 @@ function checkPwd(event) {
 }
 
 // Used by the Expand2Click output bits
+// Used by the Expand2Click output bits
 function toggleBit( element, event ) {
     var x = 0;
     $($('input[name="'+element.name+'"').get().reverse()).each(function(i, v) {
@@ -256,6 +303,8 @@ function processJSON(page, json) {
     switch(page) {
         case 'status':
             $('#hostname').text(json['hostname']);
+            json['uptime'] += ' s';
+            json['free_heap'] += ' B';
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
@@ -267,7 +316,7 @@ function processJSON(page, json) {
                 clickboard['port1_active'] = clickboard['active'] & (1 << 0) ? true : false;
                 clickboard['port2_active'] = clickboard['active'] & (1 << 1) ? true : false;
 
-                /* If the clickboard is active, add an entry to the menu. */
+                // If the clickboard is active, add an entry to the menu.
                 if(clickboard['port1_active']) {
                     $('#nav li.clickboard').eq(0).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
@@ -368,6 +417,15 @@ function renderPage(page, json) {
     }
 }
 
+function setRefreshRate( rate ) {
+    $('input[name="refresh"]').val(rate).trigger('input');
+}
+
+function getRefreshRate() {
+    var rates = [0,0.5, 1, 3, 5, 10, 20, 30, 60];
+    return rates[$('input[name="refresh"]').val()];
+}
+
 var timeout;
 function updatePage(page, data) {
     if( timeout ) clearTimeout(timeout);
@@ -384,7 +442,8 @@ function updatePage(page, data) {
     sendRequest(page, data, function(json) {
         renderPage(page, json);
 		if( timeout ) clearTimeout(timeout);
-        timeout = setTimeout(updatePage, 1000);
+        if(getRefreshRate() != 0)
+            timeout = setTimeout(updatePage, getRefreshRate()*1000);
     });
 }
 
@@ -416,12 +475,17 @@ $(document).on('click', 'a[href^="#"]', function(event) {
     updatePage(this.hash.substr(1));
 });
 
+function serialize(element) {
+    var data = $(element).serialize();
+    if( $(element).is(':checkbox') && !element.checked ) {
+        data += element.name + '=off';
+    }
+    return data;
+}
+
 // Submit input fields on change
 $(document).on('change', 'input, select', function() {
-    console.log(this);
-    console.log($(this));
-    console.log($(this).serialize());
-    updatePage(undefined, $(this).serialize());
+    updatePage(undefined, serialize(this));
 });
 
 // Stop auto refresh when focusing input fields
@@ -441,3 +505,29 @@ sendRequest('config', undefined, function(json) {
 
 // Initialize current page
 updatePage();
+
+// Button to open/close top right menu
+$("#menu button").click(function(e) {
+    $("#menu ul").toggle();
+    e.stopPropagation();
+});
+
+// Close menu when clicked outside
+$(document).click(function(){
+  $("#menu ul").hide();
+});
+
+// Send request to write config to flash
+$('#write-config').click(function() {
+    sendRequest('config', 'write', $.noop );
+});
+
+// Send request to erase config from flash
+$('#erase-config').click(function() {
+    sendRequest('config', 'erase', $.noop );
+});
+
+// Send request to reset system
+$('#reset-system').click(function() {
+    $.getJSON('status.json', 'reset');
+});

@@ -460,7 +460,7 @@ NetworkEndPoint_t *pxEndPoint;
 		/* Guard against the task being created more than once. */
 		if( xEMACTaskHandle == NULL )
 		{
-			xTaskCreate( prvEMACHandlerTask, "EMAC", configEMAC_TASK_STACK_SIZE, pxInterface, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
+			xTaskCreate( prvEMACHandlerTask, pxInterface->pcName, configEMAC_TASK_STACK_SIZE, pxInterface, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
 			configASSERT( xEMACTaskHandle );
 		}
 

@@ -82,6 +82,7 @@
 #if( ipconfigREAD_MAC_FROM_GREENPHY != 0 )
 	#include "mme_handler.h"
 	#include "qca_vs_mme.h"
+	extern void vUpdateHostname( NetworkEndPoint_t *pxEndPoint );
 #endif
 
 /* If ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES is set to 1, then the Ethernet
@@ -172,7 +173,8 @@ BaseType_t xReturn = pdPASS;
 						{
 							memcpy( pxEndPoint->xMACAddress.ucBytes, pxMMEFrame->mOSA, sizeof( MACAddress_t ) );
 							/* Toggle 2nd bit of first byte to indicate a locally administered MAC. */
-							pxEndPoint->xMACAddress.ucBytes[0] ^= (1 << 2);
+							pxEndPoint->xMACAddress.ucBytes[0] ^= (1 << 1);
+							vUpdateHostname( pxEndPoint );
 						}
 
 						/* Release the Network Buffer, as we are responsible for it. */

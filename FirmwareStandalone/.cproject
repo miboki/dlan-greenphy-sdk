@@ -42,6 +42,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/HTTP/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
@@ -69,6 +70,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/HTTP/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
@@ -153,6 +155,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/Clickboards/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/HTTP/inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/FreeRTOS/inc"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/SaveConfig"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Applications/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="Applications" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>

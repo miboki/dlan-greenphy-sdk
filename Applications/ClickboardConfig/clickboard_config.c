@@ -1,3 +1,37 @@
+/*
+ * Copyright (c) 2017, devolo AG, Aachen, Germany.
+ * All rights reserved.
+ *
+ * This Software is part of the devolo GreenPHY-SDK.
+ *
+ * Usage in source form and redistribution in binary form, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Usage in source form is subject to a current end user license agreement
+ *    with the devolo AG.
+ * 2. Neither the name of the devolo AG nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ * 3. Redistribution in binary form is limited to the usage on the GreenPHY
+ *    module of the devolo AG.
+ * 4. Redistribution in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 /* Standard includes. */
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +48,7 @@
 /* Project includes. */
 #include "http_query_parser.h"
 #include "http_request.h"
+#include "save_config.h"
 #include "clickboard_config.h"
 
 #define ARRAY_SIZE(x) ( BaseType_t ) (sizeof( x ) / sizeof( x )[ 0 ] )
@@ -43,13 +78,13 @@ deactivated through the clickboard config interface. */
 static Clickboard_t pxClickboards[ ] =
 {
 #if( includeCOLOR2_CLICK != 0 )
-	{ "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ eClickboardIdColor2, "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeTHERMO3_CLICK != 0 )
-	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardPort2 },
+	{ eClickboardIdThermo3, "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeEXPAND2_CLICK != 0 )
-	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardPort1 },
+	{ eClickboardIdExpand2, "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 };
 
@@ -121,6 +156,16 @@ Clickboard_t *pxClickboardOld;
 		pxClickboard->xPortsActive |= xPort;
 		pxClickboard->fClickboardInit( pxClickboard->pcName, xPort );
 
+		/* Change active clickboard in config. */
+		if( xPort == eClickboardPort1 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+		}
+		else if( xPort == eClickboardPort2 )
+		{
+			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+		}
+
 		xSuccess = pdTRUE;
 	}
 
@@ -134,6 +179,17 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 
 	if( ( pxClickboard != NULL ) && ( pxClickboard->xPortsActive != eClickboardInactive ) )
 	{
+
+		/* Remove active clickboard from config. */
+		if( pxClickboard->xPortsActive == eClickboardPort1 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+		}
+		else if( pxClickboard->xPortsActive == eClickboardPort2 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+		}
+
 		pxClickboard->fClickboardDeinit();
 		pxClickboard->xPortsActive = eClickboardInactive;
 
@@ -176,6 +232,18 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 					}
 				}
 			}
+		}
+
+		pxParam = pxFindKeyInQueryParams( "write", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			xWriteConfig();
+		}
+
+		pxParam = pxFindKeyInQueryParams( "erase", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			vEraseConfig();
 		}
 
 		xCount += sprintf( pcBuffer + xCount, "{" );
@@ -234,6 +302,10 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 void xClickboardsInit()
 {
 BaseType_t x;
+eClickboardId_t *pxIdPort1, *pxIdPort2;
+
+	pxIdPort1 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort1, NULL );
+	pxIdPort2 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort2, NULL );
 
 	for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 	{
@@ -241,11 +313,33 @@ BaseType_t x;
 		configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
 		configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
 
-		if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+		/* Check if clickboard config was stored in flash. */
+		if( ( pxIdPort1 != NULL ) || ( pxIdPort2 != NULL ) )
 		{
-			/* Ensure at max. one clickboard is active on a port. */
-			configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
-			pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			if( *pxIdPort1 == pxClickboards[ x ].xClickboardId )
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardPort1;
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
+			else if( *pxIdPort2 == pxClickboards[ x ].xClickboardId )
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardPort2;
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
+			else
+			{
+				pxClickboards[ x ].xPortsActive = eClickboardInactive;
+			}
+		}
+		else
+		{
+			if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+			{
+				/* Ensure at max. one clickboard is active on a port. */
+				configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
+
+				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+			}
 		}
 	}
 
