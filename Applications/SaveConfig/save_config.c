@@ -210,12 +210,13 @@ BaseType_t xReturn = pdFAIL;
 			}
 
 			/* Verify that end of config matches with end of last TLV. */
-			if( ( pxConfig->usLength == 0 ) || ( pxConfig->usLength == ( ( pucTLV + prvSizeOfTLV( pxTLV->usLength ) ) - pxConfig->pucTLVList ) ) )
+			if( pxConfig->usLength == ( pucTLV - pxConfig->pucTLVList ) )
 			{
 				xReturn = pdPASS;
 			}
 			else
 			{
+				prvCleanCache();
 				pxConfig = NULL;
 			}
 		}

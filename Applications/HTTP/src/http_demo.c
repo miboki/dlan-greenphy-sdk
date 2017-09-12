@@ -27,6 +27,12 @@ NetworkEndPoint_t *pxEndPoint;
 uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
 int8_t cBuffer[ 16 ];
 
+	pxParam = pxFindKeyInQueryParams( "reset", pxParams, xParamCount );
+	if( pxParam != NULL )
+	{
+		NVIC_SystemReset();
+	}
+
 	pxParam = pxFindKeyInQueryParams( "led", pxParams, xParamCount );
 	if( pxParam != NULL )
 	{

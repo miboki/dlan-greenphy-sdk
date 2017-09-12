@@ -418,3 +418,13 @@ $(document).click(function(){
 $('#write-config').click(function() {
     sendRequest('config', 'write', $.noop );
 });
+
+// Send request to erase config from flash
+$('#erase-config').click(function() {
+    sendRequest('config', 'erase', $.noop );
+});
+
+// Send request to reset system
+$('#reset-system').click(function() {
+    $.getJSON('status.json', 'reset');
+});

@@ -145,6 +145,17 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 
 	if( ( pxClickboard != NULL ) && ( pxClickboard->xPortsActive != eClickboardInactive ) )
 	{
+
+		/* Remove active clickboard from config. */
+		if( pxClickboard->xPortsActive == eClickboardPort1 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+		}
+		else if( pxClickboard->xPortsActive == eClickboardPort2 )
+		{
+			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+		}
+
 		pxClickboard->fClickboardDeinit();
 		pxClickboard->xPortsActive = eClickboardInactive;
 
@@ -193,6 +204,12 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 		if( pxParam != NULL )
 		{
 			xWriteConfig();
+		}
+
+		pxParam = pxFindKeyInQueryParams( "erase", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			vEraseConfig();
 		}
 
 		/* Generate response containing all registered clickboards,

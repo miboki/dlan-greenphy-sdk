@@ -7,6 +7,7 @@
  * Clickboard identifier. Numerical value is PID from MicroElektronika.
  */
 typedef enum eCLICKBOARD_IDS {
+	eClickboardIdNone    = 0,
 	eClickboardIdExpand2 = 1838,
 	eClickboardIdThermo3 = 1885,
 	eClickboardIdColor2  = 1988
