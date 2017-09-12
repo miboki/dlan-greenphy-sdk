@@ -1,6 +1,6 @@
 # devolo dLAN® Green PHY SDK
 
-This project contains the SDK for the devolo dLAN® Green PHY module.
+This project contains the SDK for the devolo [dLAN® Green PHY module](http://www.devolo.com/en/Business-Solutions/Powerline-Pro/dLAN-Green-PHY-Module).
 
 It is ideal for installation in all electrical devices of a smart home. From the heating system to the refrigerator - Green PHY enables seamless 
 integration into the networked home. The open standard makes smart energy applications, sensor solutions and automation systems efficient to set up and 
