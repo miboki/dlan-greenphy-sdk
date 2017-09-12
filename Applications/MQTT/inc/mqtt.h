@@ -27,22 +27,11 @@
 /*********************************************************************************
  *	Structs and typedefs
  * *******************************************************************************/
-/*typedef struct{
+typedef struct{
 	char *pcBrokername;
-	int port;
-	char *pcClientID;
-	char *pcUsername;
-	char *pcPasswort;
-	uint8_t ucWillFlag;
-	struct{
-		char *pcWillMessage;
-		char *pcWillTopic;
-		uint8_t
-			willqos : 2,
-			willretain : 1;
-	}xWillParam;
+	BaseType_t port;
+	MQTTPacket_connectData *connectData;
 }xMqttCredentials_t;
-*/
 
 /*********************************************************************************
  *	function prototypes
@@ -50,6 +39,7 @@
 void vInitMqttTask();
 BaseType_t xDeinitMqtt();
 BaseType_t xPublishMessage( char *pucMessage, char *pucTopic, unsigned char ucQos, unsigned char ucRetained );
+BaseType_t xIsActive();
 
 
 #endif /* MQTT_INC_MQTT_H_ */

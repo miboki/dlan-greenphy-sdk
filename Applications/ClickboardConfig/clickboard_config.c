@@ -46,10 +46,10 @@ static Clickboard_t pxClickboards[ ] =
 	{ "color2", xColor2Click_Init, xColor2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
 #endif
 #if( includeTHERMO3_CLICK != 0 )
-	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ "thermo3", xThermo3Click_Init, xThermo3Click_Deinit, eClickboardAllPorts, eClickboardPort2 },
 #endif
 #if( includeEXPAND2_CLICK != 0 )
-	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardInactive },
+	{ "expand2", xExpand2Click_Init, xExpand2Click_Deinit, eClickboardAllPorts, eClickboardPort1 },
 #endif
 };
 
@@ -178,9 +178,36 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 			}
 		}
 
+		xCount += sprintf( pcBuffer + xCount, "{" );
+
+		#if( netconfigUSEMQTT != 0 )
+			/* _CD_ Check if "mqtt" parameter is set and activate or deactivate mqtt if requested */
+			pxParam = pxFindKeyInQueryParams( "mqtt_active", pxParams, xParamCount );
+			if( pxParam != NULL ) {
+				if( strcmp( pxParam->pcValue, "true" ) == 0 ){
+					/* _CD_ Initialize MQTT:
+					 * 	-> Get TCP socket,
+					 * 	-> establish connection to broker,
+					 * 	-> start task to receive MQTT packages. */
+					xTaskCreate( vInitMqttTask,
+								 "MqttStarup",
+								 240,
+								 NULL,
+								 ( tskIDLE_PRIORITY + 1 ),
+								 NULL);
+				}
+				if( strcmp( pxParam->pcValue, "false" )) {
+					xDeinitMqtt();
+				}
+			}
+
+			xCount += sprintf( pcBuffer + xCount, "\"mqtt_online\":%d,", xIsActive() );
+
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
+
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
-		xCount += sprintf( pcBuffer, "{\"clickboards\":[" );
+		xCount += sprintf( pcBuffer + xCount, "\"clickboards\":[" );
 
 		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 		{

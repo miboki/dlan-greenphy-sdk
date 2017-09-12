@@ -97,8 +97,6 @@ static int toggleCount[2] = { 0, 0 };
 
 static int multiplicator = 250;
 
-static unsigned char newVal = 0;
-
 /*-----------------------------------------------------------*/
 
 static char get_expand2click(void){

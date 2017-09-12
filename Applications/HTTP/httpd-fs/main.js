@@ -34,8 +34,8 @@ templates['config'] = `
           </tr>
           <tr>
               <td>None</td>
-              <td><input type="radio" name="port1" value="none" checked="checked" onchange="configSubmit(this)"></td>
-              <td><input type="radio" name="port2" value="none" checked="checked" onchange="configSubmit(this)"></td>
+              <td><input type="radio" name="port1" value="none" checked="checked"></td>
+              <td><input type="radio" name="port2" value="none" checked="checked"></td>
           {{#clickboards}}
           <tr>
             <td>{{name_format}}</td>
@@ -44,6 +44,13 @@ templates['config'] = `
           </tr>
           {{/clickboards}}
         </table>
+		<h3>MQTT Client</h3>
+		<table class="table table-striped">
+			<tr>
+				<td>Status</td>
+				<td><input type="checkbox" name="mqtt_active" id="mqtt_active" class="onoffswitch-checkbox"></td>
+			</tr>
+		</table>
 `;
 templates['color2'] = `
         <h3>Sensor</h3>
@@ -159,15 +166,79 @@ templates['expand2'] = `
             </tr>
         </table>
 `;
+templates['mqtt'] = `
+            <h3>MQTT CLient Information</h3>
+            <table class="table table-striped">
+                  <tr>
+                        <td>Broker Address</td>
+                        <td><input type="text" name="broker" value="{{broker}}" onchange="checkEmpty(this, event)"></td>
+                  </tr>
+                  <tr>
+                        <td>Broker Port</td>
+                        <td><input type="number" name="port" min="1" max="65535" step="1"  value="{{port}}"></td>
+                  </tr>
+                  <tr>
+                        <td>Client ID</td>
+                        <td><input type="text" name="client" value="{{client}}" onchange="checkEmpty(this, event)"></td>
+                  </tr>
+                  <tr>
+                        <td>Username</td>
+                        <td><input type="text" name="user" value="{{user}}"></td>
+                  </tr>
+                  <tr>
+                        <td>Password</td>
+                        <td><input type="password" name="password" id="pw1" value="{{password}}" onchange="checkPwd(event)"></td>
+                  </tr>
+                  <tr>
+                        <td>Repeat Password</td>
+                        <td><input type="password" name="password2" id="pw2" value="{{password}}" onchange="checkPwd(event)"><span id="pwerr"></span></td>
+                  </tr>
+                  <tr>
+                        <td>Last Will Active</td>
+                        <td><input type="checkbox" name="will" id="will" onchange="processWill(event)"></td>
+                  </tr>
+                  <tr>
+                        <td>Will Topic</td>
+                        <td><input type="text" name="willtopic" id="wtopic" value="{{wtopic}}" onchange="prevent(event)"></td>
+                  </tr>
+                  <tr>
+                        <td>Will Message</td>
+                        <td><input type="text" name="willmessage" id="wmessage" value="{{wmessage}}" onchange="prevent(event)"></td>
+                  </tr>
+            </table>
+            <div id="savebutton" onclick="saveConfig()">Save</div>
+`;
 
+
+function prevent( event ) {
+      event.stopPropagation();
+}
+
+function checkEmpty( element, event ) {
+      if( element.value == '' ){
+            element.value = 'must not be empty';
+            event.stopPropagation();
+      }
+}
+
+function checkPwd(event) {
+	if($('#pw1').prop('value') != $('#pw2').prop('value')) {
+		$('#pwerr').text('passwords unidentical');
+		event.stopPropagation();
+	}
+	else
+		$('#pwerr').text('');
+}
+
+// Used by the Expand2Click output bits
 function toggleBit( element, event ) {
     var x = 0;
     $($('input[name="'+element.name+'"').get().reverse()).each(function(i, v) {
-        console.log(v);
         $(v).prop('checked') && ( x += 2**i );
     });
+    // Change the numeric input field, which triggers the request to the GreenPHY module.
     $('input[name="'+element.name.substring(0, element.name.lastIndexOf('['))+'"]').val(x).change();
-
+    // Prevent triggering the request twice.
     event.stopPropagation();
 }
 
@@ -184,10 +255,11 @@ var wmeterMultiplicator = 0.25;
 function processJSON(page, json) {
     switch(page) {
         case 'status':
-            $("#hostname").text(json['hostname']);
+            $('#hostname').text(json['hostname']);
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
+            $('#nav .mqtt').addClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
                 clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
                 clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
@@ -202,6 +274,14 @@ function processJSON(page, json) {
                 if(clickboard['port2_active']) {
                     $('#nav li.clickboard').eq(1).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
+				if(clickboard['mqtt_online']) {
+					$('#nav li.mqtt').removeClass('hidden');
+				}
+				if( json['mqtt_online'] )
+					$('#mqtt_active').prop( 'checked', true );
+				else
+					$('#mqtt_active').prop( 'checked', false );
+				
             });
             break;
         case 'color2':
@@ -278,9 +358,6 @@ function renderPage(page, json) {
         $('#content').html(html);
     } else {
         currentPage = page;
-//        $('#content').fadeOut(100, function() {
-//            $('#content').html(html).fadeIn(200);
-//        });
         $('#content').html(html);
         // Mark navigation link as active
         $('#nav a.active').removeClass('active');
@@ -306,8 +383,31 @@ function updatePage(page, data) {
 
     sendRequest(page, data, function(json) {
         renderPage(page, json);
+		if( timeout ) clearTimeout(timeout);
         timeout = setTimeout(updatePage, 1000);
     });
+}
+
+function processWill( event ) {
+      event.stopPropagation();
+      if( $('#will').prop( 'checked' ) ) {
+            if(( $('#wtopic').prop( 'value' ) != '' ) && ( $('#wmessage').prop( 'value' ) != '' )) {
+                  var str = 'will=1,willtopic=' + $('#wtopic').prop( 'value' ) + ',willmessage=' + $('#wmessage').prop( 'value' );
+                  updatePage( undefined, str );
+            }
+            else {
+                  $('#will').prop( 'checked', false );
+            }
+      }
+      else {
+            var str = 'will=0';
+            updatePage( undefined, str );
+      }
+}
+
+function saveConfig() {
+      var str = 'save=1';
+      updatePage( undefined, str );
 }
 
 // Handle internal links by JQuery

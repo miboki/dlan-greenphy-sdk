@@ -43,6 +43,20 @@
     z-index: 10;
 }
 
+#savebutton {
+    background-color: grey;
+    width: 55px;
+    height: 28px;
+    position: absolute;
+    top: 240px;
+    left: 220px;
+    box-shadow: 2px 2px 2px #888;
+    border-radius: 5px 5px 5px 5px;
+    font-size: 24px;
+    color: white;
+    text-align: center;
+}
+
 main {
   display: flex;
   flex-direction: row;
@@ -221,7 +235,7 @@ main {
   vertical-align: text-bottom;
 }
 
-.clickboard .icon {
+.clickboard .icon .mqtt {
   width:20px;
   margin-right: 8px;
   margin-left: -2px;

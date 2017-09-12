@@ -89,14 +89,11 @@
 /* MQTT Credentials */
 #define netconfigMQTT_BROKER           "mqtt.relayr.io"
 #define netconfigMQTT_PORT             1883
-#define netconfigMQTT_CLIENT           "Tvv/BR4JXTxOPY2juXEmfXQ"
-#define netconfigMQTT_USER             "beffc147-8257-4f13-8f63-68ee5c499f5d"
-#define netconfigMQTT_PASSWORT         "O4kZrKTegLZe"
-#define netconfigMQTT_USEWILL          0
-#define netconfigMQTT_WILL_QOS         1
-#define netconfigMQTT_WILL_RETAIN      1
-#define netconfigMQTT_WILL_TOPIC       NULL
-#define netconfigMQTT_WILL_MESSAGE     NULL
-#define netconfigMQTT_TOPIC            "/v1/beffc147-8257-4f13-8f63-68ee5c499f5d/data"
+#define netconfigMQTT_CLIENT           "TCdqKfhZeQriWr/7PNmy4mw"
+#define netconfigMQTT_USER             "09da8a7e-165e-42b8-96af-fecf366cb89b"
+#define netconfigMQTT_PASSWORT         "wy5t6n.SQBQx"
+#define netconfigMQTT_WILL_QOS         2 // Will QOS should be at least 1, so we can ensure every body get this message.
+#define netconfigMQTT_WILL_RETAIN      1 // Will Retain should be 1, so new subscribers will know this client is offline.
+#define netconfigMQTT_TOPIC            "/v1/09da8a7e-165e-42b8-96af-fecf366cb89b/data"
 
 #endif /* GREENPHYSDKNETCONFIG_H_ */
