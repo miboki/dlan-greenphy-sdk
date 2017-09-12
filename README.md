@@ -1,4 +1,4 @@
-# devolo dLAN® Green PHY SDK
+# devolo dLAN® Green PHY Module SDK
 
 This project contains the SDK for the devolo [dLAN® Green PHY module](http://www.devolo.com/en/Business-Solutions/Powerline-Pro/dLAN-Green-PHY-Module).
 
@@ -49,4 +49,4 @@ convert HTML files for the WebUI)*
 4. Get the GreenPHY module's IP address from your local DHCP server and access it's WebUI in your Browser.
 
 ![greenphy-sdk-webui](https://user-images.githubusercontent.com/10745701/30339626-ecc350ca-97ef-11e7-96c5-5e3ad115d538.png)
-*Example of the dLAN® Green PHY SDK Webinterface's status page*
+*Example of the dLAN® Green PHY Module SDK's webinterface's status page*
