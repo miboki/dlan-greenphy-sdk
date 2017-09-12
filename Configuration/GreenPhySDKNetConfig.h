@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, devolo AG, Aachen, Germany.
+ * Copyright (c) 2017, devolo AG, Aachen, Germany.
  * All rights reserved.
  *
  * This Software is part of the devolo GreenPHY-SDK.
@@ -29,8 +29,6 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * netConfig.h
  *
  */
 
