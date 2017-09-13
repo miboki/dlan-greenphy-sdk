@@ -399,5 +399,5 @@ shorted in the Windows simulator as simulated time is not real time. */
 #define ipconfigHTTP_HAS_HANDLE_REQUEST_HOOK     1
 #define ipconfigHTTP_REQUEST_CHARACTER           '?'
 #define ipconfigHTTP_REQUEST_DELIMITER           '&'
-
+#define ipconfigHTTP_DIRECTORY_INDEX             "/index.html"
 #endif /* FREERTOS_IP_CONFIG_H */
