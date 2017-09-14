@@ -266,14 +266,21 @@ static TaskHandle_t xClickTaskHandle = NULL;
 /*-----------------------------------------------------------*/
 
 static void vClickTask(void *pvParameters) {
+BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+
 	while( 1 )
 	{
 		ReadColors();
 
-		DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
-				color.green, color.blue);
-		PrintStatus();
-		DEBUGOUT("\r\n");
+		/* Print a debug message once every 10 s. */
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		{
+			DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
+					color.green, color.blue);
+			PrintStatus();
+			DEBUGOUT("\r\n");
+			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
 
 		vTaskDelay( 1000 );
 	}
