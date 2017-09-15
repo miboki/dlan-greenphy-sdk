@@ -180,8 +180,8 @@ BaseType_t xRc;
 		"Transfer-Encoding: chunked\r\n"
 #endif
 		"Content-Type: %s\r\n"
-		//"Connection: keep-alive\r\n"
-		"Connection: close\r\n"
+		"Connection: keep-alive\r\n"
+//		"Connection: close\r\n"
 		"%s\r\n",
 		( int ) xCode,
 		webCodename (xCode),
@@ -249,7 +249,7 @@ BaseType_t xSockOptValue;
 			if( pxClient->uxBytesLeft == 0u )
 			{
 				xSockOptValue = pdTRUE_UNSIGNED;
-				FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+//				FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
 			}
 
 			xRc = FreeRTOS_send( pxClient->xSocket, NULL, uxCount, 0 );
@@ -318,7 +318,7 @@ char pcChunkSize[8];
 		}
 
 		xSockOptValue = pdTRUE_UNSIGNED;
-		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+//		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
 
 		/* At last send end of chunk and finishing 0 byte chunk at once. */
 		if( ( xRc = FreeRTOS_send( pxClient->xSocket, "\r\n0\r\n\r\n", sizeof( "\r\n0\r\n\r\n" ) - 1, 0 ) ) < 0 ) break;

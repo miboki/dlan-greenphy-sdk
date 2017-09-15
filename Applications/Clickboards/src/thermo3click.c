@@ -58,7 +58,7 @@
 #endif
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_THERMO3 60000 /* 60s */
+#define TASKWAIT_THERMO3 1000 /* 1s */
 
 /* Temperature offset used to calibrate the sensor. */
 #define TEMP_OFFSET  -2.0
@@ -117,6 +117,7 @@ static int temp_high_time = 0;
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
+BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 #if( netconfigUSEMQTT != 0 )
 	char buffer[40];
 #endif /* #if( netconfigUSEMQTT != 0 ) */
@@ -140,7 +141,12 @@ const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
 			temp_high_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
 
-		DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
+		/* Print a debug message once every 10 s. */
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		{
+			DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
+			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
 
 		vTaskDelay( xDelay );
 	}

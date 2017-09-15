@@ -224,7 +224,7 @@ BaseType_t xApplicationMemoryPermissions( uint32_t aAddress )
 	void vUpdateHostname( NetworkEndPoint_t *pxEndPoint )
 	{
 		/* Update hostname based on MAC address. */
-			snprintf( &hostname[7], (sizeof(hostname) - 7), "%X%X",
+			snprintf( &hostname[7], (sizeof(hostname) - 7), "%x%x",
 					 ( pxEndPoint->xMACAddress.ucBytes[4] & 0x0F ),
 					 pxEndPoint->xMACAddress.ucBytes[5] );
 	}

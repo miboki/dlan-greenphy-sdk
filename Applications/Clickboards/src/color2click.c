@@ -271,6 +271,8 @@ static TaskHandle_t xClickTaskHandle = NULL;
 /*-----------------------------------------------------------*/
 
 static void vClickTask(void *pvParameters) {
+BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+
 #if( netconfigUSEMQTT != 0 )
 	char buffer[60];
 #endif /* #if( netconfigUSEMQTT != 0 ) */
@@ -279,16 +281,20 @@ static void vClickTask(void *pvParameters) {
 	{
 		ReadColors();
 
+		/* Print a debug message once every 10 s. */
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		{
+			DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
+					color.green, color.blue);
+			PrintStatus();
+			DEBUGOUT("\r\n");
+			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
 		#if( netconfigUSEMQTT != 0 )
 				sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}",
 						color.red, color.green, color.blue);
 				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
 		#endif /* #if( netconfigUSEMQTT != 0 ) */
-
-		DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
-				color.green, color.blue);
-		PrintStatus();
-		DEBUGOUT("\r\n");
 
 		vTaskDelay( 1000 );
 	}
