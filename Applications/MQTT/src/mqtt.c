@@ -167,106 +167,12 @@ void vMqttTask()
 			/* done, now unblock client */
 			vUnblockClientHandle();
 
-			if( ret != SUCCESS_MQTT ){
+			if( ret != SUCCESS_MQTT )
 				DEBUGOUT("MQTT-ERROR 0x0110: Failure while reading packet. Will end connection.\n");
-				xDeinitMqtt();
-			}
 		}
 	}
 
 }
-
-
-//#if( includeHTTP_DEMO != 0 )
-	/***********************************************************************************************************
-	 *   function: xMqttHTTPRequestHandler
-	 *   Purpose: Handler for all requests incomming for "mqtt". Will output the configuration and recieve new
-	 *   		  configuration from WebUI.
-	 *   Global Variables used:
-	 *   Returns: 	0 - everything is ok
-	 *   			-1 - no socket available
-	 *   			something else - FreeRTOS_shutdown return value
-	 ***********************************************************************************************************/
-	static BaseType_t xMqttHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
-	{
-		BaseType_t xCount = 0;
-		QueryParam_t *pxParam;
-
-		xReadConfig();
-
-		/* _CD_ search for each of the credential parameters. If one is found update the config. Do not change the connection!! */
-		/* Get Broker address */
-		pxParam = pxFindKeyInQueryParams( "broker", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttBroker, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get Broker Port */
-		pxParam = pxFindKeyInQueryParams( "port", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttPort, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get Client ID */
-		pxParam = pxFindKeyInQueryParams( "client", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttClientID, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get username | _CD_ not sure if it work if username, password, willtopic or willmessage should be reset to NULL */
-		pxParam = pxFindKeyInQueryParams( "user", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttUser, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get password */
-		pxParam = pxFindKeyInQueryParams( "password", pxParams, xParamCount );
-		if( pxParam == NULL ) {
-			pxParam = pxFindKeyInQueryParams( "password2", pxParams, xParamCount );
-		}
-		if( pxParam != NULL ){
-			pvSetConfig( eConfigMqttPassWD, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get will flag */
-		pxParam = pxFindKeyInQueryParams( "will", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWill, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get Will Topic */
-		pxParam = pxFindKeyInQueryParams( "willtopic", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWillTopic, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Get Will Message */
-		pxParam = pxFindKeyInQueryParams( "willmessage", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWillMsg, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-
-		/* Search for parameter save and write config to flash if found. Reboot mqtt connection afterwards */
-		pxParam = pxFindKeyInQueryParams( "save", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			xWriteConfig();
-			xDeinitMqtt();
-			vTaskDelay( 2000 );
-			xInitMqtt();
-		}
-
-		xCount += sprintf( pcBuffer, "{\"broker\":"   "\"%s\","
-									  "\"port\":"       "%s,"
-									  "\"client\":"   "\"%s\","
-									  "\"user\":"     "\"%s\","
-									  "\"password\":" "\"%s\","
-									  "\"will\":"       "%d,"
-									  "\"wtopic\":"   "\"%s\","
-									  "\"wmessage\":" "\"%s\"}",
-									  pvGetConfig( eConfigMqttBroker, NULL ),
-									  pvGetConfig( eConfigMqttPort, NULL ),
-									  pvGetConfig( eConfigMqttClientID, NULL ),
-									  pvGetConfig( eConfigMqttUser, NULL ),
-									  pvGetConfig( eConfigMqttPassWD, NULL ),
-									  pvGetConfig( eConfigMqttWill, NULL ),
-									  pvGetConfig( eConfigMqttWillTopic, NULL ),
-									  pvGetConfig( eConfigMqttWillMsg, NULL ) );
-		return xCount;
-	}
-//#endif /* #if( includeHTTP_DEMO != 0 ) */
 
 
 /***********************************************************************************************************
@@ -296,78 +202,65 @@ BaseType_t xEndSocket()
 
 /***********************************************************************************************************
  *   function: xReadCredentialsFromConfig
- *   Purpose: Get The Credentials from Config, when no Value is stored for a Value, use default.
+ *   Purpose: Get The Credentials from Config, when no Value is stored for a Value, do not touch the value. Please initialize xCred before using this function.
  *   Parameters: IN/OUT: xMqttCredentials_t *xCred
- *   Returns: 	X - Number of values obtained from Config, rest is from default (max: 8, if will=0 -> max: 6)
+ *   Returns: 	X - Number of values obtained from Config, other fields not touched (max: 8, if will=0 -> max: 6)
  *   			0 - Error while Reading Config (all values are default)
  ***********************************************************************************************************/
-BaseType_t xReadCredentialsFromConfig( xMqttCredentials_t *xCred )
+BaseType_t xGetCredentials( xMqttCredentials_t *xCred )
 {
 	BaseType_t xReturn = pdFAIL;
 	void *pvValue = NULL;
-	uint16_t usLength = 0;
 
-	/* MQTT Version is set by default, it must not be changed */
-	xCred->connectData->MQTTVersion = 4;
-	xReadConfig();
-	/* Could read Config, so get Values from there */
-	/* Read Broker address, if exist use it */
+	/* ----------------------Set default credentials---------------------- */
+	xCred->pcBrokername = netconfigMQTT_BROKER;
+	xCred->port = netconfigMQTT_PORT;
+	xCred->connectData->clientID.cstring = netconfigMQTT_CLIENT;
+	xCred->connectData->username.cstring = netconfigMQTT_USER;
+	xCred->connectData->password.cstring = netconfigMQTT_PASSWORT;
+
+	/* ----------------------Now get all saved Fields---------------------- */
+	/* Get Broker address */
 	pvValue = pvGetConfig( eConfigMqttBroker, NULL );
 	if( pvValue != NULL )
 	{
 		xCred->pcBrokername = (char *)pvValue;
 		xReturn++;
 	}
-	else
-		xCred->pcBrokername = netconfigMQTT_BROKER;
 
-	/* Read Broker port, if exist use it */
+	/* Get Broker port */
 	pvValue = pvGetConfig( eConfigMqttPort, NULL );
 	if( pvValue != NULL )
 	{
 		xCred->port = strtol( (char *)pvValue, NULL, 6 );
 		xReturn++;
 	}
-	else
-		xCred->port = netconfigMQTT_PORT;
 
-	/* Read CLientID, if exist use it */
+	/* Get CLientID */
 	pvValue = pvGetConfig( eConfigMqttClientID, NULL );
 	if( pvValue != NULL )
 	{
 		xCred->connectData->clientID.cstring = (char *)pvValue;
 		xReturn++;
 	}
-	else
-		xCred->connectData->clientID.cstring = netconfigMQTT_CLIENT;
 
-	/* Read username, check if it is "". In this case set username to NULL, so Client will not use a username */
-	pvValue = pvGetConfig( eConfigMqttUser, &usLength );
+	/* if no username is used, there will be no entry in configuration (TLV with length=0 will not be saved) */
+	pvValue = pvGetConfig( eConfigMqttUser, NULL );
 	if( pvValue != NULL )
 	{
-		if( usLength < 0 )
-			xCred->connectData->username.cstring = (char *)pvValue;
-		else
-			xCred->connectData->username.cstring = NULL;
+		xCred->connectData->username.cstring = (char *)pvValue;
 		xReturn++;
 	}
-	else
-		xCred->connectData->username.cstring = netconfigMQTT_USER;
 
-	/* Read password, check if it is "". In this case set password to NULL, so Client will not use a password */
-	pvValue = pvGetConfig( eConfigMqttUser, &usLength );
+	/* if no password is used, there will be no entry in configuration (TLV with length=0 will not be saved) */
+	pvValue = pvGetConfig( eConfigMqttUser, NULL );
 	if( pvValue != NULL )
 	{
-		if( usLength < 0 )
-			xCred->connectData->username.cstring = (char *)pvValue;
-		else
-			xCred->connectData->username.cstring = NULL;
+		xCred->connectData->username.cstring = (char *)pvValue;
 		xReturn++;
 	}
-	else
-		xCred->connectData->password.cstring = netconfigMQTT_PASSWORT;
 
-	/* Read will flag, f it is set, read the other will options */
+	/* Get will flag, if it is set, read the other will options */
 	pvValue = pvGetConfig( eConfigMqttWill, NULL );
 	if( pvValue != NULL )
 	{
@@ -393,11 +286,95 @@ BaseType_t xReadCredentialsFromConfig( xMqttCredentials_t *xCred )
 				xReturn++;
 			}
 		}
-		else
-			xCred->connectData->willFlag = 0; /* _CD_ never use last will unless it is configured */
 	}
 	return xReturn;
 }
+
+
+#if( includeHTTP_DEMO != 0 )
+	/***********************************************************************************************************
+	 *   function: xMqttHTTPRequestHandler
+	 *   Purpose: Handler for all requests incomming for "mqtt". Will output the configuration and recieve new
+	 *   		  configuration from WebUI.
+	 *   Global Variables used:
+	 *   Returns: 	0 - everything is ok
+	 *   			-1 - no socket available
+	 *   			something else - FreeRTOS_shutdown return value
+	 ***********************************************************************************************************/
+	static BaseType_t xMqttHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+	{
+		BaseType_t xCount = 0;
+		QueryParam_t *pxParam;
+		xMqttCredentials_t xConnectionConfig;
+		MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
+
+		xConnectionConfig.connectData = &connectData;
+
+		/* _CD_ search for each of the credential parameters. If one is found update the config. Do not change the connection!! */
+		/* Search for Broker address */
+		pxParam = pxFindKeyInQueryParams( "broker", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttBroker, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for Broker Port */
+		pxParam = pxFindKeyInQueryParams( "port", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttPort, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for Client ID */
+		pxParam = pxFindKeyInQueryParams( "client", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttClientID, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for username */
+		pxParam = pxFindKeyInQueryParams( "user", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttUser, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for password */
+		pxParam = pxFindKeyInQueryParams( "password", pxParams, xParamCount );
+		if( pxParam == NULL ) {
+			pxParam = pxFindKeyInQueryParams( "password2", pxParams, xParamCount );
+		}
+		if( pxParam != NULL ){
+			pvSetConfig( eConfigMqttPassWD, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for will flag */
+		pxParam = pxFindKeyInQueryParams( "will", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttWill, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for Will Topic */
+		pxParam = pxFindKeyInQueryParams( "willtopic", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttWillTopic, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+		/* Search for Will Message */
+		pxParam = pxFindKeyInQueryParams( "willmessage", pxParams, xParamCount );
+		if( pxParam != NULL ) {
+			pvSetConfig( eConfigMqttWillMsg, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
+		}
+
+		xGetCredentials( &xConnectionConfig );
+		xCount += sprintf( pcBuffer, "{\"broker\":"   "\"%s\","
+									  "\"port\":"       "%d,"
+									  "\"client\":"   "\"%s\","
+									  "\"user\":"     "\"%s\","
+									  "\"password\":" "\"%s\","
+									  "\"will\":"       "%d,"
+									  "\"wtopic\":"   "\"%s\","
+									  "\"wmessage\":" "\"%s\"}",
+									  xConnectionConfig.pcBrokername,
+									  xConnectionConfig.port,
+									  xConnectionConfig.connectData->clientID.cstring,
+									  xConnectionConfig.connectData->username.cstring,
+									  xConnectionConfig.connectData->password.cstring,
+									  xConnectionConfig.connectData->willFlag,
+									  xConnectionConfig.connectData->will.topicName.cstring,
+									  xConnectionConfig.connectData->will.message.cstring );
+		return xCount;
+	}
+#endif /* #if( includeHTTP_DEMO != 0 ) */
 
 
 /***********************************************************************************************************
@@ -414,7 +391,7 @@ BaseType_t xInitMqtt()
 	MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
 
 	xCred.connectData = &connectData;
-	xReadCredentialsFromConfig( &xCred );
+	xGetCredentials( &xCred );
 
 	/* _CD_ Check whether the Client and Task is already created */
 	if( ucInitialized == 0 )
@@ -426,8 +403,6 @@ BaseType_t xInitMqtt()
 			xEndSocket();
 			return iStatus;
 		}
-
-
 
 		if( ( iStatus = MQTTConnect(&xClient, xCred.connectData)) != 0 ){
 			DEBUGOUT("MQTT-Error 0x0020: Unable to Connect to Broker.");

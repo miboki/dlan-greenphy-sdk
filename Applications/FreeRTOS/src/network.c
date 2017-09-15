@@ -49,6 +49,7 @@
 #include "GreenPhySDKNetConfig.h"
 #include "network.h"
 #include "mqtt.h"
+#include "save_config.h"
 
 
 /* Verify network configuration is sane. */
@@ -148,16 +149,19 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				 */
 
 			#if( netconfigUSEMQTT != 0 )
+				void *pvValue = NULL;
 				/* _CD_ Initialize MQTT:
 				 * 	-> Get TCP socket,
 				 * 	-> establish connection to broker,
 				 * 	-> start task to receive MQTT packages. */
-				xTaskCreate( vInitMqttTask,
-							 "MqttStarup",
-							 240,
-							 NULL,
-							 ( tskIDLE_PRIORITY + 1 ),
-							 NULL);
+				pvValue = pvGetConfig( eConfigNetworkMqttOnPwr, NULL );
+				if( pvValue != NULL )
+					xTaskCreate( vInitMqttTask,
+								 "MqttStarup",
+								 240,
+								 NULL,
+								 ( tskIDLE_PRIORITY + 1 ),
+								 NULL);
 			#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 

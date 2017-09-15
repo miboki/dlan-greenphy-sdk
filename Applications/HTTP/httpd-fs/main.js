@@ -94,7 +94,13 @@ templates['config'] = `
 		<table class="table table-striped">
 			<tr>
 				<td>Status</td>
-				<td><input type="checkbox" name="mqtt_active" id="mqtt_active" class="onoffswitch-checkbox"></td>
+				<div class="onoffswitch">
+					<input type="checkbox" name="mqttActive" class="onoffswitch-checkbox" id="mqttActive" {{#mqtt}}checked{{/mqtt}}>
+					<label class="onoffswitch-label" for="mqttActive">
+						<span class="onoffswitch-inner"></span>
+						<span class="onoffswitch-switch"></span>
+					</label>
+              </div>
 			</tr>
 		</table>
 `;
@@ -213,7 +219,7 @@ templates['expand2'] = `
         </table>
 `;
 templates['mqtt'] = `
-            <h3>MQTT CLient Information</h3>
+            <h3>MQTT Client Information</h3>
             <table class="table table-striped">
                   <tr>
                         <td>Broker Address</td>
@@ -252,7 +258,6 @@ templates['mqtt'] = `
                         <td><input type="text" name="willmessage" id="wmessage" value="{{wmessage}}" onchange="prevent(event)"></td>
                   </tr>
             </table>
-            <div id="savebutton" onclick="saveConfig()">Save</div>
 `;
 
 
@@ -323,13 +328,9 @@ function processJSON(page, json) {
                 if(clickboard['port2_active']) {
                     $('#nav li.clickboard').eq(1).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
-				if(clickboard['mqtt_online']) {
+				if( json['mqtt'] == 'online' ) {
 					$('#nav li.mqtt').removeClass('hidden');
 				}
-				if( json['mqtt_online'] )
-					$('#mqtt_active').prop( 'checked', true );
-				else
-					$('#mqtt_active').prop( 'checked', false );
 				
             });
             break;
@@ -464,11 +465,6 @@ function processWill( event ) {
       }
 }
 
-function saveConfig() {
-      var str = 'save=1';
-      updatePage( undefined, str );
-}
-
 // Handle internal links by JQuery
 $(document).on('click', 'a[href^="#"]', function(event) {
     event.preventDefault();
@@ -495,7 +491,7 @@ $(document).on('focus', 'input, select', function() {
 
 // Refresh page when leaving input fields
 $(document).on('focusout', 'input, select', function() {
-    updatePage();
+    updatePage(); 
 });
 
 // Load config once to add current clickboards to menu

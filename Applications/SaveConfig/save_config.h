@@ -48,6 +48,7 @@
 	X(   1, eConfigNetworkNetmask )   \
 	X(   2, eConfigNetworkGateway )   \
 	X(   3, eConfigNetworkHostname )  \
+	X(   4, eConfigNetworkMqttOnPwr ) \
 	X(  10, eConfigClickConfPort1 )   \
 	X(  11, eConfigClickConfPort2 )   \
 	X(  21, eConfigMqttBroker )       \
