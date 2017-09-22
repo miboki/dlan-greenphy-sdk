@@ -1,198 +1,100 @@
 /*
- 1 tab == 4 spaces!
-
+ * Copyright (c) 2017, devolo AG, Aachen, Germany.
+ * All rights reserved.
+ *
+ * This Software is part of the devolo GreenPHY-SDK.
+ *
+ * Usage in source form and redistribution in binary form, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Usage in source form is subject to a current end user license agreement
+ *    with the devolo AG.
+ * 2. Neither the name of the devolo AG nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ * 3. Redistribution in binary form is limited to the usage on the GreenPHY
+ *    module of the devolo AG.
+ * 4. Redistribution in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-#include "FreeRTOS.h"
+/* LPCOpen includes. */
+#include "board.h"
+#include <cr_section_macros.h>
+
+/* FreeRTOS includes. */
+#include <FreeRTOS.h>
 #include "task.h"
-#include "clocking.h"
-#include "greenPhyModuleApplication.h"
-#include "string.h"
-#include "uart.h"
-#include "queue.h"
 
-#if HTTP_SERVER == ON || COMMAND_LINE_INTERFACE == ON
-#include "relay.h"
-#endif
+/* FreeRTOS +TCP includes. */
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
 
-#include "bootloaderapp.h"
-
-#include "MQTTClient.h"
-#include "uip.h"
-
-//Queue
-xQueueHandle MQTT_Queue = 0;
-uint8_t cloudactive;
+/* GreenPHY SDK includes. */
+#include "GreenPhySDKConfig.h"
+#include "network.h"
+#include "save_config.h"
+#include "clickboard_config.h"
 
 /*-----------------------------------------------------------*/
+static void prvTestTask( void *pvParameters )
+{
 
-void vApplicationMallocFailedHook(void) {
-	printToUart("Malloc failed!\n\r");
-	for (;;)
-		;
+	DEBUGOUT( "Test task running.\r\n" );
+
+	/* Add endless loop here to prevent task deletion. */
+
+	vTaskDelete( NULL );
+
 }
-
-/*-----------------------------------------------------------*/
-
-void vApplicationTickHook(void) {
-	/* Called from every tick interrupt */
-
-	DEBUG_EXECUTE(
-			{ static size_t old_mem = 0; size_t mem = xPortGetFreeHeapSize(); if(old_mem != mem) { DEBUG_PRINT(DEBUG_INFO,"application free heap: %d(0x%x)\n\r",mem,mem); old_mem = mem; } });
-}
-
-/*-----------------------------------------------------------*/
-
-void vApplicationIdleHook(void) {
-	/* Called from idle task */
-}
-
-/*-----------------------------------------------------------*/
-
-void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) {
-	/* This function will get called if a task overflows its stack. */
-
-	(void) pxTask;
-	(void) pcTaskName;
-
-	for (;;)
-		;
-}
-
-/*-----------------------------------------------------------*/
-
-void vConfigureTimerForRunTimeStats(void) {
-	const unsigned long TCR_COUNT_RESET = 2, CTCR_CTM_TIMER = 0x00,
-			TCR_COUNT_ENABLE = 0x01;
-
-	/* This function configures a timer that is used as the time base when
-	 collecting run time statistical information - basically the percentage
-	 of CPU time that each task is utilising.  It is called automatically when
-	 the scheduler is started (assuming configGENERATE_RUN_TIME_STATS is set
-	 to 1). */
-
-	/* Power up and feed the timer. */
-	LPC_SC->PCONP |= 0x02UL;
-	LPC_SC->PCLKSEL0 = (LPC_SC->PCLKSEL0 & (~(0x3 << 2))) | (0x01 << 2);
-
-	/* Reset Timer 0 */
-	LPC_TIM0->TCR = TCR_COUNT_RESET;
-
-	/* Just count up. */
-	LPC_TIM0->CTCR = CTCR_CTM_TIMER;
-
-	/* Prescale to a frequency that is good enough to get a decent resolution,
-	 but not too fast so as to overflow all the time. */
-	LPC_TIM0->PR = ( configCPU_CLOCK_HZ / 10000UL) - 1UL;
-
-	/* Start the counter. */
-	LPC_TIM0->TCR = TCR_COUNT_ENABLE;
-}
-
-/*-----------------------------------------------------------*/
 
 int main(void) {
-	LPC_UseOscillator(LPC_MAIN_OSC);
-	LPC_SetPLL0(100000000);
+	SystemCoreClockUpdate();
+	Board_Init();
 
-	printInit(UART0);
-	DEBUG_INIT(UART0);
-
-	printToUart("\r\n\r\nSTANDALONE ");
+	DEBUGSTR("\r\n\r\nSTANDALONE ");
 	{
-		uint32_t reset_reason = LPC_SC->RSID;
-		printToUart("RSID:0x%x", reset_reason);
+		uint32_t reset_reason = LPC_SYSCTL->RSID;
+		DEBUGOUT("RSID:0x%x", reset_reason);
 		if (!reset_reason)
-			printToUart("->Bootloader");
+			DEBUGSTR("->Bootloader");
 		if (reset_reason & 0x1)
-			printToUart("->Power On");
+			DEBUGSTR("->Power On");
 		if (reset_reason & 0x2)
-			printToUart("->Reset");
+			DEBUGSTR("->Reset");
 		if (reset_reason & 0x4)
-			printToUart("->Watchdog");
+			DEBUGSTR("->Watchdog");
 		if (reset_reason & 0x8)
-			printToUart("->BrownOut Detection");
+			DEBUGSTR("->BrownOut Detection");
 		if (reset_reason & 0x10)
-			printToUart("->JTAG/restart");
-		printToUart("\n\r");
-		LPC_SC->RSID = reset_reason;
+			DEBUGSTR("->JTAG/restart");
+		DEBUGSTR("\r\n");
+		LPC_SYSCTL->RSID = reset_reason;
 	}
 
-	printToUart("UART0 %s(%s)\r\n", features, version);
+	xReadConfig();
 
-#if HTTP_SERVER == ON || COMMAND_LINE_INTERFACE == ON
-	initRelay();
-#endif
+	vNetworkInit();
 
-#if IP_STACK == ON
-	void * taskArgument = NULL;
-#endif
+	xClickboardsInit();
 
-#if USE_ETHERNET_OVER_SPI == ON
-	struct netDeviceInterface * greenPhyDevice = greenPhyInitNetdevice();
-#if IP_STACK == ON
-	taskArgument = greenPhyDevice;
-#endif
-
-#if COMMAND_LINE_INTERFACE == ON
-	netdeviceAdd(greenPhyDevice,"GreenPHY");
-#endif
-#endif
-
-#if USE_ETHERNET == ON
-	struct netDeviceInterface * ethernetDevice = ethInitNetdevice();
-#if IP_STACK == ON
-	taskArgument = ethernetDevice;
-#endif
-#if COMMAND_LINE_INTERFACE == ON
-	netdeviceAdd(ethernetDevice,"ETH");
-#endif
-#endif
-
-#if IP_STACK == ON
-	xTaskCreate( vuIP_Task, ( signed char * ) "uIP", mainBASIC_WEB_STACK_SIZE, taskArgument, mainUIP_TASK_PRIORITY, NULL );
-#endif
-
-#if ETHERNET_OVER_SPI_TO_ETHERNET_BRIDGE == ON
-	static struct bridgePath path;
-	path.name = "ETH->GreenPHY";
-	path.bridgeSource = ethernetDevice;
-	path.bridgeDestination = greenPhyDevice;
-	initBridgeTask(&path);
-#endif
-
-	size_t mem = xPortGetFreeHeapSize();
-	printToUart("free heap: %d(0x%x)\n\r", mem, mem);
-
-#if COMMAND_LINE_INTERFACE == ON
-	cliInit();
-#else
-	printToUart("OK\n\r");
-#endif
-
-	/*Initialize Queue*/
-	MQTT_Queue = xQueueCreate(3, 20);
-	/*Override json malloc functions*/
-	json_set_alloc_funcs(pvPortMalloc, vPortFree);
-
-	/*get DHCP*/
-	//init_dhcp();
-	//eraseflash();
-
-	/*Read Clickboard Config and Initialize*/
-	//readflash();
-
+	xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
 
 	vTaskStartScheduler();
-
-	// the application will be only started after the scheduler is ended by the bootloader calling vTaskEndScheduler()
-
-	startApplication();
-
-	// shall never be reached ...
-
-	for (;;)
-		;
 
 	return 0;
 }
