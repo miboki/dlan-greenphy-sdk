@@ -1,14 +1,22 @@
 /*
  * mqtt.c
  *
- *  Created on: 31.08.2017
- *      Author: christoph.domnik
+ *  Created on: 20.09.2017
+ *      Author: Christoph.Domnik
  *
- *  This Module is used to present all MQTT features to the system.
- *  Containing Functions for Initializing, Deinitializing, Connect, Publish functions
+ *  This is a Interface to the PAHO embedded MQTT Client.
+ *  Its features contain: - connecting to a MQTT-Broker
+ *  					  - publish messages to the connected MQTT-Broker
+ *  					  - handle requests of the WebUI to show and change broker credentials
  *
- *  To use this module include mqtt.h
+ *  To Use the interface simply add jobs to the MQTT-Queue, an internal task will handle them.
+ *
  */
+
+
+/* ------------------------------
+ * |          INCLUDES          |
+ * ------------------------------ */
 /* LPCOpen Includes. */
 #include "board.h"
 
@@ -28,469 +36,344 @@
 #include "mqtt.h"
 #include "MQTTClient.h"
 
-BaseType_t xInitMqtt();
 
-/* xIsUsed will be set to 1 each time an action including the Client will start
- * and will be reset when the action is finished. (Mutex don't work) */
-static BaseType_t xIsUsed = 0;
 
-/* save the initialization status, so publish could not be used untial the initialization */
-static unsigned char ucInitialized = 0;
+/* ------------------------------
+ * |      Global Variables      |
+ * ------------------------------ */
+/* Handle for the Mqtt Queue, shared between xInitMQTT and xDeinitMQTT and xGetMQTTQueue */
+static QueueHandle_t xMqttQueueHandle = NULL;
 
-/* Client will be saved for Task an to check if it is already initialized */
-MQTTClient xClient;
-
-/* Network varialbe used for this connection contains read,
- * write and disconnect function and tcp socket */
-Network xNetwork;
-
-/* Task Handle is used to identify the Task which runs the Mqtt-Yield function */
+/* Handle for the Mqtt Task */
 static TaskHandle_t xMqttTaskHandle = NULL;
 
-/* Global send buffer, _CD_ not shure of final solution */
-unsigned char pcSendBuf[ mqttSEND_BUFFER_SIZE ];
+BaseType_t xTaskCreate(    TaskFunction_t pvTaskCode,
+                           const char * const pcName,
+                           unsigned short usStackDepth,
+                           void *pvParameters,
+                           UBaseType_t uxPriority,
+                           TaskHandle_t *pxCreatedTask
+                         );
 
-/* Global receive buffer, _CD_ not shure of final solution */
-unsigned char pcRecvBuf[ mqttRECV_BUFFER_SIZE ];
 
-
-
-/********************************************************************************************************
- * FUNCTIONS:
- ********************************************************************************************************/
-
+/* ------------------------------
+ * |          Functions         |
+ * ------------------------------ */
 /***********************************************************************************************************
- *   function: xIsActive
- *   Purpose: returns the Active state of the Mqtt-Client
- *   Global Variables used: ucInitialized
- *   Returns: 0 - not active
- *   		  1 - active
+ *   function: vCloseSocket
+ *   Purpose: Close a tcp socket clean
+ *   Parameter: Socket_t xSocket - the socket to be closed
  ***********************************************************************************************************/
-BaseType_t xIsActive()
+void vCloseSocket( Socket_t xSocket )
 {
-	BaseType_t xRet = 0;
-	if( ( ucInitialized == 1 ) && ( xClient.isconnected == 1 ) )
+	void *buffer;
+	if( xSocket != NULL )
 	{
-		xRet = 1;
-	}
-	return xRet;
-}
-
-
-/***********************************************************************************************************
- *   function: vUnblockClientHandle
- *   Purpose: Reset xIsUsed so other functions now can use the client handle
- *   Global Variables used: xIsUsed
- ***********************************************************************************************************/
-void vUnblockClientHandle()
-{
-	xIsUsed = CLIENT_FREE;
-}
-
-
-/***********************************************************************************************************
- *   function: xBlockClientHandle
- *   Purpose: Check if client handle is already in use, to don't corrupt it
- *   Global Variables used: xIsUsed
- *   Returns: CLIENT_FREE - client handle is reserved for caller function, you could use it
- *   		  -CLIENT_BLOCKED - client handle is blocked by an other function, please try again later
- ***********************************************************************************************************/
-BaseType_t xBlockClientHandle()
-{
-	int i = 0;
-
-	/* Wait for client handle to become unblocked, but do not wait more than 1s */
-	while(( xIsUsed != CLIENT_FREE ) && ( i < 5 )){
-		vTaskDelay( 200 );
-		i++;
-	}
-
-	if( xIsUsed == CLIENT_FREE ){
-		xIsUsed = CLIENT_BLOCKED;
-		return CLIENT_FREE;
-	}
-	return -CLIENT_BLOCKED;
-}
-
-
-/***********************************************************************************************************
- *   function: xPublishMessage
- *   Purpose: Publishes a text message to the connection initialized with xInitMqtt
- *   Global Variables used: xClientHandle
- *   Returns: 0 - Message send successful
- *   		  -1 - can not send message, client not initialized or blocked
- ***********************************************************************************************************/
-BaseType_t xPublishMessage( char *pucMessage, char *pucTopic, unsigned char ucQos, unsigned char ucRetained )
-{
-	if(( xClient.isconnected ) && ( ucInitialized != 0 )){
-		MQTTMessage xMessage;
-		int ret = SUCCESS_MQTT;
-
-		xMessage.qos = ucQos;
-		xMessage.retained = ucRetained;
-		xMessage.payload = pucMessage;
-		xMessage.payloadlen = strlen(pucMessage);
-
-		/* Check if client is free */
-		if( xBlockClientHandle() == CLIENT_FREE ){
-			ret = MQTTPublish( &xClient, pucTopic, &xMessage );
-			if( ret != SUCCESS_MQTT ){
-				DEBUGOUT("MQTT-ERROR 0x0120: Failure while publishing packet. Will end connection.\n");
-				xDeinitMqtt();
-			}
-			/* done, now unblock client */
-			vUnblockClientHandle();
-			return ret;
-		}
-	}
-	return -1;
-}
-
-
-/***********************************************************************************************************
- *   function: vMqttTask
- *   Purpose: This function checks if there are any mqtt packets received by calling MQTTYield.
- *   		  Task repeats every one second.
- *   Global Variables used: xClientHandle
- ***********************************************************************************************************/
-void vMqttTask()
-{
-	int ret = SUCCESS_MQTT;
-
-	for(;;){
-		/* _CD_ wait as first step, because when task is calling nothing is to do */
-		vTaskDelay( mqttRECEIVE_DELAY );
-
-		/* Check if client is free */
-		if(( xBlockClientHandle() == CLIENT_FREE ) && ( xClient.isconnected ) ){
-			ret = MQTTYield( &xClient, 100 );
-			/* done, now unblock client */
-			vUnblockClientHandle();
-
-			if( ret != SUCCESS_MQTT )
-				DEBUGOUT("MQTT-ERROR 0x0110: Failure while reading packet. Will end connection.\n");
-		}
-	}
-
-}
-
-
-/***********************************************************************************************************
- *   function: xEndSocket
- *   Purpose: Close the TCP socket of the client (help-function)
- *   Global Variables used: xClientHandle
- *   Returns: 	0 - everything is ok
- *   			-1 - no socket available
- *   			something else - FreeRTOS_shutdown return value
- ***********************************************************************************************************/
-BaseType_t xEndSocket()
-{
-	int ret = SUCCESS_MQTT;
-	if(( xClient.ipstack->my_socket != FREERTOS_INVALID_SOCKET ) && ( xClient.ipstack != NULL )){
-		/* Exit save */
-		ret = FreeRTOS_shutdown( xClient.ipstack->my_socket, FREERTOS_SHUT_RDWR );
-		while( FreeRTOS_recv( xClient.ipstack->my_socket, xClient.readbuf, 0, 0 ) >= 0 ){
-			vTaskDelay( 250 );
+		FreeRTOS_shutdown( xSocket, FREERTOS_SHUT_RDWR );
+		while( FreeRTOS_recv( xSocket, buffer, 0, 0 ) >= 0 ){
+			vTaskDelay( pdMS_TO_TICKS( 100 ) );
 		}
 		/* The socket has shut down and is safe to close. */
-		FreeRTOS_closesocket( xClient.ipstack->my_socket );
-		return ret;
+		FreeRTOS_closesocket( xSocket );
 	}
-	return -1;
 }
 
 
 /***********************************************************************************************************
- *   function: xReadCredentialsFromConfig
- *   Purpose: Get The Credentials from Config, when no Value is stored for a Value, do not touch the value. Please initialize xCred before using this function.
- *   Parameters: IN/OUT: xMqttCredentials_t *xCred
- *   Returns: 	X - Number of values obtained from Config, other fields not touched (max: 8, if will=0 -> max: 6)
- *   			0 - Error while Reading Config (all values are default)
+ *   function: vGetCredentials
+ *   Purpose: Read one parameter from the configuration, which parameter should be read is defined by the Config Tag
+ *   Parameter: eConfigTag_t eConfigMqtt - Tag specifies which parameter should be read (same name as in config)
+ *   			void *pvBuffer - return buffer for the read data
  ***********************************************************************************************************/
-BaseType_t xGetCredentials( xMqttCredentials_t *xCred )
+void vGetCredentials( eConfigTag_t eConfigMqtt, void *pvBuffer )
 {
-	BaseType_t xReturn = pdFAIL;
 	void *pvValue = NULL;
-
-	/* ----------------------Set default credentials---------------------- */
-	xCred->pcBrokername = netconfigMQTT_BROKER;
-	xCred->port = netconfigMQTT_PORT;
-	xCred->connectData->clientID.cstring = netconfigMQTT_CLIENT;
-	xCred->connectData->username.cstring = netconfigMQTT_USER;
-	xCred->connectData->password.cstring = netconfigMQTT_PASSWORT;
-
-	/* ----------------------Now get all saved Fields---------------------- */
-	/* Get Broker address */
-	pvValue = pvGetConfig( eConfigMqttBroker, NULL );
+	pvValue = pvGetConfig( eConfigMqtt, NULL );
 	if( pvValue != NULL )
+		pvBuffer = pvValue;
+}
+
+
+
+/***********************************************************************************************************
+ *   function: xConnect
+ *   Purpose: Connect the client given as parameter to a MQTT Broker. Credentials are in config or defines
+ *   Parameter: MQTTCLIENT *pxClient - Pointer to the MQTT Client
+ *   			Network *pxNetwork - Pointer to the Network Variable
+ *   Returns:
+ ***********************************************************************************************************/
+BaseType_t xConnect( MQTTClient *pxClient, Network *pxNetwork )
+{
+	char *pcBroker = netconfigMQTT_BROKER;
+	BaseType_t xPort = netconfigMQTT_PORT;
+	MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+
+	vGetCredentials( eConfigMqttBroker, pcBroker );
+	vGetCredentials( eConfigMqttPort, &xPort );
+
+	/* Establish TCP connection to broker. No MQTT Connection at this point */
+	if( NetworkConnect( pxNetwork, pcBroker, xPort ) != 0 )
 	{
-		xCred->pcBrokername = (char *)pvValue;
-		xReturn++;
+		DEBUGOUT("MQTT-Error 0x0111: Error while NetworkConnect. %s, Port %d", pcBroker, xPort);
+		vCloseSocket( pxClient->ipstack->my_socket );
+		pxClient->ipstack->my_socket = NULL;
+		return pdFAIL;
 	}
 
-	/* Get Broker port */
-	pvValue = pvGetConfig( eConfigMqttPort, NULL );
-	if( pvValue != NULL )
+	/* Get the credentials */
+	vGetCredentials( eConfigMqttClientID, connectData.clientID.cstring );
+	vGetCredentials( eConfigMqttUser, connectData.username.cstring );
+	vGetCredentials( eConfigMqttPassWD, connectData.password.cstring );
+	vGetCredentials( eConfigMqttWill, &(connectData.willFlag) );
+	if( connectData.willFlag )
 	{
-		xCred->port = strtol( (char *)pvValue, NULL, 6 );
-		xReturn++;
+		vGetCredentials( eConfigMqttWillTopic, connectData.will.topicName.cstring );
+		vGetCredentials( eConfigMqttWillMsg, connectData.will.message.cstring );
 	}
-
-	/* Get CLientID */
-	pvValue = pvGetConfig( eConfigMqttClientID, NULL );
-	if( pvValue != NULL )
+	/* Connect to MQTT Broker */
+	if( MQTTConnect( pxClient, &connectData ) != 0 )
 	{
-		xCred->connectData->clientID.cstring = (char *)pvValue;
-		xReturn++;
+		DEBUGOUT("MQTT-Error 0x0112: MQTTConnect failed.");
+		vCloseSocket( pxClient->ipstack->my_socket );
+		pxClient->ipstack->my_socket = NULL;
+		return pdFAIL;
 	}
+	return pdPASS;
+}
 
-	/* if no username is used, there will be no entry in configuration (TLV with length=0 will not be saved) */
-	pvValue = pvGetConfig( eConfigMqttUser, NULL );
-	if( pvValue != NULL )
-	{
-		xCred->connectData->username.cstring = (char *)pvValue;
-		xReturn++;
-	}
 
-	/* if no password is used, there will be no entry in configuration (TLV with length=0 will not be saved) */
-	pvValue = pvGetConfig( eConfigMqttUser, NULL );
-	if( pvValue != NULL )
-	{
-		xCred->connectData->username.cstring = (char *)pvValue;
-		xReturn++;
-	}
 
-	/* Get will flag, if it is set, read the other will options */
-	pvValue = pvGetConfig( eConfigMqttWill, NULL );
-	if( pvValue != NULL )
+/***********************************************************************************************************
+ *   function: vMQTTTask
+ *   Purpose: Handles all of the Jobs comming from the MQTT queue.
+ *   		  Connects, Disconnects, Publishes, Subscribe and Receive.
+ *   		  This function is a adapter to the PAHO embedded MQTT Client.
+ *   Global Variables used: xMqttQueueHandle, xMqttTaskHandle
+ *   Parameter: void *pvParameters - not used currently
+ ***********************************************************************************************************/
+void vMQTTTask( void *pvParameters )
+{
+	/* Variables */
+	BaseType_t cycles = 0;
+	MQTTClient xClient;
+	Network xNetwork;
+	unsigned char pcSendBuf[ MQTTSEND_BUFFER_SIZE ];
+	unsigned char pcRecvBuf[ MQTTRECV_BUFFER_SIZE ];
+	MqttJob_t xJob;
+	MqttPublishMsg_t *pxPubMsg;
+
+	/* Initialize Variables for using */
+	NetworkInit( &xNetwork );
+	MQTTClientInit( &xClient, &xNetwork, MQTTCLIENT_TIMEOUT, pcSendBuf, sizeof(pcSendBuff), pcRecvBuf, sizeof(pcRecvBuf) );
+
+	/* Infinite Task Loop */
+	for(;;)
 	{
-		xCred->connectData->willFlag = (unsigned char)(strtol( (char *)pvValue, NULL, 2 ));
-		xReturn++;
-		if(xCred->connectData->willFlag = 1)
+		/* -------------------- Check if task is working normal -------------------- */
+		if(( xClient.isconnected != 1 ) && ( xClient.ipstack->my_socket != NULL ))
 		{
-			/* _CD_ QOS and retain will not be saved in config, so use default values */
-			xCred->connectData->will.qos = netconfigMQTT_WILL_QOS;
-			xCred->connectData->will.retained = netconfigMQTT_WILL_RETAIN;
-
-			pvValue = pvGetConfig( eConfigMqttWillTopic, NULL );
-			if( pvValue != NULL )
-			{
-				xCred->connectData->will.topicName.cstring = (char *)pvValue;
-				xReturn++;
-			}
-
-			pvValue = pvGetConfig( eConfigMqttWillMsg, NULL );
-			if( pvValue != NULL )
-			{
-				xCred->connectData->will.message.cstring = (char *)pvValue;
-				xReturn++;
-			}
+			DEBUGOUT("MQTT-Error 0x0150: Connection lost. Will close Socket.\n");
+			vCloseSocket( xClient.ipstack->my_socket );
+			xClient.ipstack->my_socket = NULL;
 		}
+
+		/* -------------------- Get the next job from the queue -------------------- */
+		if( xQueueReceive( xMqttQueueHandle, &xJob, 0 ) != pdPASS )
+			xJob.eJobType = eNoEvent;
+
+		/* -------------------- Work on the current Job -------------------- */
+		switch( xJob.eJobType )
+		{
+			case eNoEvent:
+				break;
+
+			case eConnect:
+				if( xClient.isconnected == 0 )
+				{
+					/* Two tries to connect */
+					for(int i = 0; i < 2; i++)
+					{
+						if( xConnect( &xClient, &xNetwork ) != pdPASS )
+							DEBUGOUT("MQTT-Error 0x0110: Unable to connect to MQTT Broker.\n");
+					}
+				}
+				break;
+
+			case eDisconnect:
+				if( xClient.isconnected )
+					MQTTDisconnect( &xClient );
+				/* Clean up the tcp socket save */
+				vCloseSocket( xClient.ipstack->my_socket );
+				xClient.ipstack->my_socket = NULL;
+				break;
+
+			case ePublish:
+				if( xClient.isconnected )
+				{
+					pxPubMsg = (MqttPublishMsg_t *) xJob.data;
+					if( MQTTPublish( &xClient, pxPubMsg->pucTopic, &( pxPubMsg->xMessage ) ) != SUCCESS_MQTT)
+					{
+						DEBUGOUT("MQTT-Error 0x0130: Could not publish Message.\n");
+					}
+				}
+				break;
+
+			case eSubscribe:
+				break;
+
+			case eRecieve:
+				if( xClient.isconnected )
+					if ( MQTTYield( &xClient, MQTTRECEIVE_TIMEOUT ) != SUCCESS_MQTT )
+						DEBUGOUT("MQTT-Error 0x0140: MQTTYield failed.");
+				break;
+
+			case eKill:
+				/* Clean up Queue */
+				vQueueDelete( xMqttQueueHandle );
+				xMqttQueueHandle = NULL;
+				xMqttTaskHandle = NULL;
+				vTaskDelete( NULL );
+				break;
+
+			default:
+				break;
+		}
+
+		/* Add Recive Job to Queue each 20 cycles (apox. 2s) */
+		if( ( cycles++ ) > 20 )
+		{
+			xJob.eJobType = eRecieve;
+			xQueueSendToBack( xMqttQueueHandle, &xJob, 0 );
+			cycles = 0;
+		}
+
+		/* Delay until next call */
+		vTaskDelay( pd_MS_TO_TICKS( MQTTTASK_DELAY ) );
 	}
-	return xReturn;
 }
 
 
 #if( includeHTTP_DEMO != 0 )
 	/***********************************************************************************************************
-	 *   function: xMqttHTTPRequestHandler
-	 *   Purpose: Handler for all requests incomming for "mqtt". Will output the configuration and recieve new
-	 *   		  configuration from WebUI.
-	 *   Global Variables used:
-	 *   Returns: 	0 - everything is ok
-	 *   			-1 - no socket available
-	 *   			something else - FreeRTOS_shutdown return value
+	 *   function: xMQTTRequestHandler
+	 *   Purpose: Handle the HTTP requests for mqtt. Contains reading of new Credentials,
+	 *   Global Variables used: xMqttQueueHandle, xMqttTaskHandle
+	 *   Parameter: void *pvParameters - not used currently
 	 ***********************************************************************************************************/
-	static BaseType_t xMqttHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
+	static BaseType_t xMQTTRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
-		xMqttCredentials_t xConnectionConfig;
-		MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
 
-		xConnectionConfig.connectData = &connectData;
+		xCount += sprintf( pcBuffer, "");
 
-		/* _CD_ search for each of the credential parameters. If one is found update the config. Do not change the connection!! */
-		/* Search for Broker address */
-		pxParam = pxFindKeyInQueryParams( "broker", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttBroker, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for Broker Port */
-		pxParam = pxFindKeyInQueryParams( "port", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttPort, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for Client ID */
-		pxParam = pxFindKeyInQueryParams( "client", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttClientID, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for username */
-		pxParam = pxFindKeyInQueryParams( "user", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttUser, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for password */
-		pxParam = pxFindKeyInQueryParams( "password", pxParams, xParamCount );
-		if( pxParam == NULL ) {
-			pxParam = pxFindKeyInQueryParams( "password2", pxParams, xParamCount );
-		}
-		if( pxParam != NULL ){
-			pvSetConfig( eConfigMqttPassWD, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for will flag */
-		pxParam = pxFindKeyInQueryParams( "will", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWill, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for Will Topic */
-		pxParam = pxFindKeyInQueryParams( "willtopic", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWillTopic, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-		/* Search for Will Message */
-		pxParam = pxFindKeyInQueryParams( "willmessage", pxParams, xParamCount );
-		if( pxParam != NULL ) {
-			pvSetConfig( eConfigMqttWillMsg, strlen( pxParam->pcValue ), (void *) pxParam->pcValue );
-		}
-
-		xGetCredentials( &xConnectionConfig );
-		xCount += sprintf( pcBuffer, "{\"broker\":"   "\"%s\","
-									  "\"port\":"       "%d,"
-									  "\"client\":"   "\"%s\","
-									  "\"user\":"     "\"%s\","
-									  "\"password\":" "\"%s\","
-									  "\"will\":"       "%d,"
-									  "\"wtopic\":"   "\"%s\","
-									  "\"wmessage\":" "\"%s\"}",
-									  xConnectionConfig.pcBrokername,
-									  xConnectionConfig.port,
-									  xConnectionConfig.connectData->clientID.cstring,
-									  xConnectionConfig.connectData->username.cstring,
-									  xConnectionConfig.connectData->password.cstring,
-									  xConnectionConfig.connectData->willFlag,
-									  xConnectionConfig.connectData->will.topicName.cstring,
-									  xConnectionConfig.connectData->will.message.cstring );
-		return xCount;
+		retunr xCount;
 	}
-#endif /* #if( includeHTTP_DEMO != 0 ) */
+#endif
 
 
 /***********************************************************************************************************
- *   function: xInitMqtt
- *   Purpose: Initialize Mqtt Connection, will get Socket and create Connection to Broker and start Task
- *   Global Variables used: xClient, xNetwork, xMqttTaskHandle, pcSendBuf, pcRecvBuf, ucInitialized
- *   Returns: 	0 - everything is ok
- *   			something else - error (may contain return value of child function)
+ *   function: xGetMQTTQueueHandle
+ *   Purpose: Gives the handle to the MQTT queue
+ *   Global Variables used: xMqttQueueHandle
+ *   Returns: 	Pointer to the Mqtt Queue
+ *   			NULL: MQTT is not initialized
  ***********************************************************************************************************/
-BaseType_t xInitMqtt()
+QueueHandle_t xGetMQTTQueueHandle( void )
 {
-	BaseType_t iStatus = 0;
-	xMqttCredentials_t xCred;
-	MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
+	return xMqttQueueHandle;
+}
 
-	xCred.connectData = &connectData;
-	xGetCredentials( &xCred );
 
-	/* _CD_ Check whether the Client and Task is already created */
-	if( ucInitialized == 0 )
+/***********************************************************************************************************
+ *   function: xInitMQTT
+ *   Purpose: Start MQTT-Queue and Task. Add RequestHandler. MQTT Connection will not be established at this point.
+ *   Global Variables used: xMqttQueueHandle, xMqttTaskHandle
+ *   Returns: 	Pointer to the Mqtt Queue
+ *   			NULL - an Error occurred
+ ***********************************************************************************************************/
+QueueHandle_t xInitMQTT(void)
+{
+	BaseType_t xRet = 0;
+
+
+	/* Bevore doing anything check if mqtt is already initialized */
+	if(( xMqttQueueHandle != NULL ) || (xMqttTaskHandle != NULL) )
 	{
-		NetworkInit( &xNetwork );
-		MQTTClientInit( &xClient, &xNetwork, 2000, pcSendBuf, mqttSEND_BUFFER_SIZE, pcRecvBuf, mqttRECV_BUFFER_SIZE );
-		if( ( iStatus = NetworkConnect( &xNetwork , netconfigMQTT_BROKER, netconfigMQTT_PORT )) != 0 ){
-			DEBUGOUT("MQTT-Error 0x0010: Unable to Connect to Network. Broker %s on %d\n", netconfigMQTT_BROKER, netconfigMQTT_PORT);
-			xEndSocket();
-			return iStatus;
-		}
-
-		if( ( iStatus = MQTTConnect(&xClient, xCred.connectData)) != 0 ){
-			DEBUGOUT("MQTT-Error 0x0020: Unable to Connect to Broker.");
-			xEndSocket();
-			return iStatus;
-		}
-
-		xTaskCreate(vMqttTask,						/* Task function */
-					"MqttTask",						/* Task name */
-					240,							/* Task stack size */
-					NULL,							/* Task call parameters */
-					( tskIDLE_PRIORITY + 2 ),		/* Task priority */
-					&xMqttTaskHandle);				/* Task handle */
-		if( xMqttTaskHandle == NULL ){
-			DEBUGOUT("MQTT-Error 0x0030: Could not create Mqtt receiver task\n");
-			xEndSocket();
-			return -1;
-		}
-
-		#if( includeHTTP_DEMO != 0 )
-			/* Add HTTP request handler */
-			xAddRequestHandler( "mqtt", xMqttHTTPRequestHandler );
-		#endif /* ( includeHTTP_DEMO != 0 ) */
-		ucInitialized = 1;
+		DEBUGOUT("MQTT-Error 0x0010: Initialization failed. Already initialized.\n");
+		return NULL;
 	}
-	return iStatus;
+
+	/* Init-Step 1 of 3: Initialise Queue */
+	xMqttQueueHandle = xQueueCreate( MQTTQUEUE_LENGTH, MQTTQUEUE_ITEMSIZE );
+	if( xMqttQueueHandle == NULL )
+	{
+		DEBUGOUT("MQTT-Error 0x0011: Initialization failed at getting queue.\n");
+		return NULL;
+	}
+
+	/* Init-Step 2 of 3: Start Mqtt Task */
+	xRet = xTaskCreate( vMQTTTask,					/* Task Code */
+						"MqttTask",					/* Task Name */
+						MQTTTASK_SIZE,				/* Task Stack Size */
+						NULL,						/* Task Parameters */
+						( tskIDLE_PRIORITY + 2 ),	/* Task Priority */
+						&xMqttTaskHandle);			/* Task Handle */
+	if(( xRet != pdPASS ) || ( xMqttTaskHandle == NULL ))
+	{
+		DEBUGOUT("MQTT-Error 0x0012: Initialization failed at starting task.\n");
+		/* Do not forget to free the queue! Otherwise it a new initialization will not be able */
+		vQueueDelete( xMqttQueueHandle );
+		xMqttQueueHandle = NULL;
+		return NULL;
+	}
+
+	#if( includeHTTP_DEMO != 0 )
+		/* Init-Step 3 of 3: Start HTTP Request Handler */
+		xRet = xAddRequestHandler( "mqtt", xMQTTRequestHandler );
+		if( xRet != pdPASS )
+			DEBUGOUT("MQTT-Warning: Failed to add HTTP-Request-Handler. Task will run with saved config.\n");
+	#endif
+
+	return xMqttQueueHandle;
 }
 
-/*
-void vMqttTest()
-{
-	for( int i = 0 ; i < 20 ; i++ )
-		vTaskDelay(1000);
-
-	xDeinitMqtt();
-	vTaskDelete( NULL );
-}
-*/
 
 /***********************************************************************************************************
- *   function: xInitMqttTask
- *   Purpose: Call InitMqtt after a timeout
- *   		  NOTE: Use Task so the normal starup of the Network could proceed and is not interfered
+ *   function: vDeinitMQTT
+ *   Purpose: Stop the Mqtt Task, free the Queue, remove HTTP-Request-Handler.
+ *   		  Use only to save memory, because you dont use MQTT at all, to end the connection use MQTT Task
+ *   Global Variables used: xMqttQueueHandle, xMqttTaskHandle
  ***********************************************************************************************************/
-void vInitMqttTask()
+void vDeinitMQTT( void )
 {
-	vTaskDelay( 4000 );
-	xInitMqtt();
-	//xTaskCreate(vMqttTest, "Test", 240, NULL, 1, NULL);
-	vTaskDelete( NULL );
-}
+	BaseType_t xRet = pdFAIL;
+	MqttJob_t xKillJob;
 
+	/* Deinit-Step 1 of X: Send kill to MqttTask, set it to the top of the queue so no other Jobs will be done */
+	xKillJob.eJobType = eKill;
+	xKillJob.data = NULL;
+	/* sent kill to queue, 2s timeout. _CD_ Task normally needs max 1s to do a Job, so assume it is unresponsive when 2s are passed */
+	xRet = xQueueSendToBack( xMqttQueueHandle, &xKillJob, pdMS_TO_TICKS( 2000 ) );
 
-/********************************************************************************
- *   function: xDeinitMqtt
- *   Purpose: Clean up Mqtt Client, Task and Socket
- *   Global Variables used: xClientHandle, xMqttTaskHandle
- *   Returns: 	3 - every thing done
- *   			between 3 and -1 - either task, socket, client or connection dose not exist
- *   			-1 - nothing was done
- ********************************************************************************/
-BaseType_t xDeinitMqtt()
-{
-	int ret = 0;
-
-	/* first disconnect client */
-	if( xClient.isconnected ){
-		MQTTDisconnect( &xClient );
-		ret++;
-	}
-
-	/* Then close TCP socket */
-	xEndSocket();
-
-	/* least stop the MQTT-Task, so all other tasks will be done when MqttTask calls Deinit*/
-	if( xMqttTaskHandle != NULL ){
-		#if( includeHTTP_DEMO != 0 )
-			xRemoveRequestHandler( "mqtt" );
-		#endif /* #if( includeHTTP_DEMO != 0 ) */
+	/* Deinit-Step 2 of X: Check if kill command was send to queue otherwise kill task manually */
+	if( xRet == errQUEUE_FULL )
+	{
+		DEBUGOUT("MQTT-Error 0x0020: Send 'kill' to task failed. Task seems to be unresponsive, will delete it.\n");
+		/* Task could not delete himself, so delete it */
 		vTaskDelete( xMqttTaskHandle );
 		xMqttTaskHandle = NULL;
-		ret++;
+
+		/* Clean up Queue */
+		vQueueDelete( xMqttQueueHandle );
+		xMqttQueueHandle = NULL;
 	}
 
-	ucInitialized = 0;
+	#if( includeHTTP_DEMO != 0 )
+		/* Deinit-Step 3 of X: Remove HTTP request handler */
+		xRet = xRemoveRequestHandler( "mqtt" );
+		if( xRet != pdTRUE )
+			DEBUGOUT("MQTT-Warning: Could not remove HTTP request handler from list.\n");
+	#endif /* #if( includeHTTP_DEMO != 0 ) */
 
-	if( ret == 2 )
-		return 0;
-
-	return -1;
 }

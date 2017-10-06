@@ -149,19 +149,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				 */
 
 			#if( netconfigUSEMQTT != 0 )
-				void *pvValue = NULL;
-				/* _CD_ Initialize MQTT:
-				 * 	-> Get TCP socket,
-				 * 	-> establish connection to broker,
-				 * 	-> start task to receive MQTT packages. */
-				pvValue = pvGetConfig( eConfigNetworkMqttOnPwr, NULL );
-				if( pvValue != NULL )
-					xTaskCreate( vInitMqttTask,
-								 "MqttStarup",
-								 240,
-								 NULL,
-								 ( tskIDLE_PRIORITY + 1 ),
-								 NULL);
+
 			#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 

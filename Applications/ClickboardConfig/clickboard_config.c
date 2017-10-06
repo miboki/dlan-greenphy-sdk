@@ -248,37 +248,9 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 			vEraseConfig();
 		}
 
-		xCount += sprintf( pcBuffer + xCount, "{" );
-
-		#if( netconfigUSEMQTT != 0 )
-			/* _CD_ Check if "mqtt" parameter is set and activate or deactivate mqtt if requested */
-			pxParam = pxFindKeyInQueryParams( "mqttActive", pxParams, xParamCount );
-			if( pxParam != NULL ) {
-				if( strcmp( pxParam->pcValue, "on" ) == 0 ){
-					/* _CD_ Initialize MQTT:
-					 * 	-> Get TCP socket,
-					 * 	-> establish connection to broker,
-					 * 	-> start task to receive MQTT packages. */
-					xTaskCreate( vInitMqttTask,
-								 "MqttStarup",
-								 240,
-								 NULL,
-								 ( tskIDLE_PRIORITY + 1 ),
-								 NULL);
-				}
-				if( strcmp( pxParam->pcValue, "off" ) == 0) {
-					xDeinitMqtt();
-				}
-			}
-
-			if( xIsActive() )
-				xCount += sprintf( pcBuffer + xCount, "\"mqtt\":\"online\",");
-
-		#endif /* #if( netconfigUSEMQTT != 0 ) */
-
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
-		xCount += sprintf( pcBuffer + xCount, "\"clickboards\":[" );
+		xCount += sprintf( pcBuffer, "{\"clickboards\":[" );
 
 		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 		{

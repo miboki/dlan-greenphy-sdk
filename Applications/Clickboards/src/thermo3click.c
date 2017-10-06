@@ -52,13 +52,13 @@
 #include "clickboard_config.h"
 #include "thermo3click.h"
 
-#if( netconfigUSEMQTT != 0 )
-	/* MQTT includes */
-	#include "mqtt.h"
-#endif
+
+/* MQTT includes */
+#include "mqtt.h"
+
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_THERMO3 1000 /* 1s */
+#define TASKWAIT_THERMO3 pdMS_TO_TICKS( 1000UL ) /* 1s */
 
 /* Temperature offset used to calibrate the sensor. */
 #define TEMP_OFFSET  -2.0

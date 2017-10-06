@@ -53,6 +53,8 @@
 									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
 									<listOptionValue builtIn="false" value="__CODE_RED"/>
+									<listOptionValue builtIn="false" value="FreeRTOS_debug_printf"/>
+									<listOptionValue builtIn="false" value="FreeRTOS_printf"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.720156330" superClass="com.crt.advproject.compiler.input"/>
 							</tool>

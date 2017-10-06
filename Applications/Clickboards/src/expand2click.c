@@ -52,13 +52,13 @@
 #include "clickboard_config.h"
 #include "expand2click.h"
 
-#if( netconfigUSEMQTT != 0 )
-	/* MQTT includes */
-	#include "mqtt.h"
-#endif
+
+/* MQTT includes */
+#include "mqtt.h"
+
 
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_EXPAND2 100
+#define TASKWAIT_EXPAND2 pdMS_TO_TICKS( 100UL )
 
 /*****************************************************************************/
 

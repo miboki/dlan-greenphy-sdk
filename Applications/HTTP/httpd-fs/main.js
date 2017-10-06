@@ -220,6 +220,13 @@ templates['expand2'] = `
 `;
 templates['mqtt'] = `
             <h3>MQTT Client Information</h3>
+			<h4>Statistics</h4>
+			<ul id="mqttstatus">
+				<li>Online</li>
+				<li>Uptime</li>
+				<li>Published Messages</li>
+				<li><input type="button" value="Reboot" ></li>
+			</ul>
             <table class="table table-striped">
                   <tr>
                         <td>Broker Address</td>
@@ -313,7 +320,6 @@ function processJSON(page, json) {
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
-            $('#nav .mqtt').addClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
                 clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
                 clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
@@ -328,10 +334,6 @@ function processJSON(page, json) {
                 if(clickboard['port2_active']) {
                     $('#nav li.clickboard').eq(1).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
                 }
-				if( json['mqtt'] == 'online' ) {
-					$('#nav li.mqtt').removeClass('hidden');
-				}
-				
             });
             break;
         case 'color2':
@@ -390,12 +392,8 @@ function sendRequest(page, data, success) {
     if( !data ) data = { action: 'get' };
     $.getJSON(domain + page + '.json', data, success)
             .fail(function(xhr, text_status, error_thrown) {
-                    // Retry after 3s, unless request was explicitly aborted
                     console.log(text_status);
                     console.log(error_thrown);
-                    if( text_status != "abort" ) {
-                        setTimeout( function() { sendRequest(page, data, success) }, 3000 );
-                    }
             });
 }
 
