@@ -92,6 +92,15 @@ static Clickboard_t pxClickboards[ ] =
  *** ADD YOUR OWN CLICKBOARDS ABOVE. ***
  ***************************************/
 
+static SemaphoreHandle_t xI2C_Mutex = NULL;
+
+/*-----------------------------------------------------------*/
+
+SemaphoreHandle_t xGetI2CMutexHandle( void )
+{
+	return xI2C_Mutex;
+}
+
 /*-----------------------------------------------------------*/
 
 Clickboard_t *pxFindClickboard( char *pcName )
@@ -277,50 +286,57 @@ void xClickboardsInit()
 BaseType_t x;
 eClickboardId_t *pxIdPort1, *pxIdPort2;
 
-	pxIdPort1 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort1, NULL );
-	pxIdPort2 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort2, NULL );
+	xI2C_Mutex = xSemaphoreCreateMutex();
 
-	for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
+	if( xI2C_Mutex != NULL)
 	{
-		/* Ensure init and deinit handlers are set. */
-		configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
-		configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
+		pxIdPort1 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort1, NULL );
+		pxIdPort2 = (eClickboardId_t *) pvGetConfig( eConfigClickConfPort2, NULL );
 
-		/* Check if clickboard config was stored in flash. */
-		if( ( pxIdPort1 != NULL ) || ( pxIdPort2 != NULL ) )
+		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 		{
-			if( *pxIdPort1 == pxClickboards[ x ].xClickboardId )
+			/* Ensure init and deinit handlers are set. */
+			configASSERT( pxClickboards[ x ].fClickboardInit != NULL );
+			configASSERT( pxClickboards[ x ].fClickboardDeinit != NULL );
+
+			/* Check if clickboard config was stored in flash. */
+			if( ( pxIdPort1 != NULL ) || ( pxIdPort2 != NULL ) )
 			{
-				pxClickboards[ x ].xPortsActive = eClickboardPort1;
-				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
-			}
-			else if( *pxIdPort2 == pxClickboards[ x ].xClickboardId )
-			{
-				pxClickboards[ x ].xPortsActive = eClickboardPort2;
-				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+				if( *pxIdPort1 == pxClickboards[ x ].xClickboardId )
+				{
+					pxClickboards[ x ].xPortsActive = eClickboardPort1;
+					pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+				}
+				else if( *pxIdPort2 == pxClickboards[ x ].xClickboardId )
+				{
+					pxClickboards[ x ].xPortsActive = eClickboardPort2;
+					pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+				}
+				else
+				{
+					pxClickboards[ x ].xPortsActive = eClickboardInactive;
+				}
 			}
 			else
 			{
-				pxClickboards[ x ].xPortsActive = eClickboardInactive;
+				if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
+				{
+					/* Ensure at max. one clickboard is active on a port. */
+					configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
+
+					pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
+				}
 			}
 		}
-		else
+
+		#if( includeHTTP_DEMO != 0 )
 		{
-			if( pxClickboards[ x ].xPortsActive != eClickboardInactive )
-			{
-				/* Ensure at max. one clickboard is active on a port. */
-				configASSERT( pxFindClickboardOnPort( pxClickboards[ x ].xPortsActive ) == NULL );
-
-				pxClickboards[ x ].fClickboardInit( pxClickboards[ x ].pcName, pxClickboards[ x ].xPortsActive );
-			}
+			xAddRequestHandler( "config", xRequestHandler_Config );
 		}
+		#endif
 	}
-
-	#if( includeHTTP_DEMO != 0 )
-	{
-		xAddRequestHandler( "config", xRequestHandler_Config );
-	}
-	#endif
+	else
+		DEBUGOUT("Init-Error: Unable to receive I2C Mutex");
 
 }
 /*-----------------------------------------------------------*/

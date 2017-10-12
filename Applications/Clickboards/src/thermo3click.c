@@ -112,11 +112,23 @@ static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 
-	while( 1 )
+	for(;;)
 	{
-		/* Read temperature in hundredth of a degree. */
-		temp_cur = Get_Temperature();
+		/* Obtain Mutex. If not possible after 1 Second, write Debug and proceed */
+		if( xSemaphoreTake( xI2CMutex, 1 ) == pdTRUE )
+		{
+			/* I2C is now usable for this Task. Read temperature in hundredth of a degree. */
+			temp_cur = Get_Temperature();
+			/* Give Mutex back, so other Tasks can use I2C */
+			xSemaphoreGive( xI2CMutex );
+		}
+		else
+		{
+			/* The mutex could not be obtained within 1 Second. Write Debung Message and Proceed with last Temp Value */
+			DEBUGOUT("Thermo3 - Error: Could not take I2C Mutex within 1s.");
+		}
 
 		/* Check for lowest and highest temperatures. */
 		if( temp_cur < temp_low ) {
@@ -131,7 +143,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		/* Print a debug message once every 10 s. */
 		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
 		{
-			DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
+			DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\n", temp_cur, temp_high, temp_low );
 			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
 
@@ -168,6 +180,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 BaseType_t xThermo3Click_Init ( const char *pcName, BaseType_t xPort )
 {
 BaseType_t xReturn = pdFALSE;
+SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
@@ -185,10 +198,22 @@ BaseType_t xReturn = pdFALSE;
 		}
 
 		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
-		Board_I2C_Init( I2C1 );
+		if( xSemaphoreTake( xI2CMutex, 10 ) == pdTRUE )
+		{
+			/* I2C is now usable for this Task. Initialise I2C now */
+			Board_I2C_Init( I2C1 );
+			/* Give Mutex back, so other Tasks can use I2C */
+			xSemaphoreGive( xI2CMutex );
 
-		/* Create task. */
-		xTaskCreate( vClickTask, pcName, 300, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+			/* Create task. */
+			xTaskCreate( vClickTask, pcName, 300, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+		}
+		else
+		{
+			/* The mutex could not be obtained within 1 Second. Write Debung Message and Proceed with last Temp Value */
+			DEBUGOUT("Thermo3 - Error: I2C is already in Use, try initialization later.");
+		}
+
 		if( xClickTaskHandle != NULL )
 		{
 			#if( includeHTTP_DEMO != 0 )
