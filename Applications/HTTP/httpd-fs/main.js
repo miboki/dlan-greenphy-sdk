@@ -219,52 +219,85 @@ templates['expand2'] = `
         </table>
 `;
 templates['mqtt'] = `
-            <h3>MQTT Client Information</h3>
-			<h4>Statistics</h4>
-			<ul id="mqttstatus">
-				<li>Online</li>
-				<li>Uptime</li>
-				<li>Published Messages</li>
+		<h3>MQTT Client Information</h3>
+		<div class="mstate">
+			<ul>
+				<li>
+					<table>
+						<tr>
+							<th>Status</th>
+						</tr>
+						<tr>
+							<th><span class="txtcontroll" style="background-color:green;color:white;">online</span></th>
+						</tr>
+					</table>
+				</li>
+				<li>
+					<table>
+						<tr>
+							<th>Uptime</th>
+						</tr>
+						<tr>
+							<th><span class="txtcontroll">1200 s</span></th>
+						</tr>
+					</table>
+				</li>
+				<li>
+					<table>
+						<tr>
+							<th>Published Messages</th>
+						</tr>
+						<tr>
+							<th><span class="txtcontroll">47</span></th>
+						</tr>
+					</table>
+				</li>
 				<li><input type="button" value="Reboot" ></li>
 			</ul>
-            <table class="table table-striped">
-                  <tr>
-                        <td>Broker Address</td>
-                        <td><input type="text" name="broker" value="{{broker}}" onchange="checkEmpty(this, event)"></td>
-                  </tr>
-                  <tr>
-                        <td>Broker Port</td>
-                        <td><input type="number" name="port" min="1" max="65535" step="1"  value="{{port}}"></td>
-                  </tr>
-                  <tr>
-                        <td>Client ID</td>
-                        <td><input type="text" name="client" value="{{client}}" onchange="checkEmpty(this, event)"></td>
-                  </tr>
-                  <tr>
-                        <td>Username</td>
-                        <td><input type="text" name="user" value="{{user}}"></td>
-                  </tr>
-                  <tr>
-                        <td>Password</td>
-                        <td><input type="password" name="password" id="pw1" value="{{password}}" onchange="checkPwd(event)"></td>
-                  </tr>
-                  <tr>
-                        <td>Repeat Password</td>
-                        <td><input type="password" name="password2" id="pw2" value="{{password}}" onchange="checkPwd(event)"><span id="pwerr"></span></td>
-                  </tr>
-                  <tr>
-                        <td>Last Will Active</td>
-                        <td><input type="checkbox" name="will" id="will" onchange="processWill(event)"></td>
-                  </tr>
-                  <tr>
-                        <td>Will Topic</td>
-                        <td><input type="text" name="willtopic" id="wtopic" value="{{wtopic}}" onchange="prevent(event)"></td>
-                  </tr>
-                  <tr>
-                        <td>Will Message</td>
-                        <td><input type="text" name="willmessage" id="wmessage" value="{{wmessage}}" onchange="prevent(event)"></td>
-                  </tr>
-            </table>
+		</div>
+		<div class="hider" onclick="toggleSettings();">
+			Cornigure Credentials
+		</div>
+		<div id="mqttcred">
+			<table class="table table-striped">
+				<tr>
+					<td>Broker Address</td>
+					<td><input type="text" name="broker" value="mqtt.relayr.io" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Broker Port</td>
+					<td><input type="number" name="port" min="1" max="65535" step="1"  value="1883" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Client ID</td>
+					<td><input type="text" name="client" value="greenphy#2de" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Username</td>
+					<td><input type="text" name="user" value="christoph" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Password</td>
+					<td><input type="password" name="password" id="pw1" value="abc123!" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Last Will Active</td>
+					<td><input type="checkbox" name="will" id="will" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Will Topic</td>
+					<td><input type="text" name="willtopic" id="wtopic" value="/will/" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Will Message</td>
+					<td><input type="text" name="willmessage" id="wmessage" value="i died" onchange="prevent(event);"></td>
+				</tr>
+				<tr>
+					<td>Save Changes</td>
+					<td><input type="button" name="savemqtt" value="save" onclick="saveMqttCred();" onchange="prevent(event);"></td>
+				</tr>
+			</table>
+		</div>
 `;
 
 
@@ -286,6 +319,16 @@ function checkPwd(event) {
 	}
 	else
 		$('#pwerr').text('');
+}
+
+function toggleSettings()
+{
+	document.getElementById("mqttcred").style.display = "block";
+}
+  
+function saveMqttCred()
+{
+	document.getElementById("mqttcred").style.display = "none";
 }
 
 // Used by the Expand2Click output bits

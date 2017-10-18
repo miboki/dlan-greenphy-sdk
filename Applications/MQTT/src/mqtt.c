@@ -39,22 +39,13 @@
 
 
 /* ------------------------------
- * |      Global Variables      |
+ * |      Global (Modul) Variables      |
  * ------------------------------ */
 /* Handle for the Mqtt Queue, shared between xInitMQTT and xDeinitMQTT and xGetMQTTQueue */
 static QueueHandle_t xMqttQueueHandle = NULL;
 
 /* Handle for the Mqtt Task */
 static TaskHandle_t xMqttTaskHandle = NULL;
-
-BaseType_t xTaskCreate(    TaskFunction_t pvTaskCode,
-                           const char * const pcName,
-                           unsigned short usStackDepth,
-                           void *pvParameters,
-                           UBaseType_t uxPriority,
-                           TaskHandle_t *pxCreatedTask
-                         );
-
 
 /* ------------------------------
  * |          Functions         |
@@ -181,7 +172,7 @@ void vMQTTTask( void *pvParameters )
 		if( xQueueReceive( xMqttQueueHandle, &xJob, 0 ) != pdPASS )
 			xJob.eJobType = eNoEvent;
 
-		/* -------------------- Work on the current Job -------------------- */
+		/* ------------------------ Work on the current Job ------------------------ */
 		switch( xJob.eJobType )
 		{
 			case eNoEvent:
