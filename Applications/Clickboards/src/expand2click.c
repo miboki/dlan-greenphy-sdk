@@ -132,44 +132,44 @@ void set_expand2click(char pins){
 
 static void vClickTask(void *pvParameters)
 {
-const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
+const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_EXPAND2 );
 char lastBits = get_expand2click();
-SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 //char count = 0;
 
 	for(;;)
 	{
-		/* Toggle obits once per second - just for demo. */
+//		/* Toggle obits once per second - just for demo. */
 //		if( count++ % 10 == 0 )
 //			oBits ^= ( togglePins[0] | togglePins[1] );
 
-		/* Obtain Mutex. If not possible after 1 Second, write Debug and proceed */
-		if( xSemaphoreTake( xI2CMutex, 1 ) == pdTRUE )
+		/* Obtain Mutex. If not possible after xDelay, write debug message. */
+		if( xSemaphoreTake( xI2C1Mutex, xDelay ) == pdTRUE )
 		{
 			/* I2C is now usable for this Task. Set new Output on Port */
 			set_expand2click(oBits);
 			/* Get iBits from board */
 			iBits = get_expand2click();
+
 			/* Give Mutex back, so other Tasks can use I2C */
 			xSemaphoreGive( xI2CMutex );
+
+			/* First water meter pin toggled? */
+			if( ( iBits ^ lastBits ) & togglePins[0] )
+				toggleCount[0] += 1;
+
+			/* Second water meter pin toggled? */
+			if( ( iBits ^ lastBits ) & togglePins[1] )
+				toggleCount[1] += 1;
+
+			lastBits = iBits;
+
+			vTaskDelay( xDelay );
 		}
 		else
 		{
-			/* The mutex could not be obtained within 1 Second. Write Debung Message and Proceed with last Temp Value */
-			DEBUGOUT("Expand2 - Error: Could not take I2C Mutex within 1s.");
+			/* The mutex could not be obtained within xDelay. Write debug message. */
+			DEBUGOUT( "Expand2 - Error: Could not take I2C1 mutex within %d ms.", TASKWAIT_EXPAND2 );
 		}
-
-		/* First water meter pin toggled? */
-		if( ( iBits ^ lastBits ) & togglePins[0] )
-			toggleCount[0] += 1;
-
-		/* Second water meter pin toggled? */
-		if( ( iBits ^ lastBits ) & togglePins[1] )
-			toggleCount[1] += 1;
-
-		lastBits = iBits;
-
-		vTaskDelay( xDelay );
 	}
 }
 /*-----------------------------------------------------------*/
@@ -228,7 +228,6 @@ SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 BaseType_t xExpand2Click_Init ( const char *pcName, BaseType_t xPort )
 {
 BaseType_t xReturn = pdFALSE;
-SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
@@ -258,24 +257,19 @@ SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 		}
 
 		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
-		if( xSemaphoreTake( xI2CMutex, 10 ) == pdTRUE )
+		Board_I2C_Init( I2C1 );
+		if( xSemaphoreTake( xI2C1Mutex, portMAX_DELAY ) == pdTRUE )
 		{
-			/* I2C is now usable for this Task. Initialise I2C now */
-			Board_I2C_Init( I2C1 );
 			/* Initialize Expand2Click chip. */
 			Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
 			Expander_Write_Byte(EXPAND_ADDR, IODIRA_BANK0, 0xFF);  // Set Expander's PORTA to be input
 			Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
+
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2CMutex );
+			xSemaphoreGive( xI2C1Mutex );
 
 			/* Create task. */
 			xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
-		}
-		else
-		{
-			/* The mutex could not be obtained within 1 Second. Write Debung Message and Proceed with last Temp Value */
-			DEBUGOUT("Expand2 - Error: I2C is already in Use, try initialization later.");
 		}
 
 		if( xClickTaskHandle != NULL )
