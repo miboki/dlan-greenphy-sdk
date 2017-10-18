@@ -143,7 +143,7 @@ uint8_t ucMinAgeFound = 0;
 
 	if( xUseEntry == uxForwardTableMaxUse )
 	{
-		if( xUseEntry == sizeof( xForwardingTable ) )
+		if( xUseEntry == ( sizeof( xForwardingTable ) / sizeof( xForwardingTable[0] ) ) )
 		{
 			/* The table is full, replace the oldest entry */
 			xUseEntry = xOldestEntry;
