@@ -271,18 +271,17 @@ static TaskHandle_t xClickTaskHandle = NULL;
 static void vClickTask(void *pvParameters) {
 const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_COLOR2 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
-SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 
 	for(;;)
 	{
 		/* Obtain Mutex. If not possible after 1 Second, write Debug and proceed */
-		if( xSemaphoreTake( xI2C1Mutex, xDelay ) == pdTRUE )
+		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
 		{
 			/* I2C is now usable for this Task. Read Color Values. */
 			ReadColors();
 
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2C1Mutex );
+			xSemaphoreGive( xI2C1_Mutex );
 
 			/* Print a debug message once every 10 s. */
 			if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
@@ -299,7 +298,7 @@ SemaphoreHandle_t xI2CMutex = xGetI2CMutexHandle();
 		else
 		{
 			/* The mutex could not be obtained within xDelay. Write debug message. */
-			DEBUGOUT( "Color2 - Error: Could not take I2C1 mutex within %d ms.", TASKWAIT_COLOR2 );
+			DEBUGOUT( "Color2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_COLOR2 );
 		}
 	}
 }
@@ -325,6 +324,7 @@ BaseType_t xReturn = pdFALSE;
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		DEBUGOUT( "Initialize Color2Click on port %d.\r\n", xPort );
 		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
@@ -340,12 +340,12 @@ BaseType_t xReturn = pdFALSE;
 
 		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
 		Board_I2C_Init( I2C1 );
-		if( xSemaphoreTake( xI2C1Mutex, portMAX_DELAY ) == pdTRUE )
+		if( xSemaphoreTake( xI2C1_Mutex, portMAX_DELAY ) == pdTRUE )
 		{
 			/* Initialze the Color2Click chip. */
 			ISL29125_SOFT_init();
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2C1Mutex );
+			xSemaphoreGive( xI2C1_Mutex );
 
 			/* Create task. */
 			xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
@@ -374,6 +374,8 @@ BaseType_t xReturn = pdFALSE;
 
 	if( xClickTaskHandle != NULL )
 	{
+		DEBUGOUT( "Deinitialize Color2Click.\r\n" );
+
 		#if( includeHTTP_DEMO != 0 )
 		{
 			/* Use the task's name to remove the HTTP Request Handler. */

@@ -143,7 +143,7 @@ char lastBits = get_expand2click();
 //			oBits ^= ( togglePins[0] | togglePins[1] );
 
 		/* Obtain Mutex. If not possible after xDelay, write debug message. */
-		if( xSemaphoreTake( xI2C1Mutex, xDelay ) == pdTRUE )
+		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
 		{
 			/* I2C is now usable for this Task. Set new Output on Port */
 			set_expand2click(oBits);
@@ -151,7 +151,7 @@ char lastBits = get_expand2click();
 			iBits = get_expand2click();
 
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2CMutex );
+			xSemaphoreGive( xI2C1_Mutex );
 
 			/* First water meter pin toggled? */
 			if( ( iBits ^ lastBits ) & togglePins[0] )
@@ -168,7 +168,7 @@ char lastBits = get_expand2click();
 		else
 		{
 			/* The mutex could not be obtained within xDelay. Write debug message. */
-			DEBUGOUT( "Expand2 - Error: Could not take I2C1 mutex within %d ms.", TASKWAIT_EXPAND2 );
+			DEBUGOUT( "Expand2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_EXPAND2 );
 		}
 	}
 }
@@ -232,6 +232,8 @@ BaseType_t xReturn = pdFALSE;
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		DEBUGOUT( "Initialize Expand2Click on port %d.\r\n", xPort );
+
 		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
@@ -258,7 +260,7 @@ BaseType_t xReturn = pdFALSE;
 
 		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
 		Board_I2C_Init( I2C1 );
-		if( xSemaphoreTake( xI2C1Mutex, portMAX_DELAY ) == pdTRUE )
+		if( xSemaphoreTake( xI2C1_Mutex, portMAX_DELAY ) == pdTRUE )
 		{
 			/* Initialize Expand2Click chip. */
 			Expander_Write_Byte(EXPAND_ADDR, IODIRB_BANK0, 0x00);  // Set Expander's PORTB to be output
@@ -266,7 +268,7 @@ BaseType_t xReturn = pdFALSE;
 			Expander_Write_Byte(EXPAND_ADDR, GPPUA_BANK0, 0xFF);   // Set pull-ups to all of the Expander's PORTA pins
 
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2C1Mutex );
+			xSemaphoreGive( xI2C1_Mutex );
 
 			/* Create task. */
 			xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
@@ -295,6 +297,8 @@ BaseType_t xReturn = pdFALSE;
 
 	if( xClickTaskHandle != NULL )
 	{
+		DEBUGOUT( "Deinitialize Expand2Click.\r\n" );
+
 		#if( includeHTTP_DEMO != 0 )
 		{
 			/* Use the task's name to remove the HTTP Request Handler. */

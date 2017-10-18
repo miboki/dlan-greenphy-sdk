@@ -116,13 +116,13 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 	for(;;)
 	{
 		/* Obtain Mutex. If not possible after xDelay, write debug message and proceed */
-		if( xSemaphoreTake( xI2C1Mutex, xDelay ) == pdTRUE )
+		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
 		{
 			/* I2C is now usable for this Task. Read temperature in hundredth of a degree. */
 			temp_cur = Get_Temperature();
 
 			/* Give Mutex back, so other Tasks can use I2C */
-			xSemaphoreGive( xI2C1Mutex );
+			xSemaphoreGive( xI2C1_Mutex );
 
 			/* Check for lowest and highest temperatures. */
 			if( temp_cur < temp_low ) {
@@ -146,7 +146,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		else
 		{
 			/* The mutex could not be obtained within xDelay. Write debug message. */
-			DEBUGOUT( "Thermo3 - Error: Could not take I2C1 mutex within %d ms.", TASKWAIT_THERMO3 );
+			DEBUGOUT( "Thermo3 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_THERMO3 );
 		}
 	}
 }
@@ -184,6 +184,8 @@ BaseType_t xReturn = pdFALSE;
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		DEBUGOUT( "Initialize Thermo3Click on port %d.\r\n", xPort );
+
 		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
@@ -224,6 +226,8 @@ BaseType_t xReturn = pdFALSE;
 
 	if( xClickTaskHandle != NULL )
 	{
+		DEBUGOUT( "Deinitialize Thermo3Click.\r\n" );
+
 		#if( includeHTTP_DEMO != 0 )
 		{
 			/* Use the task's name to remove the HTTP Request Handler. */
