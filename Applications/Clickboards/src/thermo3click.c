@@ -110,32 +110,44 @@ static int temp_high_time = 0;
 
 static void vClickTask(void *pvParameters)
 {
-const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
+const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_THERMO3 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
-	while( 1 )
+	for(;;)
 	{
-		/* Read temperature in hundredth of a degree. */
-		temp_cur = Get_Temperature();
-
-		/* Check for lowest and highest temperatures. */
-		if( temp_cur < temp_low ) {
-			temp_low = temp_cur;
-			temp_low_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
-		}
-		if( temp_cur > temp_high ) {
-			temp_high = temp_cur;
-			temp_high_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
-		}
-
-		/* Print a debug message once every 10 s. */
-		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		/* Obtain Mutex. If not possible after xDelay, write debug message and proceed */
+		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
 		{
-			DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
-			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
-		}
+			/* I2C is now usable for this Task. Read temperature in hundredth of a degree. */
+			temp_cur = Get_Temperature();
 
-		vTaskDelay( xDelay );
+			/* Give Mutex back, so other Tasks can use I2C */
+			xSemaphoreGive( xI2C1_Mutex );
+
+			/* Check for lowest and highest temperatures. */
+			if( temp_cur < temp_low ) {
+				temp_low = temp_cur;
+				temp_low_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+			}
+			if( temp_cur > temp_high ) {
+				temp_high = temp_cur;
+				temp_high_time = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+			}
+
+			/* Print a debug message once every 10 s. */
+			if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+			{
+				DEBUGOUT("Thermo3 - Temperature Current: %d, High: %d, Low: %d\n", temp_cur, temp_high, temp_low );
+				xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+			}
+
+			vTaskDelay( xDelay );
+		}
+		else
+		{
+			/* The mutex could not be obtained within xDelay. Write debug message. */
+			DEBUGOUT( "Thermo3 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_THERMO3 );
+		}
 	}
 }
 /*-----------------------------------------------------------*/
@@ -172,6 +184,8 @@ BaseType_t xReturn = pdFALSE;
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		DEBUGOUT( "Initialize Thermo3Click on port %d.\r\n", xPort );
+
 		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
@@ -189,6 +203,7 @@ BaseType_t xReturn = pdFALSE;
 
 		/* Create task. */
 		xTaskCreate( vClickTask, pcName, 300, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+
 		if( xClickTaskHandle != NULL )
 		{
 			#if( includeHTTP_DEMO != 0 )
@@ -211,6 +226,8 @@ BaseType_t xReturn = pdFALSE;
 
 	if( xClickTaskHandle != NULL )
 	{
+		DEBUGOUT( "Deinitialize Thermo3Click.\r\n" );
+
 		#if( includeHTTP_DEMO != 0 )
 		{
 			/* Use the task's name to remove the HTTP Request Handler. */

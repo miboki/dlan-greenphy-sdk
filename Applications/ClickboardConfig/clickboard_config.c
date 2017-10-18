@@ -175,7 +175,7 @@ Clickboard_t *pxClickboardOld;
 
 BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 {
-	BaseType_t xSuccess = pdFALSE;
+BaseType_t xSuccess = pdFALSE;
 
 	if( ( pxClickboard != NULL ) && ( pxClickboard->xPortsActive != eClickboardInactive ) )
 	{
