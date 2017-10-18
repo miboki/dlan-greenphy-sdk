@@ -29,10 +29,16 @@
  * this code.
  */
 
-#include "board.h"
+/* Standard includes. */
 #include "string.h"
 
+/* LPCOpen includes. */
+#include "board.h"
 #include "retarget.h"
+
+/* FreeRTOS includes. */
+#include <FreeRTOS.h>
+#include "semphr.h"
 
 /*****************************************************************************
  * Private types/enumerations/variables
@@ -45,6 +51,8 @@
 /* System oscillator rate and RTC oscillator rate */
 const uint32_t OscRateIn = 12000000;
 const uint32_t RTCOscRateIn = 32768;
+
+SemaphoreHandle_t xI2C1_Mutex = NULL;
 
 /*****************************************************************************
  * Private functions
@@ -275,16 +283,21 @@ void Board_I2C_Init(I2C_ID_T id)
 		break;
 
 	case I2C1:
-		/*official clickboard I2C interface*/
-		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
-		Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
-		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM);
-		Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM);
+		if( xI2C1_Mutex == NULL )
+		{
+			/*official clickboard I2C interface*/
+			Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
+			Chip_IOCON_PinMux(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM, IOCON_MODE_INACT, IOCON_FUNC3);
+			Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SDA_I2C1_PORT_NUM, CLICKBOARD_SDA_I2C1_BIT_NUM);
+			Chip_IOCON_EnableOD(LPC_IOCON, CLICKBOARD_SCL_I2C1_PORT_NUM, CLICKBOARD_SCL_I2C1_BIT_NUM);
 
-		Chip_I2C_Init(I2C1);
-		#define SPEED_400KHZ 400000
-		Chip_I2C_SetClockRate(I2C1, SPEED_400KHZ);
-		Chip_I2C_SetMasterEventHandler(I2C1, Chip_I2C_EventHandlerPolling);
+			Chip_I2C_Init(I2C1);
+			#define SPEED_400KHZ 400000
+			Chip_I2C_SetClockRate(I2C1, SPEED_400KHZ);
+			Chip_I2C_SetMasterEventHandler(I2C1, Chip_I2C_EventHandlerPolling);
+
+			xI2C1_Mutex = xSemaphoreCreateMutex();
+		}
 		break;
 
 	case I2C2:

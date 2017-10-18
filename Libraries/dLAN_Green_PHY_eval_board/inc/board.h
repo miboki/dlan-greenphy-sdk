@@ -37,6 +37,10 @@
 
 #include "chip.h"
 
+/* FreeRTOS includes. */
+#include <FreeRTOS.h>
+#include "semphr.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -257,6 +261,8 @@ typedef enum ClickboardPorts {
 #define MDIO_GPIO_PORT_NUM                        1
 #define MDIO_GPIO_BIT_NUM                         23
 
+/* Mutex to secure access to I2C1 interface. */
+extern SemaphoreHandle_t xI2C1_Mutex;
 
 /**
  * @brief	Initialize pin muxing for a UART
