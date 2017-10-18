@@ -51,6 +51,9 @@
 #include "clickboard_config.h"
 #include "color2click.h"
 
+/* Task-Delay in ms, change to your preference */
+#define TASKWAIT_COLOR2 1000 /* 1s */
+
 /*****************************************************************************/
 
 uint8_t _addr = 0x44; //ISL29125 default ID;
@@ -266,23 +269,37 @@ static TaskHandle_t xClickTaskHandle = NULL;
 /*-----------------------------------------------------------*/
 
 static void vClickTask(void *pvParameters) {
+const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_COLOR2 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
-	while( 1 )
+	for(;;)
 	{
-		ReadColors();
-
-		/* Print a debug message once every 10 s. */
-		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		/* Obtain Mutex. If not possible after 1 Second, write Debug and proceed */
+		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
 		{
-			DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
-					color.green, color.blue);
-			PrintStatus();
-			DEBUGOUT("\r\n");
-			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
-		}
+			/* I2C is now usable for this Task. Read Color Values. */
+			ReadColors();
 
-		vTaskDelay( 1000 );
+			/* Give Mutex back, so other Tasks can use I2C */
+			xSemaphoreGive( xI2C1_Mutex );
+
+			/* Print a debug message once every 10 s. */
+			if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+			{
+				DEBUGOUT("Color2click - red: %d; green: %d; blue: %d", color.red,
+						color.green, color.blue);
+				PrintStatus();
+				DEBUGOUT("\r\n");
+				xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+			}
+
+			vTaskDelay( xDelay );
+		}
+		else
+		{
+			/* The mutex could not be obtained within xDelay. Write debug message. */
+			DEBUGOUT( "Color2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_COLOR2 );
+		}
 	}
 }
 /*-----------------------------------------------------------*/
@@ -307,6 +324,7 @@ BaseType_t xReturn = pdFALSE;
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
 	{
+		DEBUGOUT( "Initialize Color2Click on port %d.\r\n", xPort );
 		/* Configure GPIOs depending on the microbus port. */
 		if( xPort == eClickboardPort1 )
 		{
@@ -319,13 +337,20 @@ BaseType_t xReturn = pdFALSE;
 			Chip_GPIO_SetPinDIRInput( LPC_GPIO, CLICKBOARD2_INT_GPIO_PORT_NUM, CLICKBOARD2_INT_GPIO_BIT_NUM );
 		}
 
+
 		/* Initialize I2C. Both microbus ports are connected to the same I2C bus. */
 		Board_I2C_Init( I2C1 );
-		/* Initialze the Color2Click chip. */
-		ISL29125_SOFT_init();
+		if( xSemaphoreTake( xI2C1_Mutex, portMAX_DELAY ) == pdTRUE )
+		{
+			/* Initialze the Color2Click chip. */
+			ISL29125_SOFT_init();
+			/* Give Mutex back, so other Tasks can use I2C */
+			xSemaphoreGive( xI2C1_Mutex );
 
-		/* Create task. */
-		xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+			/* Create task. */
+			xTaskCreate( vClickTask, pcName, 240, NULL, ( tskIDLE_PRIORITY + 1 ), &xClickTaskHandle );
+		}
+
 		if( xClickTaskHandle != NULL )
 		{
 			#if( includeHTTP_DEMO != 0 )
@@ -349,6 +374,8 @@ BaseType_t xReturn = pdFALSE;
 
 	if( xClickTaskHandle != NULL )
 	{
+		DEBUGOUT( "Deinitialize Color2Click.\r\n" );
+
 		#if( includeHTTP_DEMO != 0 )
 		{
 			/* Use the task's name to remove the HTTP Request Handler. */
