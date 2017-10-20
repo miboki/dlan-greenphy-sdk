@@ -140,10 +140,20 @@ BaseType_t xExpand2Click_Deinit ( void );
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = TASKWAIT_EXPAND2 / portTICK_PERIOD_MS;
+BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 char lastBits = get_expand2click();
 //char count = 0;
 #if( netconfigUSEMQTT != 0 )
-	char buffer[40];
+	char buffer[80];
+	unsigned char pucExpTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucExpTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
 #endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	while (1) {
@@ -159,22 +169,34 @@ char lastBits = get_expand2click();
 		/* First water meter pin toggled? */
 		if( ( iBits ^ lastBits ) & togglePins[0] ){
 			toggleCount[0] += 1;
-			#if( netconfigUSEMQTT != 0 )
-				sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d}", toggleCount[0]);
-				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
-			#endif /* #if( netconfigUSEMQTT != 0 ) */
 		}
 
 		/* Second water meter pin toggled? */
 		if( ( iBits ^ lastBits ) & togglePins[1] ){
 			toggleCount[1] += 1;
-			#if( netconfigUSEMQTT != 0 )
-				sprintf(buffer, "{\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[1]);
-				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
-			#endif /* #if( netconfigUSEMQTT != 0 ) */
 		}
 
 		lastBits = iBits;
+
+		/* Print a debug message once every 10 s. */
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		{
+			DEBUGOUT("Expand2Click - Meter 1: %d, Meter 2: %d\n", toggleCount[0], toggleCount[1] );
+		#if( netconfigUSEMQTT != 0 )
+			if(xPublish.xMessage.payload != NULL)
+			{
+				/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+				xPublish.xMessage.payload = buffer;
+				sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
+				xJob.eJobType = ePublish;
+				xJob.data = (void *) &xPublish;
+				xQueueSendToBack( xMqttQueue, &xJob, 0 );
+			}
+			else
+				DEBUGOUT("Expand2 Warning: Could not publish Packet, last message is waiting.\n");
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
+			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+		}
 
 		vTaskDelay( xDelay );
 	}

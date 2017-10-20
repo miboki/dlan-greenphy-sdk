@@ -206,6 +206,7 @@ void vMQTTTask( void *pvParameters )
 					{
 						DEBUGOUT("MQTT-Error 0x0130: Could not publish Message.\n");
 					}
+					pxPubMsg->xMessage.payload = NULL;
 				}
 				break;
 

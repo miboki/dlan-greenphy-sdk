@@ -120,16 +120,21 @@ const TickType_t xDelay = TASKWAIT_THERMO3 / portTICK_PERIOD_MS;
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 #if( netconfigUSEMQTT != 0 )
 	char buffer[40];
+	unsigned char pucTempTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucTempTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
 #endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	while( 1 )
 	{
 		/* Read temperature in hundredth of a degree. */
 		temp_cur = Get_Temperature();
-		#if( netconfigUSEMQTT != 0 )
-			sprintf(buffer, "{\"meaning\":\"temperature\",\"value\":%d}", temp_cur);
-			xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 1 );
-		#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		/* Check for lowest and highest temperatures. */
 		if( temp_cur < temp_low ) {
@@ -145,6 +150,19 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
 		{
 			DEBUGOUT("Thermo3Click - Temperature Current: %d, High: %d, Low: %d\r\n", temp_cur, temp_high, temp_low );
+		#if( netconfigUSEMQTT != 0 )
+			if(xPublish.xMessage.payload != NULL)
+			{
+				/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+				xPublish.xMessage.payload = buffer;
+				sprintf(buffer, "{\"meaning\":\"temperature\",\"value\":%d}", temp_cur);
+				xJob.eJobType = ePublish;
+				xJob.data = (void *) &xPublish;
+				xQueueSendToBack( xMqttQueue, &xJob, 0 );
+			}
+			else
+				DEBUGOUT("Thermo3 Warning: Could not publish Packet, last message is waiting.\n");
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
 			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
 

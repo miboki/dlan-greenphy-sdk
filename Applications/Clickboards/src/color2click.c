@@ -51,10 +51,10 @@
 #include "clickboard_config.h"
 #include "color2click.h"
 
-#if( netconfigUSEMQTT != 0 )
-	/* MQTT includes */
-	#include "mqtt.h"
-#endif
+
+/* MQTT includes */
+#include "mqtt.h"
+
 
 /*****************************************************************************/
 
@@ -275,6 +275,15 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
 #if( netconfigUSEMQTT != 0 )
 	char buffer[60];
+	unsigned char pucColorTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucColorTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
 #endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	while( 1 )
@@ -290,11 +299,20 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			DEBUGOUT("\r\n");
 			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
-		#if( netconfigUSEMQTT != 0 )
-				sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}",
-						color.red, color.green, color.blue);
-				xPublishMessage( buffer, netconfigMQTT_TOPIC, 0, 0 );
-		#endif /* #if( netconfigUSEMQTT != 0 ) */
+
+	#if( netconfigUSEMQTT != 0 )
+		if(xPublish.xMessage.payload != NULL)
+		{
+			/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+			xPublish.xMessage.payload = buffer;
+			sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}", color.red, color.green, color.blue);
+			xJob.eJobType = ePublish;
+			xJob.data = (void *) &xPublish;
+			xQueueSendToBack( xMqttQueue, &xJob, 0 );
+		}
+		else
+			DEBUGOUT("Color2 Warning: Could not publish Packet, last message is waiting.\n");
+	#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		vTaskDelay( 1000 );
 	}
