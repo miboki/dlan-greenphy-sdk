@@ -37,8 +37,6 @@
 
 #define NUM_CLICKBOARD_PORTS   2
 
-#include "semphr.h"
-
 /*
  * Clickboard identifier. Numerical value is PID from MicroElektronika.
  */
@@ -80,12 +78,6 @@ typedef struct xCLICKBOARD
  * preconfigured clickboard and adds a request handler to the HTTP server.
  */
 void xClickboardsInit();
-
-/*
- * Returns the Handle to the I2C Mutex, otherwise NULL
- * NOTE: I2C Burst mode is not supported by this solution. Mutex is necessary whren multiple Clickboards use I2C!
- */
-SemaphoreHandle_t xGetI2CMutexHandle( void );
 
 /*
  * Returns a clickboard with given name if found, otherwise NULL.
