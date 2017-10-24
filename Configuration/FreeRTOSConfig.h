@@ -130,7 +130,8 @@ standard names - or at least those used in the unmodified vector table. */
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY /*[dependent on processor and application]*/
 
 /* Define to trap errors during development. */
-//#define configASSERT( ( x ) ) if( ( x ) == 0 ) vAssertCalled( __FILE__, __LINE__ )
+extern void vAssertCalled( const char *pcFilename, int lLine );
+#define configASSERT( x ) if( ( x ) == 0 ) vAssertCalled( __FILE__, __LINE__ )
 
 /* FreeRTOS MPU specific definitions. */
 #define configINCLUDE_APPLICATION_DEFINED_PRIVILEGED_FUNCTIONS 0

@@ -457,14 +457,7 @@ NetworkEndPoint_t *pxEndPoint;
 		}
 		#endif
 
-		/* Guard against the task being created more than once. */
-		if( xEMACTaskHandle == NULL )
-		{
-			xTaskCreate( prvEMACHandlerTask, pxInterface->pcName, configEMAC_TASK_STACK_SIZE, pxInterface, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
-			configASSERT( xEMACTaskHandle );
-		}
-
-		/* Guard the descriptors of being initialised more than once. */
+		/* Guard the descriptors from being initialised more than once. */
 		if( xTXDescriptorSemaphore == NULL )
 		{
 			/* Initialise the descriptors. */
@@ -474,6 +467,13 @@ NetworkEndPoint_t *pxEndPoint;
 			/* Create a semaphore which counts free TX descriptors. */
 			xTXDescriptorSemaphore = xSemaphoreCreateCounting( ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS, ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS );
 			configASSERT( xTXDescriptorSemaphore );
+		}
+
+		/* Guard against the task being created more than once. */
+		if( xEMACTaskHandle == NULL )
+		{
+			xTaskCreate( prvEMACHandlerTask, pxInterface->pcName, configEMAC_TASK_STACK_SIZE, pxInterface, configMAX_PRIORITIES - 1, &xEMACTaskHandle );
+			configASSERT( xEMACTaskHandle );
 		}
 
 		if( xReturn != pdFAIL )
@@ -515,6 +515,7 @@ BaseType_t xLPC1758_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, Net
 BaseType_t xReturn = pdFAIL;
 const TickType_t xBlockTimeTicks = pdMS_TO_TICKS( 250 );
 UBaseType_t ulTxProduceIndex;
+static UBaseType_t ulTxProduceIndexTest = 0;
 
 	if( xLPC1758_GetPhyLinkStatus( pxInterface ) == pdPASS )
 	{
@@ -535,13 +536,17 @@ UBaseType_t ulTxProduceIndex;
 			available */
 			configASSERT( !Chip_ENET_IsTxFull( LPC_ETHERNET ) );
 
+			taskENTER_CRITICAL();
+
+			ulTxProduceIndex = Chip_ENET_GetTXProduceIndex( LPC_ETHERNET );
+			configASSERT( ulTxProduceIndexTest == ulTxProduceIndex );
+			ulTxProduceIndexTest = ( ( ulTxProduceIndexTest + 1 ) % ipconfigNUM_TX_DESCRIPTORS );
+
 			#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
 			{
 				/* bReleaseAfterSend should always be set when using the zero
 				copy driver. */
 				configASSERT( bReleaseAfterSend != pdFALSE );
-
-				ulTxProduceIndex = Chip_ENET_GetTXProduceIndex( LPC_ETHERNET );
 
 				/* The DMA's descriptor to point directly to the data in the
 				network buffer descriptor.  The data is not copied. */
@@ -568,6 +573,8 @@ UBaseType_t ulTxProduceIndex;
 			/* Increase the current Tx Produce Descriptor Index to start transmission*/
 
 			Chip_ENET_IncTXProduceIndex(LPC_ETHERNET);
+
+			taskEXIT_CRITICAL();
 
 			/* The Tx has been initiated. */
 			xReturn = pdPASS;
@@ -756,40 +763,43 @@ IPStackEvent_t xIPStackEvent;
 					Chip_ENET_IncRXConsumeIndex(LPC_ETHERNET);
 				}
 			} /* ENET_INT_RXDONE */
+			if ( ( ulNotificationValue & ENET_INT_TXDONE ) != 0x00 )
+			{
+				/* Check if TX needs cleanup. */
+				ulTxCleanupCount = uxSemaphoreGetCount( xTXDescriptorSemaphore );
+				while( ulTxCleanupCount != ipconfigNUM_TX_DESCRIPTORS )
+				{
+					#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
+					{
+						/* Obtain the associated network buffer to release it. */
+						pxDescriptor = pxPacketBuffer_to_NetworkBuffer( ( uint8_t * ) xDMATxDescriptors[ ulTxCleanupIndex ].Packet );
+						/* This zero-copy driver makes sure that every 'xDMARxDescriptors' contains
+						a reference to a Network Buffer at any time.
+						In case it runs out of Network Buffers, a DMA buffer won't be replaced,
+						and the received messages is dropped. */
+						configASSERT( pxDescriptor != NULL );
+
+
+						vReleaseNetworkBufferAndDescriptor( pxDescriptor ) ;
+						xDMATxDescriptors[ ulTxCleanupIndex ].Packet = ( uint32_t )0u;
+					}
+					#endif /* ipconfigZERO_COPY_TX_DRIVER */
+
+					/* Tell the counting semaphore that one more TX descriptor is available. */
+					xSemaphoreGive( xTXDescriptorSemaphore );
+
+					/* Advance to the next descriptor, wrapping if necessary */
+					++ulTxCleanupIndex;
+					if( ulTxCleanupIndex >= ipconfigNUM_TX_DESCRIPTORS )
+					{
+						ulTxCleanupIndex = 0;
+					}
+
+					++ulTxCleanupCount;
+				}
+			}
 		}
 
-		/* Check if TX needs cleanup. */
-		ulTxCleanupCount = uxSemaphoreGetCount( xTXDescriptorSemaphore );
-		while( ulTxCleanupCount != ipconfigNUM_TX_DESCRIPTORS )
-		{
-			#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
-			{
-				/* Obtain the associated network buffer to release it. */
-				pxDescriptor = pxPacketBuffer_to_NetworkBuffer( ( uint8_t * ) xDMATxDescriptors[ ulTxCleanupIndex ].Packet );
-				/* This zero-copy driver makes sure that every 'xDMARxDescriptors' contains
-				a reference to a Network Buffer at any time.
-				In case it runs out of Network Buffers, a DMA buffer won't be replaced,
-				and the received messages is dropped. */
-				configASSERT( pxDescriptor != NULL );
-
-
-				vReleaseNetworkBufferAndDescriptor( pxDescriptor ) ;
-				xDMATxDescriptors[ ulTxCleanupIndex ].Packet = ( uint32_t )0u;
-			}
-			#endif /* ipconfigZERO_COPY_TX_DRIVER */
-
-			/* Tell the counting semaphore that one more TX descriptor is available. */
-			xSemaphoreGive( xTXDescriptorSemaphore );
-
-			/* Advance to the next descriptor, wrapping if necessary */
-			++ulTxCleanupIndex;
-			if( ulTxCleanupIndex >= ipconfigNUM_TX_DESCRIPTORS )
-			{
-				ulTxCleanupIndex = 0;
-			}
-
-			++ulTxCleanupCount;
-		}
 	}
 }
 /*-----------------------------------------------------------*/

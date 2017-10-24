@@ -249,8 +249,6 @@ BaseType_t xIsBroadcast = pdFALSE;
 			xIsBroadcast = pdTRUE;
 		}
 
-		configASSERT( pxSendToInterface != pxNetworkBuffer->pxInterface );
-
 		if( pxNetworkBuffer->pxInterface->bits.bForwardingTableKnown == 0 )
 		{
 			/* Update the forwarding table with the source address of the
@@ -300,7 +298,7 @@ BaseType_t xIsBroadcast = pdFALSE;
 		}
 	}
 
-	if( pxSendToInterface != NULL )
+	if( ( pxSendToInterface != NULL ) && ( pxSendToInterface != pxNetworkBuffer->pxInterface ) )
 	{
 		iptraceBRIDGE_FORWARD_PACKET( pxNetworkBuffer, pxSendToInterface );
 		pxSendToInterface->pfOutput( pxSendToInterface, pxNetworkBuffer, pdTRUE );
