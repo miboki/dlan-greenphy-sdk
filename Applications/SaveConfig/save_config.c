@@ -73,7 +73,8 @@
 
 typedef enum eCONFIG_VERSIONS
 {
-	eConfigVersion1 = 1
+	eConfigVersion1 = 1,
+	eConfigVersionLast
 } eConfigVersion_t;
 
 typedef struct __attribute__((__packed__)) xCONFIG_TLV
@@ -89,7 +90,7 @@ typedef struct __attribute__((__packed__)) xCONFIG
 	uint8_t ucVersion;			/* Config version. */
 	uint8_t ucCount;            /* Count config rewrites. */
 	uint16_t usLength;			/* Total length in bytes of TLV list. */
-	uint32_t ulSignature;       /* Signature 0xAA55AA55 to validate config. */
+	uint32_t ulSignature;       /* Signature 0xAAAA5555 to validate config. */
 	uint8_t pucTLVList[1];       /* List of TLV elements. */
 } Config_t;
 
@@ -101,10 +102,24 @@ typedef enum eCONFIG_TAG_INDEXES {
 	eConfigNumberOfTags
 } eConfigTagIndex_t;
 
+typedef struct xCONFIG_WRITE_HANDLE {
+	uint32_t ulDestination;
+	uint8_t *pucBuffer;
+	uint16_t usBufferSize;
+	uint16_t usLength;
+	uint16_t usBytesWritten;
+	uint8_t  ucCount;
+	struct
+	{
+		uint8_t
+			bEraseConfig : 1;
+	} bits;
+} ConfigWriteHandle_t;
+
 /*-----------------------------------------------------------*/
 
 static const ConfigTLV_t *ppxConfigCacheTLVList[ eConfigNumberOfTags ];
-static const Config_t *pxConfig = NULL;
+static const Config_t *pxConfigInFlash = NULL;
 
 /*-----------------------------------------------------------*/
 
@@ -124,7 +139,7 @@ uint16_t usSize;
 /*-----------------------------------------------------------*/
 
 /*
- * Calculates the total size of the config from the data length of all TLVs.
+ * Calculates the total size of the config from the length of its TLV list.
  */
 static uint16_t prvSizeOfConfig( uint16_t usLength )
 {
@@ -158,34 +173,95 @@ eConfigTagIndex_t eReturn;
 /*-----------------------------------------------------------*/
 
 /*
- * Searches the most recent config in flash.
+ * Checks whether TLV resides in RAM or in flash.
+ */
+static inline BaseType_t prvTLVInRAM( const ConfigTLV_t *pxTLV )
+{
+	return ( pxTLV > (ConfigTLV_t *) CONFIG_FLASH_AREA_END );
+}
+/*-----------------------------------------------------------*/
+
+/*
+ * Returns pdPASS if pxConfig points to valid config, pdFAIL otherwise.
+ */
+static const BaseType_t prvVerifyConfig( const Config_t *pxConfig )
+{
+const uint8_t *pucConfig = (uint8_t *) pxConfig;
+ConfigTLV_t *pxTLV;
+const uint8_t *pucTLV;
+BaseType_t xReturn = pdFAIL;
+
+	if( pxConfig != NULL )
+	{
+		do {
+			/* Verify that config is in valid flash area and 256 byte aligned. */
+			if( (pucConfig < (uint8_t *) CONFIG_FLASH_AREA_START )
+				|| ( ( pucConfig + prvSizeOfConfig( pxConfig->usLength ) ) >= (uint8_t *) CONFIG_FLASH_AREA_END )
+				|| ( ( (uintptr_t) pxConfig & 0xFF ) != 0 ) )
+			{
+				break;
+			}
+
+			/* Verify signature and config version. */
+			if( ( pxConfig->ulSignature != CONFIG_SIGNATURE ) || ( pxConfig->ucVersion >= eConfigVersionLast ) )
+			{
+				break;
+			}
+
+			/* Iterate through all TLVs in config to reach its end. */
+			for( pucTLV = &pxConfig->pucTLVList[0];
+				 pucTLV < ( &pxConfig->pucTLVList[0] + pxConfig->usLength );
+				 pucTLV += prvSizeOfTLV( pxTLV->usLength ) )
+			{
+				pxTLV = (ConfigTLV_t *) pucTLV;
+			}
+
+			/* Verify that end of config matches with end of last TLV. */
+			if( pxConfig->usLength != (uint16_t ) ( pucTLV - &pxConfig->pucTLVList[0] ) )
+			{
+				break;
+			}
+
+			/* All tests passed. */
+			xReturn = pdPASS;
+
+		} while( 0 );
+	}
+
+	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+/*
+ * Returns the most recent config in flash and returns a pointer
+ * to it if it is valid, otherwise NULL.
  */
 static const Config_t *prvFindConfig( void )
 {
 const uint8_t *pucConfig;
-const Config_t *pxCurrentConfig, *pxReturn = NULL;
+const Config_t *pxConfig = NULL;
 
+	/* Fast forward config pointer by just comparing the signature. */
 	for( pucConfig = (uint8_t *) CONFIG_FLASH_AREA_START;
 		 pucConfig < (uint8_t *) CONFIG_FLASH_AREA_END;
-		 pucConfig += prvSizeOfConfig( pxCurrentConfig->usLength ) )
+		 pucConfig += prvSizeOfConfig( pxConfig->usLength ) )
 	{
-		pxCurrentConfig = (Config_t *) pucConfig;
-		if( pxCurrentConfig->ulSignature != CONFIG_SIGNATURE )
+		if( ( ( (Config_t *) pucConfig )->ulSignature != CONFIG_SIGNATURE ) )
 		{
 			/* Not a valid config. */
 			break;
 		}
 
-		if( ( pucConfig > (uint8_t *) CONFIG_FLASH_AREA_START ) && ( pxCurrentConfig->ucCount != ( pxReturn->ucCount + 1 ) ) )
-		{
-			/* Last config is more recent. */
-			break;
-		}
-
-		pxReturn = pxCurrentConfig;
+		pxConfig = (Config_t *) pucConfig;
 	}
 
-	return pxReturn;
+	/* Verify that pxConfig points to a valid config. */
+	if( prvVerifyConfig( pxConfig ) != pdPASS )
+	{
+		pxConfig = NULL;
+	}
+
+	return pxConfig;
 }
 /*-----------------------------------------------------------*/
 
@@ -195,7 +271,7 @@ BaseType_t x;
 	for( x = 0; x < eConfigNumberOfTags; x++ )
 	{
 		/* Check if there is a cached TLV in RAM and free it. */
-		if( (void *) ppxConfigCacheTLVList[ x ] > (void *) LPC_FLASH_SIZE_512KB )
+		if( prvTLVInRAM( ppxConfigCacheTLVList[ x ] ) )
 		{
 			vPortFree( (void *) ppxConfigCacheTLVList[ x ] );
 		}
@@ -205,111 +281,81 @@ BaseType_t x;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xReadConfig( void )
+/* The config cache is updated with pxConfig. It is asserted, that pxConfig is valid. */
+static BaseType_t prvUpdateCache( const Config_t *pxConfig )
 {
+ConfigTLV_t *pxTLV;
 const uint8_t *pucTLV;
-const ConfigTLV_t *pxTLV;
 eConfigTagIndex_t eCacheIndex;
 BaseType_t xReturn = pdFAIL;
 
-	/* Clean cache before (re-)reading config. */
-	prvCleanCache();
-
-	if( pxConfig == NULL )
+	if( ( pxConfig != NULL ) )
 	{
-		pxConfig = prvFindConfig();
-	}
+		configASSERT( prvConfigValid( pxConfig ) == pdTRUE );
 
-	if( ( pxConfig != NULL ) && ( pxConfig->ulSignature == CONFIG_SIGNATURE ) )
-	{
-		if( pxConfig->ucVersion == eConfigVersion1 )
+		/* Clean cache before (re-)reading config. */
+		prvCleanCache();
+
+		/* Iterate through all TLVs in config. */
+		for( pucTLV = pxConfig->pucTLVList;
+			 pucTLV < pxConfig->pucTLVList + pxConfig->usLength;
+			 pucTLV += prvSizeOfTLV( pxTLV->usLength ) )
 		{
-			/* Iterate through all TLVs in config. */
-			for( pucTLV = pxConfig->pucTLVList;
-				 pucTLV < pxConfig->pucTLVList + pxConfig->usLength;
-				 pucTLV += prvSizeOfTLV( pxTLV->usLength ) )
-			{
-				pxTLV = (ConfigTLV_t *) pucTLV;
+			pxTLV = (ConfigTLV_t *) pucTLV;
 
-				eCacheIndex = prvFindTLVInCache( pxTLV->ucTag );
-				if( eCacheIndex != eConfigTagNotFound )
-				{
-					/* Store a pointer to the flash TLV in cache. */
-					ppxConfigCacheTLVList[ eCacheIndex ] = pxTLV;
-				}
-				else
-				{
-					DEBUGOUT( "ReadConfig: unknown tag %d", pxTLV->ucTag );
-				}
-			}
-
-			/* Verify that end of config matches with end of last TLV. */
-			if( pxConfig->usLength == ( pucTLV - pxConfig->pucTLVList ) )
+			eCacheIndex = prvFindTLVInCache( pxTLV->ucTag );
+			if( eCacheIndex != eConfigTagNotFound )
 			{
-				xReturn = pdPASS;
+				/* Store a pointer to the flash TLV in cache. */
+				ppxConfigCacheTLVList[ eCacheIndex ] = pxTLV;
 			}
 			else
 			{
-				prvCleanCache();
-				pxConfig = NULL;
+				DEBUGOUT( "ReadConfig: unknown tag %d", pxTLV->ucTag );
 			}
 		}
+
+		xReturn = pdPASS;
 	}
 
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
 
-BaseType_t xWriteConfig( void )
+static void prvWriteToFlash( ConfigWriteHandle_t *pxWriteHandle )
 {
-const uint32_t usBufferSize = 256; /* 256, 512, 1024, 2048, 4096 */
 const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
-uint32_t ulDestination;
-uint8_t *pucBuffer;
-uint16_t usBufferPos, usBytesAvailable, usBytesCopied, usBytesToCopy;
-uint16_t usLength = 0;
-uint8_t ucCount;
-BaseType_t x;
 
-	/* Iterate once over all TLVs to determine total size of config. */
-	for( x = 0; x < eConfigNumberOfTags; x++ )
+	if( pxWriteHandle->bits.bEraseConfig == pdTRUE )
 	{
-		if( ( ppxConfigCacheTLVList[ x ] != NULL ) && ( ppxConfigCacheTLVList[ x ]->usLength > 0 ) )
-		{
-			usLength += prvSizeOfTLV( ppxConfigCacheTLVList[ x ]->usLength );
-		}
-	}
-
-	/* Determine destination in flash and new config counter. */
-	if( pxConfig == NULL )
-	{
-		/* No valid config found, write a new one at the beginning of flash. */
-		ulDestination = (uint32_t) CONFIG_FLASH_AREA_START;
-		ucCount = 0;
-		/* Erase sector in case config was malformed. */
 		vEraseConfig();
-	}
-	else if( ( (uint8_t *) pxConfig + prvSizeOfConfig( pxConfig->usLength ) + prvSizeOfConfig( usLength ) ) > (uint8_t *) CONFIG_FLASH_AREA_END )
-	{
-		/* Config does not fit into trailing space of flash, write to beginning. */
-		ulDestination = (uint32_t) CONFIG_FLASH_AREA_START;
-		ucCount = pxConfig->ucCount + 1;
-	}
-	else
-	{
-		/* Write config behind last one. */
-		ulDestination = (uint32_t) ( (uint8_t *) pxConfig + prvSizeOfConfig( pxConfig->usLength ) );
-		ucCount = pxConfig->ucCount + 1;
+		pxWriteHandle->bits.bEraseConfig = pdFALSE;
 	}
 
-	pucBuffer = pvPortMalloc( usBufferSize );
-	( (Config_t *) pucBuffer )->ucVersion = eConfigVersion1;
-	( (Config_t *) pucBuffer )->ucCount = ucCount;
-	( (Config_t *) pucBuffer )->usLength = usLength;
-	( (Config_t *) pucBuffer )->ulSignature = CONFIG_SIGNATURE;
+	__disable_irq();
+	/* Buffer is full. Write it to flash. */
+	if( Chip_IAP_PreSectorForReadWrite( ulSector, ulSector ) == IAP_CMD_SUCCESS )
+	{
+		Chip_IAP_CopyRamToFlash( pxWriteHandle->ulDestination + pxWriteHandle->usBytesWritten, (uint32_t *) pxWriteHandle->pucBuffer, (uint32_t) pxWriteHandle->usBufferSize );
+		pxWriteHandle->usBytesWritten += pxWriteHandle->usBufferSize;
+	}
+	__enable_irq();
+}
+/*-----------------------------------------------------------*/
+
+static void prvWriteConfig( ConfigWriteHandle_t *pxWriteHandle )
+{
+BaseType_t x;
+uint16_t usBufferPos, usBytesCopied, usBytesAvailable, usBytesToCopy;
+
+	/* Set the config header. */
+	( (Config_t *) pxWriteHandle->pucBuffer )->ucVersion   = eConfigVersion1;
+	( (Config_t *) pxWriteHandle->pucBuffer )->ucCount     = pxWriteHandle->ucCount;
+	( (Config_t *) pxWriteHandle->pucBuffer )->usLength    = pxWriteHandle->usLength;
+	( (Config_t *) pxWriteHandle->pucBuffer )->ulSignature = CONFIG_SIGNATURE;
 	usBufferPos = offsetof( Config_t, pucTLVList );
 
-	/* Iterate again to write config into transfer buffer. */
+	/* Iterate over all TLVs to write config into buffer. */
 	for( x = 0; x < eConfigNumberOfTags; x++ )
 	{
 		if( ( ppxConfigCacheTLVList[ x ] != NULL ) && ( ppxConfigCacheTLVList[ x ]->usLength > 0 ) )
@@ -320,24 +366,22 @@ BaseType_t x;
 			while( usBytesCopied < usBytesAvailable )
 			{
 				usBytesToCopy = usBytesAvailable - usBytesCopied;
-				if( usBytesToCopy > ( usBufferSize - usBufferPos ) )
+				if( usBytesToCopy > ( pxWriteHandle->usBufferSize - usBufferPos ) )
 				{
-					usBytesToCopy = ( usBufferSize - usBufferPos );
+					usBytesToCopy = ( pxWriteHandle->usBufferSize - usBufferPos );
 				}
 
-				/* Copy TLV to write buffer. */
-				memcpy( ( pucBuffer + usBufferPos ),
+				/* Copy TLV to buffer. */
+				memcpy( ( pxWriteHandle->pucBuffer + usBufferPos ),
 						( ppxConfigCacheTLVList[ x ] + usBytesCopied ),
 						usBytesToCopy );
 
 				usBufferPos += usBytesToCopy;
 
-				if( usBufferPos == usBufferSize )
+				if( usBufferPos == pxWriteHandle->usBufferSize )
 				{
-					/* Buffer is full. Write it to flash. */
-					Chip_IAP_PreSectorForReadWrite( ulSector, ulSector );
-					Chip_IAP_CopyRamToFlash( ulDestination, (uint32_t *) pucBuffer, usBufferSize );
-
+					/* Buffer is full, write it to flash. */
+					prvWriteToFlash( pxWriteHandle );
 					usBufferPos = 0;
 				}
 
@@ -347,30 +391,10 @@ BaseType_t x;
 	}
 
 	/* Zero fill end of buffer. */
-	memset( pucBuffer + usBufferPos, 0, usBufferSize - usBufferPos );
+	memset( pxWriteHandle->pucBuffer + usBufferPos, 0, pxWriteHandle->usBufferSize - usBufferPos );
 
-	/* Write buffer to flash */
-	Chip_IAP_PreSectorForReadWrite( ulSector, ulSector );
-	Chip_IAP_CopyRamToFlash( ulDestination, (uint32_t *) pucBuffer, usBufferSize );
-
-	vPortFree( pucBuffer );
-
-	/* Reread config from flash. */
-	return xReadConfig();
-}
-/*-----------------------------------------------------------*/
-
-void vEraseConfig( void )
-{
-const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
-
-	/* Reset config. */
-	prvCleanCache();
-	pxConfig = NULL;
-
-	/* Erase config from flash. */
-	Chip_IAP_PreSectorForReadWrite( ulSector, ulSector );
-	Chip_IAP_EraseSector( ulSector, ulSector );
+	/* Write buffer to flash. */
+	prvWriteToFlash( pxWriteHandle );
 }
 /*-----------------------------------------------------------*/
 
@@ -401,6 +425,7 @@ void *pvSetConfig( eConfigTag_t xTag, uint16_t usLength, const void * const pvVa
 {
 eConfigTagIndex_t eCacheIndex;
 ConfigTLV_t *pxTLV;
+uint16_t usTLVLength;
 void *pvReturn = NULL;
 
 	eCacheIndex = prvFindTLVInCache( xTag );
@@ -411,12 +436,22 @@ void *pvReturn = NULL;
 		vPortFree( (void *) ppxConfigCacheTLVList[ eCacheIndex ] );
 	}
 
-	pxTLV = pvPortMalloc( prvSizeOfTLV( usLength ) );
+	/* If value is NULL, set length to zero, so the TLV gets deleted from config. */
+	if( pvValue == NULL )
+	{
+		usLength = 0;
+	}
+
+	usTLVLength = prvSizeOfTLV( usLength );
+	pxTLV = pvPortMalloc( usTLVLength );
 	if( pxTLV != NULL )
 	{
 		pxTLV->ucTag = (uint8_t) xTag;
 		pxTLV->usLength = usLength;
+		/* Copy value. */
 		memcpy( pxTLV->pucValue, pvValue, usLength );
+		/* Zero fill the padding. */
+		memset( pxTLV->pucValue + usLength, 0, ( usTLVLength - offsetof( ConfigTLV_t, pucValue ) - usLength ) );
 
 		/* Store a pointer to the TLV in cache. */
 		ppxConfigCacheTLVList[ eCacheIndex ] = pxTLV;
@@ -426,3 +461,146 @@ void *pvReturn = NULL;
 	return pvReturn;
 }
 /*-----------------------------------------------------------*/
+
+void vEraseConfig( void )
+{
+const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
+
+	DEBUGOUT( "Erase config\r\n" );
+	/* Reset config. */
+	prvCleanCache();
+	pxConfigInFlash = NULL;
+
+	/* Verify sector is not blank already. */
+	if( Chip_IAP_BlankCheckSector( ulSector, ulSector ) == IAP_SECTOR_NOT_BLANK )
+	{
+		/* Erase config from flash. */
+		__disable_irq();
+		if( Chip_IAP_PreSectorForReadWrite( ulSector, ulSector ) == IAP_CMD_SUCCESS )
+		{
+			Chip_IAP_EraseSector( ulSector, ulSector );
+		}
+		__enable_irq();
+	}
+	else
+	{
+		DEBUGOUT( "Config flash sector is already blank.\r\n" );
+	}
+}
+/*-----------------------------------------------------------*/
+
+BaseType_t xReadConfig( void )
+{
+BaseType_t xReturn = pdFAIL;
+
+	DEBUGOUT( "Read config\r\n" );
+
+	pxConfigInFlash = prvFindConfig();
+	xReturn = prvUpdateCache( pxConfigInFlash );
+
+	if( pxConfigInFlash != NULL )
+	{
+		DEBUGOUT( "Found config version %d, count %d, length %d\r\n", pxConfigInFlash->ucVersion, pxConfigInFlash->ucCount, pxConfigInFlash->usLength );
+	}
+	else
+	{
+		DEBUGOUT( "No valid config found.\r\n" );
+	}
+
+	return xReturn;
+}
+/*-----------------------------------------------------------*/
+
+BaseType_t xWriteConfig( void )
+{
+ConfigWriteHandle_t xWriteHandle = { 0 };
+uint16_t usConfigSize;
+BaseType_t x, xConfigChanged = pdFALSE, xReturn = pdFAIL;
+
+	DEBUGOUT( "Write config to flash\r\n" );
+
+	/* Iterate over all TLVs to determine total size of config. */
+	for( x = 0; x < eConfigNumberOfTags; x++ )
+	{
+		if( ppxConfigCacheTLVList[ x ] != NULL )
+		{
+			if( ppxConfigCacheTLVList[ x ]->usLength > 0 )
+			{
+				xWriteHandle.usLength += prvSizeOfTLV( ppxConfigCacheTLVList[ x ]->usLength );
+			}
+
+			/* No need to rewrite config, if all TLVs are still in flash. */
+			if( prvTLVInRAM( ppxConfigCacheTLVList[ x ] ) )
+			{
+				xConfigChanged = pdTRUE;
+			}
+		}
+	}
+
+	/* Only write config if necessary. */
+	if( xConfigChanged != pdTRUE )
+	{
+		DEBUGOUT( "Config write: Config was not changed, no rewrite\r\n");
+	}
+	else
+	{
+		usConfigSize = prvSizeOfConfig( xWriteHandle.usLength );
+
+		/* Check if a config exists and there is enough space left in flash sector. */
+		if( ( pxConfigInFlash != NULL ) &&
+			( ( (uint8_t *) pxConfigInFlash + prvSizeOfConfig( pxConfigInFlash->usLength ) + usConfigSize ) < (uint8_t *) CONFIG_FLASH_AREA_END ) )
+		{
+			/* Smallest possible buffer size is 256. */
+			xWriteHandle.usBufferSize = 256;
+
+			/* Write config behind last one. */
+			xWriteHandle.ulDestination = (uint32_t) ( (uint8_t *) pxConfigInFlash + prvSizeOfConfig( pxConfigInFlash->usLength ) );
+			xWriteHandle.ucCount = pxConfigInFlash->ucCount + 1;
+		}
+		else
+		{
+			/* Flash sector needs to be erased before it can be written again. */
+			xWriteHandle.bits.bEraseConfig = pdTRUE;
+
+			/* The addresses should be a 256 byte boundary and the number of bytes
+			 *			should be 256 | 512 | 1024 | 4096 */
+			if(      usConfigSize <=  256 ) xWriteHandle.usBufferSize =  256;
+			else if( usConfigSize <=  512 ) xWriteHandle.usBufferSize =  512;
+			else if( usConfigSize <= 1024 ) xWriteHandle.usBufferSize = 1024;
+			else if( usConfigSize <= 4096 ) xWriteHandle.usBufferSize = 4096;
+
+			/* _ML_ TODO: If config gets to big to be copied into RAM, need to use a second flash sector to rewrite config. */
+
+			/* Write to the start of the flash sector. */
+			xWriteHandle.ulDestination = CONFIG_FLASH_AREA_START;
+			xWriteHandle.ucCount = 0;
+		}
+
+		xWriteHandle.pucBuffer = pvPortMalloc( xWriteHandle.usBufferSize );
+		if( xWriteHandle.pucBuffer != NULL ) {
+
+			prvWriteConfig( &xWriteHandle );
+
+			vPortFree( xWriteHandle.pucBuffer );
+
+			/* Verify that write was successful. */
+			if( prvVerifyConfig( (Config_t *) xWriteHandle.ulDestination ) == pdPASS )
+			{
+				/* Reread config from flash. */
+				pxConfigInFlash = (Config_t *) xWriteHandle.ulDestination;
+				prvUpdateCache( pxConfigInFlash );
+
+				xReturn = pdPASS;
+				DEBUGOUT("Config write: Success\r\n");
+			}
+		}
+		else
+		{
+			DEBUGOUT("Config write: Failed to allocate %d bytes of memory\r\n", xWriteHandle.usBufferSize);
+		}
+	}
+
+	return xReturn;
+}
+/*-----------------------------------------------------------*/
+

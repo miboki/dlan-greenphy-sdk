@@ -159,11 +159,11 @@ Clickboard_t *pxClickboardOld;
 		/* Change active clickboard in config. */
 		if( xPort == eClickboardPort1 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &( pxClickboard->xClickboardId ) );
 		}
 		else if( xPort == eClickboardPort2 )
 		{
-			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &( pxClickboard->xClickboardId ) );
 		}
 
 		xSuccess = pdTRUE;
@@ -183,11 +183,11 @@ BaseType_t xSuccess = pdFALSE;
 		/* Remove active clickboard from config. */
 		if( pxClickboard->xPortsActive == eClickboardPort1 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+			pvSetConfig( eConfigClickConfPort1, 0, NULL );
 		}
 		else if( pxClickboard->xPortsActive == eClickboardPort2 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+			pvSetConfig( eConfigClickConfPort2, 0, NULL );
 		}
 
 		pxClickboard->fClickboardDeinit();
