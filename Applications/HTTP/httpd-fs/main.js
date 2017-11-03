@@ -93,14 +93,8 @@ templates['config'] = `
 		<h3>MQTT Client</h3>
 		<table class="table table-striped">
 			<tr>
-				<td>Status</td>
-				<div class="onoffswitch">
-					<input type="checkbox" name="mqttActive" class="onoffswitch-checkbox" id="mqttActive" {{#mqtt}}checked{{/mqtt}}>
-					<label class="onoffswitch-label" for="mqttActive">
-						<span class="onoffswitch-inner"></span>
-						<span class="onoffswitch-switch"></span>
-					</label>
-              </div>
+				<td>Global Task Status</td>
+				<input type="checkbox" name="mqttSwitch" onchange="toggleBit(this, event)" {{#mqtt}}checked{{/mqtt}}>
 			</tr>
 		</table>
 `;
@@ -228,7 +222,7 @@ templates['mqtt'] = `
 							<th>Status</th>
 						</tr>
 						<tr>
-							<th><span class="txtcontroll" style="background-color:green;color:white;">online</span></th>
+							<th><span class="txtcontroll" name="mqttOnlineStat">{{mqttOnline}}</span></th>
 						</tr>
 					</table>
 				</li>
@@ -238,7 +232,7 @@ templates['mqtt'] = `
 							<th>Uptime</th>
 						</tr>
 						<tr>
-							<th><span class="txtcontroll">1200 s</span></th>
+							<th><span class="txtcontroll">{{mqttUptime}}</span></th>
 						</tr>
 					</table>
 				</li>
@@ -248,11 +242,11 @@ templates['mqtt'] = `
 							<th>Published Messages</th>
 						</tr>
 						<tr>
-							<th><span class="txtcontroll">47</span></th>
+							<th><span class="txtcontroll">{{mqttPubMsg}}</span></th>
 						</tr>
 					</table>
 				</li>
-				<li><input type="button" value="Reboot" ></li>
+				<li><input type="button" value="Reboot" onclick="rebootMqttClient();"></li>
 			</ul>
 		</div>
 		<div class="hider" onclick="toggleSettings();">
@@ -262,73 +256,64 @@ templates['mqtt'] = `
 			<table class="table table-striped">
 				<tr>
 					<td>Broker Address</td>
-					<td><input type="text" name="broker" value="mqtt.relayr.io" onchange="prevent(event);"></td>
+					<td><input type="text" id="broker" value="{{bad}}"></td>
 				</tr>
 				<tr>
 					<td>Broker Port</td>
-					<td><input type="number" name="port" min="1" max="65535" step="1"  value="1883" onchange="prevent(event);"></td>
+					<td><input type="number" name="port" min="1" max="65535" step="1"  value="{{bpd}}"></td>
 				</tr>
 				<tr>
 					<td>Client ID</td>
-					<td><input type="text" name="client" value="greenphy#2de" onchange="prevent(event);"></td>
+					<td><input type="text" name="client" value="{{cID}}"></td>
 				</tr>
 				<tr>
 					<td>Username</td>
-					<td><input type="text" name="user" value="christoph" onchange="prevent(event);"></td>
+					<td><input type="text" name="user" value="{{user}}"></td>
 				</tr>
 				<tr>
 					<td>Password</td>
-					<td><input type="password" name="password" id="pw1" value="abc123!" onchange="prevent(event);"></td>
+					<td><input type="password" name="password" id="pw1" value="{{pwd}}"></td>
 				</tr>
 				<tr>
 					<td>Last Will Active</td>
-					<td><input type="checkbox" name="will" id="will" onchange="prevent(event);"></td>
+					<td><input type="checkbox" name="will" id="will" {{#will}}checked{{/will}}></td>
 				</tr>
 				<tr>
 					<td>Will Topic</td>
-					<td><input type="text" name="willtopic" id="wtopic" value="/will/" onchange="prevent(event);"></td>
+					<td><input type="text" name="willtopic" id="wtopic" value="{{wtp}}"></td>
 				</tr>
 				<tr>
 					<td>Will Message</td>
-					<td><input type="text" name="willmessage" id="wmessage" value="i died" onchange="prevent(event);"></td>
-				</tr>
-				<tr>
-					<td>Save Changes</td>
-					<td><input type="button" name="savemqtt" value="save" onclick="saveMqttCred();" onchange="prevent(event);"></td>
+					<td><input type="text" name="willmessage" id="wmessage" value="{{wms}}"></td>
 				</tr>
 			</table>
 		</div>
 `;
 
 
+var timeout;
+
 function prevent( event ) {
       event.stopPropagation();
 }
 
-function checkEmpty( element, event ) {
-      if( element.value == '' ){
-            element.value = 'must not be empty';
-            event.stopPropagation();
-      }
-}
-
-function checkPwd(event) {
-	if($('#pw1').prop('value') != $('#pw2').prop('value')) {
-		$('#pwerr').text('passwords unidentical');
-		event.stopPropagation();
-	}
-	else
-		$('#pwerr').text('');
+function rebootMqttClient()
+{
+	sendRequest('mqtt', 'reboot', $.noop );
 }
 
 function toggleSettings()
 {
-	document.getElementById("mqttcred").style.display = "block";
-}
-  
-function saveMqttCred()
-{
-	document.getElementById("mqttcred").style.display = "none";
+	if( document.getElementById("mqttcred").style.display == "none" )
+	{
+		clearTimeout(timeout);
+		sendRequest('mqtt', 'cred', function(json){
+			renderPage('mqtt', json);
+		});
+		document.getElementById("mqttcred").style.display = "block";
+	}
+	else
+		updatePage();
 }
 
 // Used by the Expand2Click output bits
@@ -423,6 +408,18 @@ function processJSON(page, json) {
                     'options': options
                 });
             }
+		case 'mqtt':
+			if( json[mqttUptime] > -1 )
+			{
+				$('#mqttOnlineStat').addClass('mqttOnline');
+				$('#mqttOnlineStat').text('Online');
+			}
+			else
+			{
+				$('#mqttOnlineStat').addClass('mqttOffline');
+				$('#mqttOnlineStat').text('Offline');
+			}
+			break;
         default:
             break;
     }
@@ -468,7 +465,6 @@ function getRefreshRate() {
     return rates[$('input[name="refresh"]').val()];
 }
 
-var timeout;
 function updatePage(page, data) {
     if( timeout ) clearTimeout(timeout);
 
@@ -487,23 +483,6 @@ function updatePage(page, data) {
         if(getRefreshRate() != 0)
             timeout = setTimeout(updatePage, getRefreshRate()*1000);
     });
-}
-
-function processWill( event ) {
-      event.stopPropagation();
-      if( $('#will').prop( 'checked' ) ) {
-            if(( $('#wtopic').prop( 'value' ) != '' ) && ( $('#wmessage').prop( 'value' ) != '' )) {
-                  var str = 'will=1,willtopic=' + $('#wtopic').prop( 'value' ) + ',willmessage=' + $('#wmessage').prop( 'value' );
-                  updatePage( undefined, str );
-            }
-            else {
-                  $('#will').prop( 'checked', false );
-            }
-      }
-      else {
-            var str = 'will=0';
-            updatePage( undefined, str );
-      }
 }
 
 // Handle internal links by JQuery

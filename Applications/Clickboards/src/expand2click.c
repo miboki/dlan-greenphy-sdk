@@ -183,17 +183,21 @@ char lastBits = get_expand2click();
 		{
 			DEBUGOUT("Expand2Click - Meter 1: %d, Meter 2: %d\n", toggleCount[0], toggleCount[1] );
 		#if( netconfigUSEMQTT != 0 )
-			if(xPublish.xMessage.payload != NULL)
+			xMqttQueue = xGetMQTTQueueHandle();
+			if( xMqttQueue != NULL )
 			{
-				/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
-				xPublish.xMessage.payload = buffer;
-				sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
-				xJob.eJobType = ePublish;
-				xJob.data = (void *) &xPublish;
-				xQueueSendToBack( xMqttQueue, &xJob, 0 );
+				if(xPublish.xMessage.payload != NULL)
+				{
+					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+					xPublish.xMessage.payload = buffer;
+					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
+					xJob.eJobType = ePublish;
+					xJob.data = (void *) &xPublish;
+					xQueueSendToBack( xMqttQueue, &xJob, 0 );
+				}
+				else
+					DEBUGOUT("Expand2 Warning: Could not publish Packet, last message is waiting.\n");
 			}
-			else
-				DEBUGOUT("Expand2 Warning: Could not publish Packet, last message is waiting.\n");
 		#endif /* #if( netconfigUSEMQTT != 0 ) */
 			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}

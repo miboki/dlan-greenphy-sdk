@@ -301,17 +301,21 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
 
 	#if( netconfigUSEMQTT != 0 )
-		if(xPublish.xMessage.payload != NULL)
+		xMqttQueue = xGetMQTTQueueHandle();
+		if( xMqttQueue != NULL )
 		{
-			/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
-			xPublish.xMessage.payload = buffer;
-			sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}", color.red, color.green, color.blue);
-			xJob.eJobType = ePublish;
-			xJob.data = (void *) &xPublish;
-			xQueueSendToBack( xMqttQueue, &xJob, 0 );
+			if(xPublish.xMessage.payload != NULL)
+			{
+				/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+				xPublish.xMessage.payload = buffer;
+				sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}", color.red, color.green, color.blue);
+				xJob.eJobType = ePublish;
+				xJob.data = (void *) &xPublish;
+				xQueueSendToBack( xMqttQueue, &xJob, 0 );
+			}
+			else
+				DEBUGOUT("Color2 Warning: Could not publish Packet, last message is waiting.\n");
 		}
-		else
-			DEBUGOUT("Color2 Warning: Could not publish Packet, last message is waiting.\n");
 	#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		vTaskDelay( 1000 );

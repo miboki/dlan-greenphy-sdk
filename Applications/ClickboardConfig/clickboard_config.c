@@ -248,8 +248,23 @@ BaseType_t xClickboardDeactivate( Clickboard_t *pxClickboard )
 			vEraseConfig();
 		}
 
+		pxParam = pxFindKeyInQueryParams( "mqttSwitch", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "on" ) )
+			{
+				xInitMQTT();
+			}
+			if( strcmp( pxParam->pcValue, "off" ) )
+			{
+				vDeinitMQTT();
+			}
+		}
+
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
+		xCount += sprintf( pcBuffer, "{\"mqttSwitch\":%d,", (xGetMQTTQueueHandle() == NULL)?0:1 );
+
 		xCount += sprintf( pcBuffer, "{\"clickboards\":[" );
 
 		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )

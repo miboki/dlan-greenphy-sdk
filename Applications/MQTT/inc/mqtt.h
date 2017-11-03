@@ -26,6 +26,15 @@
 #define netconfigMQTT_BROKER "mqtt.relayr.io"
 #define netconfigMQTT_PORT 1883
 
+#include "MQTTClient.h"
+
+typedef enum
+{
+	eInitialize,
+	eSet,
+	eGet
+} eVarAction;
+
 typedef enum
 {
 	eNoEvent = -1,

@@ -34,9 +34,6 @@
 
 /* Include MQTT header files */
 #include "mqtt.h"
-#include "MQTTClient.h"
-
-
 
 /* ------------------------------
  * |      Global (Modul) Variables      |
@@ -50,6 +47,65 @@ static TaskHandle_t xMqttTaskHandle = NULL;
 /* ------------------------------
  * |          Functions         |
  * ------------------------------ */
+/***********************************************************************************************************
+ *   function: xManagePubCounter
+ *   Purpose: Handle the pubcounter Variable, allow initialzising to 0, set to counter +1 and getting the counter
+ *   Parameter: xAction - specify what the function will do
+ *   Returns: pdPASS - Initializing / Setting done
+ *   		  -44 - xAction has unsupported value
+ *   		  xPubCounter (xAction = eGet)
+ ***********************************************************************************************************/
+BaseType_t xManagePubCounter( eVarAction xAction )
+{
+	static BaseType_t xPubCounter;
+	switch(xAction){
+	  case eInitialize:
+		  xPubCounter = 0;
+		break;
+	  case eSet:
+		  xPubCounter += 1;
+		  break;
+	  case eGet:
+		return xPubCounter;
+		break;
+	  default:
+		return -44;
+	}
+	return pdPASS;
+}
+
+
+/***********************************************************************************************************
+ *   function: xManageUptime
+ *   Purpose: Handle the uptime Variable, allow initialzising to actual uptime, setting to -1 and getting the uptime
+ *   Parameter: xAction - specify what the function will do
+ *   Returns: pdPASS - Initializing / Setting done
+ *   		  -44 - xAction has unsupported value
+ *   		  xUptime (xAction = eGet)
+ ***********************************************************************************************************/
+BaseType_t xManageUptime( eVarAction xAction )
+{
+	static BaseType_t xUptime;
+	switch(xAction){
+	  case eInitialize:
+		xUptime = portGET_RUN_TIME_COUNTER_VALUE();
+		break;
+	  case eSet:
+		xUptime = -1;
+		break;
+	  case eGet:
+		if( xUptime < 0 )
+			return xUptime;
+		else
+			return ( portGET_RUN_TIME_COUNTER_VALUE() - xUptime );
+		break;
+	  default:
+		return -44;
+	}
+	return pdPASS;
+}
+
+
 /***********************************************************************************************************
  *   function: vCloseSocket
  *   Purpose: Close a tcp socket clean
@@ -129,6 +185,7 @@ BaseType_t xConnect( MQTTClient *pxClient, Network *pxNetwork )
 		pxClient->ipstack->my_socket = NULL;
 		return pdFAIL;
 	}
+	xManageUptime( eInitialize );
 	return pdPASS;
 }
 
@@ -148,14 +205,15 @@ void vMQTTTask( void *pvParameters )
 	BaseType_t cycles = 0;
 	MQTTClient xClient;
 	Network xNetwork;
-	unsigned char pcSendBuf[ MQTTSEND_BUFFER_SIZE ];
-	unsigned char pcRecvBuf[ MQTTRECV_BUFFER_SIZE ];
+	unsigned char pcSendBuf [MQTTSEND_BUFFER_SIZE];
+	unsigned char pcRecvBuf [MQTTRECV_BUFFER_SIZE];
 	MqttJob_t xJob;
 	MqttPublishMsg_t *pxPubMsg;
 
 	/* Initialize Variables for using */
+	xManagePubCounter( eInitialize );
 	NetworkInit( &xNetwork );
-	MQTTClientInit( &xClient, &xNetwork, MQTTCLIENT_TIMEOUT, pcSendBuf, sizeof(pcSendBuff), pcRecvBuf, sizeof(pcRecvBuf) );
+	MQTTClientInit( &xClient, &xNetwork, MQTTCLIENT_TIMEOUT, pcSendBuf, sizeof(pcSendBuf), pcRecvBuf, sizeof(pcRecvBuf) );
 
 	/* Infinite Task Loop */
 	for(;;)
@@ -196,16 +254,18 @@ void vMQTTTask( void *pvParameters )
 				/* Clean up the tcp socket save */
 				vCloseSocket( xClient.ipstack->my_socket );
 				xClient.ipstack->my_socket = NULL;
+				xManageUptime( eSet );
 				break;
 
 			case ePublish:
 				if( xClient.isconnected )
 				{
 					pxPubMsg = (MqttPublishMsg_t *) xJob.data;
-					if( MQTTPublish( &xClient, pxPubMsg->pucTopic, &( pxPubMsg->xMessage ) ) != SUCCESS_MQTT)
+					if( MQTTPublish( &xClient, (pxPubMsg->pucTopic), &( pxPubMsg->xMessage ) ) != SUCCESS_MQTT)
 					{
 						DEBUGOUT("MQTT-Error 0x0130: Could not publish Message.\n");
 					}
+					xManagePubCounter( eSet );
 					pxPubMsg->xMessage.payload = NULL;
 				}
 				break;
@@ -240,7 +300,7 @@ void vMQTTTask( void *pvParameters )
 		}
 
 		/* Delay until next call */
-		vTaskDelay( pd_MS_TO_TICKS( MQTTTASK_DELAY ) );
+		vTaskDelay( pdMS_TO_TICKS( MQTTTASK_DELAY ) );
 	}
 }
 
@@ -257,9 +317,41 @@ void vMQTTTask( void *pvParameters )
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
 
-		xCount += sprintf( pcBuffer, "");
+		xCount += sprintf( pcBuffer, "{\"mqttUptime\":%d,\"mqttPubMsg\":%d}", xManageUptime( eGet ), xManagePubCounter( eGet ));
 
-		retunr xCount;
+		pxParam = pxFindKeyInQueryParams( "cred", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			char *pcBroker = netconfigMQTT_BROKER;
+			BaseType_t xPort = netconfigMQTT_PORT;
+			MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+
+			vGetCredentials( eConfigMqttBroker, pcBroker );
+			vGetCredentials( eConfigMqttPort, &xPort );
+			xCount += sprintf( pcBuffer, ",\"bad\":\"%s\",\"bpd\":%d", pcBroker, xPort );
+
+			vGetCredentials( eConfigMqttClientID, connectData.clientID.cstring );
+			if( connectData.clientID.cstring != NULL)
+				xCount += sprintf( pcBuffer, ",\"cID\":\"%s\"", connectData.clientID.cstring );
+
+			vGetCredentials( eConfigMqttUser, connectData.username.cstring );
+			if( connectData.username.cstring != NULL )
+				xCount += sprintf( pcBuffer, ",\"user\":\"%s\"", connectData.username.cstring );
+
+			vGetCredentials( eConfigMqttPassWD, connectData.password.cstring );
+			if( connectData.password.cstring != NULL )
+				xCount += sprintf( pcBuffer, ",\"pwd\":\"%s\"", connectData.password.cstring );
+
+			vGetCredentials( eConfigMqttWill, &(connectData.willFlag) );
+			if( connectData.willFlag )
+			{
+				vGetCredentials( eConfigMqttWillTopic, connectData.will.topicName.cstring );
+				vGetCredentials( eConfigMqttWillMsg, connectData.will.message.cstring );
+				xCount += sprintf( pcBuffer + (xCount -1), ",\"will\":1,\"wtp\":\"%s\",\"wms\":\"%s\"}", connectData.willFlag, connectData.will.message.cstring );
+			}
+		}
+
+		return xCount;
 	}
 #endif
 
