@@ -51,6 +51,9 @@
 #include "clickboard_config.h"
 #include "color2click.h"
 
+/* MQTT includes */
+#include "mqtt.h"
+
 /* Task-Delay in ms, change to your preference */
 #define TASKWAIT_COLOR2 1000 /* 1s */
 
@@ -272,6 +275,19 @@ static void vClickTask(void *pvParameters) {
 const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_COLOR2 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
+#if( netconfigUSEMQTT != 0 )
+	char buffer[60];
+	unsigned char pucColorTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucColorTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
+#endif /* #if( netconfigUSEMQTT != 0 ) */
+
 	for(;;)
 	{
 		/* Obtain Mutex. If not possible after 1 Second, write Debug and proceed */
@@ -290,6 +306,23 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 						color.green, color.blue);
 				PrintStatus();
 				DEBUGOUT("\r\n");
+			#if( netconfigUSEMQTT != 0 )
+				xMqttQueue = xGetMQTTQueueHandle();
+				if( xMqttQueue != NULL )
+				{
+					if(xPublish.xMessage.payload != NULL)
+					{
+						/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+						xPublish.xMessage.payload = buffer;
+						sprintf(buffer, "{\"meaning\":\"color\",\"value\":\"r:%d,g:%d,b:%d\"}", color.red, color.green, color.blue);
+						xJob.eJobType = ePublish;
+						xJob.data = (void *) &xPublish;
+						xQueueSendToBack( xMqttQueue, &xJob, 0 );
+					}
+					else
+						DEBUGOUT("Color2 Warning: Could not publish Packet, last message is waiting.\n");
+				}
+			#endif /* #if( netconfigUSEMQTT != 0 ) */
 				xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			}
 
@@ -300,6 +333,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			/* The mutex could not be obtained within xDelay. Write debug message. */
 			DEBUGOUT( "Color2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_COLOR2 );
 		}
+		vTaskDelay( 1000 );
 	}
 }
 /*-----------------------------------------------------------*/

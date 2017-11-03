@@ -85,6 +85,7 @@ int main(void) {
 		DEBUGSTR("\r\n");
 		LPC_SYSCTL->RSID = reset_reason;
 	}
+	DEBUGOUT( "Firmware-Version: %s\n", BUILD_STRING );
 
 	xReadConfig();
 

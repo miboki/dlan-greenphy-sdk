@@ -58,6 +58,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/MQTT/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 								</option>
 								<inputType id="com.crt.advproject.compiler.input.304377066" superClass="com.crt.advproject.compiler.input"/>
@@ -80,7 +81,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.66526931" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.1953250305" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
@@ -88,8 +88,11 @@
 							<tool id="com.crt.advproject.ar.lib.debug.1960059227" name="MCU Archiver" superClass="com.crt.advproject.ar.lib.debug"/>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="com.crt.advproject.config.lib.debug.1946804125.854571622" name="mqtt.h" rcbsApplicability="disable" resourcePath="MQTT/inc/mqtt.h" toolsToInvoke=""/>
+					<fileInfo id="com.crt.advproject.config.lib.debug.1946804125.584275731" name="mqtt_old.h" rcbsApplicability="disable" resourcePath="MQTT/inc/mqtt_old.h" toolsToInvoke=""/>
+					<fileInfo id="com.crt.advproject.config.lib.debug.1946804125.392794613" name="MQTTEcho_Test.h" rcbsApplicability="disable" resourcePath="MQTT/inc/MQTTEcho_Test.h" toolsToInvoke=""/>
 					<sourceEntries>
-						<entry excluding="JSON|Clickboards/src/clickboardIO.c|Clickboards/src/main.c|Clickboards/src/crp.c|Clickboards/src/RelayClick.c|Clickboards/src/cr_startup_lpc175x_6x.c|Clickboards/src/sysinit.c|Clickboards/src/lcdDevoloClick.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Clickboards/src/lcdDevoloClick.c|Clickboards/src/RelayClick.c|MQTT/inc/mqtt_old.h|MQTT/src/mqtt_old.c|MQTT/inc/MQTTEcho_Test.h|MQTT/src/MQTTEcho_Test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -194,7 +197,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1065005607" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.1346640478" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>

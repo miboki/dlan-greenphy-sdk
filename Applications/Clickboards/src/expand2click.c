@@ -46,13 +46,19 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
+#include "GreenPhySDKNetConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "clickboard_config.h"
 #include "expand2click.h"
 
+
+/* MQTT includes */
+#include "mqtt.h"
+
+
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_EXPAND2 100
+#define TASKWAIT_EXPAND2 pdMS_TO_TICKS( 100UL )
 
 /*****************************************************************************/
 
@@ -60,7 +66,7 @@
 
 //sbit EXPAND_RST at GPIOC_ODR.B2;
 
-unsigned char i = 0, old_res = 0, res;
+// unsigned char i = 0, old_res = 0, res;
 
 //extern sfr sbit EXPAND_RST;
 
@@ -129,18 +135,34 @@ void set_expand2click(char pins){
 	Expander_Write_Byte(EXPAND_ADDR, OLATB_BANK0, pins);    // Write pins to expander's PORTB
 }
 /*-----------------------------------------------------------*/
+BaseType_t xExpand2Click_Deinit ( void );
 
 static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_EXPAND2 );
+BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 char lastBits = get_expand2click();
 //char count = 0;
+#if( netconfigUSEMQTT != 0 )
+	char buffer[80];
+	unsigned char pucExpTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucExpTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
+#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	for(;;)
 	{
 //		/* Toggle obits once per second - just for demo. */
 //		if( count++ % 10 == 0 )
 //			oBits ^= ( togglePins[0] | togglePins[1] );
+
+		set_expand2click(oBits);
 
 		/* Obtain Mutex. If not possible after xDelay, write debug message. */
 		if( xSemaphoreTake( xI2C1_Mutex, xDelay ) == pdTRUE )
@@ -152,24 +174,44 @@ char lastBits = get_expand2click();
 
 			/* Give Mutex back, so other Tasks can use I2C */
 			xSemaphoreGive( xI2C1_Mutex );
+		}
 
 			/* First water meter pin toggled? */
 			if( ( iBits ^ lastBits ) & togglePins[0] )
 				toggleCount[0] += 1;
+		}
 
 			/* Second water meter pin toggled? */
 			if( ( iBits ^ lastBits ) & togglePins[1] )
 				toggleCount[1] += 1;
 
-			lastBits = iBits;
+		lastBits = iBits;
 
-			vTaskDelay( xDelay );
-		}
-		else
+		/* Print a debug message once every 10 s. */
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
 		{
-			/* The mutex could not be obtained within xDelay. Write debug message. */
-			DEBUGOUT( "Expand2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_EXPAND2 );
+			DEBUGOUT("Expand2Click - Meter 1: %d, Meter 2: %d\n", toggleCount[0], toggleCount[1] );
+		#if( netconfigUSEMQTT != 0 )
+			xMqttQueue = xGetMQTTQueueHandle();
+			if( xMqttQueue != NULL )
+			{
+				if(xPublish.xMessage.payload != NULL)
+				{
+					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+					xPublish.xMessage.payload = buffer;
+					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
+					xJob.eJobType = ePublish;
+					xJob.data = (void *) &xPublish;
+					xQueueSendToBack( xMqttQueue, &xJob, 0 );
+				}
+				else
+					DEBUGOUT("Expand2 Warning: Could not publish Packet, last message is waiting.\n");
+			}
+		#endif /* #if( netconfigUSEMQTT != 0 ) */
+			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		}
+
+		vTaskDelay( xDelay );
 	}
 }
 /*-----------------------------------------------------------*/
@@ -180,7 +222,7 @@ char lastBits = get_expand2click();
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
 
-		// Search input object for 'input' Parameter to get the new Value of oBits
+		// Search object for 'output' Parameter to get the new Value of oBits
 		pxParam = pxFindKeyInQueryParams( "output", pxParams, xParamCount );
 		if( pxParam != NULL ) {
 			oBits = strtol( pxParam->pcValue, NULL, 10 );
@@ -285,6 +327,10 @@ BaseType_t xReturn = pdFALSE;
 
 			xReturn = pdTRUE;
 		}
+
+		/* _CD_ Initialize Config for debugging */
+		togglePins[0] = 0x01; //PA0
+		togglePins[1] = 0x10; //PA4
 	}
 
 	return xReturn;
@@ -314,7 +360,6 @@ BaseType_t xReturn = pdFALSE;
 		/* TODO: Reset I2C and GPIOs. */
 		xReturn = pdTRUE;
 	}
-
 	return xReturn;
 }
 /*-----------------------------------------------------------*/
