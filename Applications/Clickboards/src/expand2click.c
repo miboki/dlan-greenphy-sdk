@@ -176,14 +176,13 @@ char lastBits = get_expand2click();
 			xSemaphoreGive( xI2C1_Mutex );
 		}
 
-			/* First water meter pin toggled? */
-			if( ( iBits ^ lastBits ) & togglePins[0] )
-				toggleCount[0] += 1;
-		}
+		/* First water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[0] )
+			toggleCount[0] += 1;
 
-			/* Second water meter pin toggled? */
-			if( ( iBits ^ lastBits ) & togglePins[1] )
-				toggleCount[1] += 1;
+		/* Second water meter pin toggled? */
+		if( ( iBits ^ lastBits ) & togglePins[1] )
+			toggleCount[1] += 1;
 
 		lastBits = iBits;
 

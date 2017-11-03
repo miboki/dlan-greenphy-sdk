@@ -333,7 +333,6 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			/* The mutex could not be obtained within xDelay. Write debug message. */
 			DEBUGOUT( "Color2 - Error: Could not take I2C1 mutex within %d ms.\r\n", TASKWAIT_COLOR2 );
 		}
-		vTaskDelay( 1000 );
 	}
 }
 /*-----------------------------------------------------------*/
