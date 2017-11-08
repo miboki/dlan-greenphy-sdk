@@ -44,12 +44,14 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
+#include "GreenPhySDKNetConfig.h"
 
 /* Project includes. */
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "save_config.h"
 #include "clickboard_config.h"
+#include "mqtt.h"
 
 #define ARRAY_SIZE(x) ( BaseType_t ) (sizeof( x ) / sizeof( x )[ 0 ] )
 
@@ -159,11 +161,11 @@ Clickboard_t *pxClickboardOld;
 		/* Change active clickboard in config. */
 		if( xPort == eClickboardPort1 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+			pvSetConfig( eConfigClickConfPort1, sizeof( pxClickboard->xClickboardId ), &( pxClickboard->xClickboardId ) );
 		}
 		else if( xPort == eClickboardPort2 )
 		{
-			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &pxClickboard->xClickboardId );
+			pvSetConfig( eConfigClickConfPort2, sizeof( pxClickboard->xClickboardId ), &( pxClickboard->xClickboardId ) );
 		}
 
 		xSuccess = pdTRUE;
@@ -183,11 +185,11 @@ BaseType_t xSuccess = pdFALSE;
 		/* Remove active clickboard from config. */
 		if( pxClickboard->xPortsActive == eClickboardPort1 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+			pvSetConfig( eConfigClickConfPort1, 0, NULL );
 		}
 		else if( pxClickboard->xPortsActive == eClickboardPort2 )
 		{
-			pvSetConfig( eConfigClickConfPort1, sizeof( eClickboardIdNone ), eClickboardIdNone );
+			pvSetConfig( eConfigClickConfPort2, 0, NULL );
 		}
 
 		pxClickboard->fClickboardDeinit();
@@ -246,9 +248,22 @@ BaseType_t xSuccess = pdFALSE;
 			vEraseConfig();
 		}
 
+		pxParam = pxFindKeyInQueryParams( "mqttSwitch", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "on" ) == 0 )
+			{
+				xInitMQTT();
+			}
+			if( strcmp( pxParam->pcValue, "off" ) == 0 )
+			{
+				vDeinitMQTT();
+			}
+		}
+
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
-		xCount += sprintf( pcBuffer, "{\"clickboards\":[" );
+		xCount += sprintf( pcBuffer, "{\"mqttSwitch\":%d,\"clickboards\":[", (xGetMQTTQueueHandle() == NULL)?0:1);
 
 		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 		{

@@ -46,13 +46,19 @@
 
 /* GreenPHY SDK includes. */
 #include "GreenPhySDKConfig.h"
+#include "GreenPhySDKNetConfig.h"
 #include "http_query_parser.h"
 #include "http_request.h"
 #include "clickboard_config.h"
 #include "thermo3click.h"
 
+
+/* MQTT includes */
+#include "mqtt.h"
+
+
 /* Task-Delay in ms, change to your preference */
-#define TASKWAIT_THERMO3 1000 /* 1s */
+#define TASKWAIT_THERMO3 pdMS_TO_TICKS( 1000UL ) /* 1s */
 
 /* Temperature offset used to calibrate the sensor. */
 #define TEMP_OFFSET  -2.0
@@ -112,6 +118,18 @@ static void vClickTask(void *pvParameters)
 {
 const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_THERMO3 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
+#if( netconfigUSEMQTT != 0 )
+	char buffer[40];
+	unsigned char pucTempTopic[30] = netconfigMQTT_TOPIC;
+	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
+	MqttJob_t xJob;
+	MqttPublishMsg_t xPublish;
+
+	/* Set all connection details only once */
+	xPublish.pucTopic = pucTempTopic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
+#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	for(;;)
 	{
@@ -138,6 +156,23 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
 			{
 				DEBUGOUT("Thermo3 - Temperature Current: %d, High: %d, Low: %d\n", temp_cur, temp_high, temp_low );
+			#if( netconfigUSEMQTT != 0 )
+				xMqttQueue = xGetMQTTQueueHandle();
+				if( xMqttQueue != NULL )
+				{
+					if(xPublish.xMessage.payload != NULL)
+					{
+						/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+						xPublish.xMessage.payload = buffer;
+						sprintf(buffer, "{\"meaning\":\"temperature\",\"value\":%d}", temp_cur);
+						xJob.eJobType = ePublish;
+						xJob.data = (void *) &xPublish;
+						xQueueSendToBack( xMqttQueue, &xJob, 0 );
+					}
+					else
+						DEBUGOUT("Thermo3 Warning: Could not publish Packet, last message is waiting.\n");
+				}
+			#endif /* #if( netconfigUSEMQTT != 0 ) */
 				xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			}
 

@@ -80,6 +80,11 @@ messages. */
 	#define FreeRTOS_printf(X)                   printf X
 #endif
 
+#ifdef DEBUG
+	#define ipconfigCHECK_IP_QUEUE_SPACE             1
+	#define ipconfigTCP_IP_SANITY                    1
+#endif
+
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
 on).  Valid options are pdFREERTOS_BIG_ENDIAN and pdFREERTOS_LITTLE_ENDIAN. */
 #define ipconfigBYTE_ORDER                       pdFREERTOS_LITTLE_ENDIAN
@@ -327,10 +332,10 @@ be divisible by 8. */
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
 maximum size.  Define the size of Rx buffer for TCP sockets. */
-#define ipconfigTCP_TX_BUFFER_LENGTH             ( 2 * ipconfigTCP_MSS )
+#define ipconfigTCP_TX_BUFFER_LENGTH             ( 1 * ipconfigTCP_MSS )
 
 /* Define the size of Tx buffer for TCP sockets. */
-#define ipconfigTCP_RX_BUFFER_LENGTH             ( 2 * ipconfigTCP_MSS )
+#define ipconfigTCP_RX_BUFFER_LENGTH             ( 1 * ipconfigTCP_MSS )
 
 /* Set to 1 or 0 to include/exclude FTP and HTTP functionality from the standard
 server task. */

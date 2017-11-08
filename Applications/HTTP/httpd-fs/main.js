@@ -90,6 +90,13 @@ templates['config'] = `
           </tr>
           {{/clickboards}}
         </table>
+		<h3>MQTT Client</h3>
+		<table class="table table-striped">
+			<tr>
+				<td>Global Task Status</td>
+				<td><input type="checkbox" name="mqttSwitch" {{#mqttSwitch}}checked{{/mqttSwitch}}></td>
+			</tr>
+		</table>
 `;
 templates['color2'] = `
         <h3>Sensor</h3>
@@ -205,6 +212,95 @@ templates['expand2'] = `
             </tr>
         </table>
 `;
+templates['mqtt'] = `
+		<h3>MQTT Client Information</h3>
+		<div class="mstate">
+			<ul>
+				<li>
+					<table>
+						<tr>
+							<th>Status</th>
+						</tr>
+						<tr>
+							<th><span id="mqttOnlineStat" name="mqttOnlineStat" class="txtcontroll">{{mqttOnline}}</span></th>
+						</tr>
+					</table>
+				</li>
+				<li>
+					<table>
+						<tr>
+							<th>Uptime</th>
+						</tr>
+						<tr>
+							<th><span class="txtcontroll">{{mqttUptime}}</span></th>
+						</tr>
+					</table>
+				</li>
+				<li>
+					<table>
+						<tr>
+							<th>Published Messages</th>
+						</tr>
+						<tr>
+							<th><span class="txtcontroll">{{mqttPubMsg}}</span></th>
+						</tr>
+					</table>
+				</li>
+				<li><input type="button" id="mqttboot" value="{{mqttButton}}" onclick="rebootMqttClient();"></li>
+			</ul>
+		</div>
+		<div class="hider">
+			Configure Credentials
+		</div>
+		<div id="mqttcred">
+			<table class="table table-striped">
+				<tr>
+					<td>Broker Address</td>
+					<td><input type="text" id="broker" value="{{bad}}"></td>
+				</tr>
+				<tr>
+					<td>Broker Port</td>
+					<td><input type="number" name="port" min="1" max="65535" step="1"  value="{{bpd}}"></td>
+				</tr>
+				<tr>
+					<td>Client ID</td>
+					<td><input type="text" name="client" value="{{cID}}"></td>
+				</tr>
+				<tr>
+					<td>Username</td>
+					<td><input type="text" name="user" value="{{user}}"></td>
+				</tr>
+				<tr>
+					<td>Password</td>
+					<td><input type="password" name="password" id="pw1" value="{{pwd}}"></td>
+				</tr>
+				<tr>
+					<td>Last Will Active</td>
+					<td><input type="checkbox" name="will" id="will" {{#will}}checked{{/will}}></td>
+				</tr>
+				<tr>
+					<td>Will Topic</td>
+					<td><input type="text" name="willtopic" id="wtopic" value="{{wtp}}"></td>
+				</tr>
+				<tr>
+					<td>Will Message</td>
+					<td><input type="text" name="willmessage" id="wmessage" value="{{wms}}"></td>
+				</tr>
+			</table>
+		</div>
+`;
+
+
+var timeout;
+
+function prevent( event ) {
+      event.stopPropagation();
+}
+
+function rebootMqttClient()
+{
+	sendRequest('mqtt', 'toggle', $.noop );
+}
 
 // Used by the Expand2Click output bits
 function toggleBit( element, event ) {
@@ -237,6 +333,8 @@ function processJSON(page, json) {
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
+			if( json['mqttSwitch'] > 0 )
+				$('#nav li.clickboard').eq(2).removeClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
                 clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
                 clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
@@ -297,6 +395,21 @@ function processJSON(page, json) {
                     'options': options
                 });
             }
+			break;
+		case 'mqtt':
+			if( json['mqttUptime'] > 0 ) {
+				$('#mqttOnlineStat').removeClass('mqttOffline');
+				$('#mqttOnlineStat').addClass('mqttOnline');
+				json['mqttOnline'] = 'Online';
+				json['mqttButton'] = 'Disconnect';
+			}
+			else {
+				$('#mqttOnlineStat').removeClass('mqttOnline');
+				$('#mqttOnlineStat').addClass('mqttOffline');
+				json['mqttOnline'] = 'Offline';
+				json['mqttButton'] = 'Connect';
+			}
+			break;
         default:
             break;
     }
@@ -309,12 +422,8 @@ function sendRequest(page, data, success) {
     if( !data ) data = { action: 'get' };
     $.getJSON(domain + page + '.json', data, success)
             .fail(function(xhr, text_status, error_thrown) {
-                    // Retry after 3s, unless request was explicitly aborted
                     console.log(text_status);
                     console.log(error_thrown);
-                    if( text_status != "abort" ) {
-                        setTimeout( function() { sendRequest(page, data, success) }, 3000 );
-                    }
             });
 }
 
@@ -346,7 +455,6 @@ function getRefreshRate() {
     return rates[$('input[name="refresh"]').val()];
 }
 
-var timeout;
 function updatePage(page, data) {
     if( timeout ) clearTimeout(timeout);
 
@@ -361,6 +469,7 @@ function updatePage(page, data) {
 
     sendRequest(page, data, function(json) {
         renderPage(page, json);
+		if( timeout ) clearTimeout(timeout);
         if(getRefreshRate() != 0)
             timeout = setTimeout(updatePage, getRefreshRate()*1000);
     });
@@ -374,8 +483,12 @@ $(document).on('click', 'a[href^="#"]', function(event) {
 
 function serialize(element) {
     var data = $(element).serialize();
+	alert(data);
     if( $(element).is(':checkbox') && !element.checked ) {
         data += element.name + '=off';
+    }
+	if( $(element).is(':text') ) {
+        data += element.prop('vlaue');
     }
     return data;
 }
@@ -392,7 +505,7 @@ $(document).on('focus', 'input, select', function() {
 
 // Refresh page when leaving input fields
 $(document).on('focusout', 'input, select', function() {
-    updatePage();
+    updatePage(); 
 });
 
 // Load config once to add current clickboards to menu

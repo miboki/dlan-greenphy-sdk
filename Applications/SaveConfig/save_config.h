@@ -48,8 +48,17 @@
 	X(   1, eConfigNetworkNetmask )   \
 	X(   2, eConfigNetworkGateway )   \
 	X(   3, eConfigNetworkHostname )  \
+	X(   4, eConfigNetworkMqttOnPwr ) \
 	X(  10, eConfigClickConfPort1 )   \
 	X(  11, eConfigClickConfPort2 )   \
+	X(  21, eConfigMqttBroker )       \
+	X(  22, eConfigMqttPort )         \
+	X(  23, eConfigMqttClientID )     \
+	X(  24, eConfigMqttUser )         \
+	X(  25, eConfigMqttPassWD )       \
+	X(  26, eConfigMqttWill )         \
+	X(  27, eConfigMqttWillTopic )    \
+	X(  28, eConfigMqttWillMsg )      \
 	/* ADD YOUR OWN TAGS BELOW */     \
 	// X( 128, eConfigCustom )
 
