@@ -39,6 +39,7 @@
 /* FreeRTOS includes. */
 #include <FreeRTOS.h>
 #include "task.h"
+#include "queue.h"
 
 /* FreeRTOS +TCP includes. */
 #include "FreeRTOS_IP.h"
@@ -49,18 +50,56 @@
 #include "network.h"
 #include "save_config.h"
 #include "clickboard_config.h"
+#include "mqtt.h"
 
 /*-----------------------------------------------------------*/
 static void prvTestTask( void *pvParameters )
 {
+	QueueHandle_t xMqttQueue;
+	MqttJob_t xMqttJob;
+	MqttPublishMsg_t xPublish;
+	char buffer[12];
+	char topic [14] = "testtopic/5";
+	int i = 0;
+	vTaskDelay(5000);
 
 	DEBUGOUT( "Test task running.\r\n" );
 
 	/* Add endless loop here to prevent task deletion. */
+	xMqttQueue = xInitMQTT();
+	xMqttJob.eJobType = eConnect;
+	xQueueSendToBack( xMqttQueue, &xMqttJob, 0 );
+
+	xMqttJob.eJobType = ePublish;
+	xMqttJob.data = (void *) &xPublish;
+
+	xPublish.pucTopic = topic;
+	xPublish.xMessage.qos = 0;
+	xPublish.xMessage.retained = 0;
+	for(;;)
+	{
+		if(xPublish.xMessage.payload == NULL)
+		{
+			xPublish.xMessage.payload = buffer;
+			sprintf(buffer, "Message %d", i++ );
+			xPublish.xMessage.payloadlen = strlen(buffer);
+			xQueueSendToBack( xMqttQueue, &xMqttJob, 0 );
+		}
+
+		vTaskDelay(2000);
+	}
+	xMqttJob.eJobType = eDisconnect;
+	xQueueSendToBack( xMqttQueue, &xMqttJob, 0 );
 
 	vTaskDelete( NULL );
 
 }
+
+void vStartEthTasks( void )
+{
+	xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
+}
+
 
 int main(void) {
 	SystemCoreClockUpdate();
@@ -93,7 +132,7 @@ int main(void) {
 
 	xClickboardsInit();
 
-	xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
+	//xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
 
 	vTaskStartScheduler();
 

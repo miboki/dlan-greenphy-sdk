@@ -94,7 +94,7 @@ templates['config'] = `
 		<table class="table table-striped">
 			<tr>
 				<td>Global Task Status</td>
-				<input type="checkbox" name="mqttSwitch" onchange="toggleBit(this, event)" {{#mqtt}}checked{{/mqtt}}>
+				<td><input type="checkbox" name="mqttSwitch" {{#mqttSwitch}}checked{{/mqttSwitch}}></td>
 			</tr>
 		</table>
 `;
@@ -222,7 +222,7 @@ templates['mqtt'] = `
 							<th>Status</th>
 						</tr>
 						<tr>
-							<th><span class="txtcontroll" name="mqttOnlineStat">{{mqttOnline}}</span></th>
+							<th><span id="mqttOnlineStat" name="mqttOnlineStat" class="txtcontroll">{{mqttOnline}}</span></th>
 						</tr>
 					</table>
 				</li>
@@ -246,11 +246,11 @@ templates['mqtt'] = `
 						</tr>
 					</table>
 				</li>
-				<li><input type="button" value="Reboot" onclick="rebootMqttClient();"></li>
+				<li><input type="button" id="mqttboot" value="{{mqttButton}}" onclick="rebootMqttClient();"></li>
 			</ul>
 		</div>
-		<div class="hider" onclick="toggleSettings();">
-			Cornigure Credentials
+		<div class="hider">
+			Configure Credentials
 		</div>
 		<div id="mqttcred">
 			<table class="table table-striped">
@@ -299,24 +299,9 @@ function prevent( event ) {
 
 function rebootMqttClient()
 {
-	sendRequest('mqtt', 'reboot', $.noop );
+	sendRequest('mqtt', 'toggle', $.noop );
 }
 
-function toggleSettings()
-{
-	if( document.getElementById("mqttcred").style.display == "none" )
-	{
-		clearTimeout(timeout);
-		sendRequest('mqtt', 'cred', function(json){
-			renderPage('mqtt', json);
-		});
-		document.getElementById("mqttcred").style.display = "block";
-	}
-	else
-		updatePage();
-}
-
-// Used by the Expand2Click output bits
 // Used by the Expand2Click output bits
 function toggleBit( element, event ) {
     var x = 0;
@@ -348,6 +333,8 @@ function processJSON(page, json) {
             break;
         case 'config':
             $('#nav .clickboard').addClass('hidden');
+			if( json['mqttSwitch'] > 0 )
+				$('#nav li.clickboard').eq(2).removeClass('hidden');
             $.each(json['clickboards'], function(i, clickboard) {
                 clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
                 clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
@@ -408,16 +395,19 @@ function processJSON(page, json) {
                     'options': options
                 });
             }
+			break;
 		case 'mqtt':
-			if( json[mqttUptime] > -1 )
-			{
+			if( json['mqttUptime'] > 0 ) {
+				$('#mqttOnlineStat').removeClass('mqttOffline');
 				$('#mqttOnlineStat').addClass('mqttOnline');
-				$('#mqttOnlineStat').text('Online');
+				json['mqttOnline'] = 'Online';
+				json['mqttButton'] = 'Disconnect';
 			}
-			else
-			{
+			else {
+				$('#mqttOnlineStat').removeClass('mqttOnline');
 				$('#mqttOnlineStat').addClass('mqttOffline');
-				$('#mqttOnlineStat').text('Offline');
+				json['mqttOnline'] = 'Offline';
+				json['mqttButton'] = 'Connect';
 			}
 			break;
         default:
@@ -493,8 +483,12 @@ $(document).on('click', 'a[href^="#"]', function(event) {
 
 function serialize(element) {
     var data = $(element).serialize();
+	alert(data);
     if( $(element).is(':checkbox') && !element.checked ) {
         data += element.name + '=off';
+    }
+	if( $(element).is(':text') ) {
+        data += element.prop('vlaue');
     }
     return data;
 }

@@ -85,10 +85,10 @@ BaseType_t xManagePubCounter( eVarAction xAction )
  ***********************************************************************************************************/
 BaseType_t xManageUptime( eVarAction xAction )
 {
-	static BaseType_t xUptime;
+	static BaseType_t xUptime = -1;
 	switch(xAction){
 	  case eInitialize:
-		xUptime = portGET_RUN_TIME_COUNTER_VALUE();
+		xUptime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		break;
 	  case eSet:
 		xUptime = -1;
@@ -97,7 +97,7 @@ BaseType_t xManageUptime( eVarAction xAction )
 		if( xUptime < 0 )
 			return xUptime;
 		else
-			return ( portGET_RUN_TIME_COUNTER_VALUE() - xUptime );
+			return ( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) - xUptime );
 		break;
 	  default:
 		return -44;
@@ -239,18 +239,18 @@ void vMQTTTask( void *pvParameters )
 			case eConnect:
 				if( xClient.isconnected == 0 )
 				{
-					/* Two tries to connect */
-					for(int i = 0; i < 2; i++)
-					{
-						if( xConnect( &xClient, &xNetwork ) != pdPASS )
-							DEBUGOUT("MQTT-Error 0x0110: Unable to connect to MQTT Broker.\n");
-					}
+					DEBUGOUT(" ** Info ** MQTT Connect\n");
+					if( xConnect( &xClient, &xNetwork ) != pdPASS )
+						DEBUGOUT("MQTT-Error 0x0110: Unable to connect to MQTT Broker.\n");
 				}
 				break;
 
 			case eDisconnect:
 				if( xClient.isconnected )
+				{
+					DEBUGOUT(" ** Info ** MQTT Disconnect\n");
 					MQTTDisconnect( &xClient );
+				}
 				/* Clean up the tcp socket save */
 				vCloseSocket( xClient.ipstack->my_socket );
 				xClient.ipstack->my_socket = NULL;
@@ -260,6 +260,7 @@ void vMQTTTask( void *pvParameters )
 			case ePublish:
 				if( xClient.isconnected )
 				{
+					DEBUGOUT(" ** Info ** MQTT Publish\n");
 					pxPubMsg = (MqttPublishMsg_t *) xJob.data;
 					if( MQTTPublish( &xClient, (pxPubMsg->pucTopic), &( pxPubMsg->xMessage ) ) != SUCCESS_MQTT)
 					{
@@ -268,6 +269,8 @@ void vMQTTTask( void *pvParameters )
 					xManagePubCounter( eSet );
 					pxPubMsg->xMessage.payload = NULL;
 				}
+				else
+					DEBUGOUT("MQTT-Error: 0x0131: Client lost connection. Publish will be discarded.\n");
 				break;
 
 			case eSubscribe:
@@ -275,11 +278,15 @@ void vMQTTTask( void *pvParameters )
 
 			case eRecieve:
 				if( xClient.isconnected )
+				{
+					DEBUGOUT(" ** Info ** MQTT Yield\n");
 					if ( MQTTYield( &xClient, MQTTRECEIVE_TIMEOUT ) != SUCCESS_MQTT )
-						DEBUGOUT("MQTT-Error 0x0140: MQTTYield failed.");
+						DEBUGOUT("MQTT-Error 0x0140: MQTTYield failed.\n");
+				}
 				break;
 
 			case eKill:
+				DEBUGOUT(" ** Info ** MQTT Kill\n");
 				/* Clean up Queue */
 				vQueueDelete( xMqttQueueHandle );
 				xMqttQueueHandle = NULL;
@@ -316,40 +323,49 @@ void vMQTTTask( void *pvParameters )
 	{
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
+		MqttJob_t xManageJob;
 
-		xCount += sprintf( pcBuffer, "{\"mqttUptime\":%d,\"mqttPubMsg\":%d}", xManageUptime( eGet ), xManagePubCounter( eGet ));
-
-		pxParam = pxFindKeyInQueryParams( "cred", pxParams, xParamCount );
+		pxParam = pxFindKeyInQueryParams( "toggle", pxParams, xParamCount );
 		if( pxParam != NULL )
 		{
-			char *pcBroker = netconfigMQTT_BROKER;
-			BaseType_t xPort = netconfigMQTT_PORT;
-			MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+			if( xManageUptime( eGet ) < 0 )
+				xManageJob.eJobType = eConnect;
+			else
+				xManageJob.eJobType = eDisconnect;
 
-			vGetCredentials( eConfigMqttBroker, pcBroker );
-			vGetCredentials( eConfigMqttPort, &xPort );
-			xCount += sprintf( pcBuffer, ",\"bad\":\"%s\",\"bpd\":%d", pcBroker, xPort );
-
-			vGetCredentials( eConfigMqttClientID, connectData.clientID.cstring );
-			if( connectData.clientID.cstring != NULL)
-				xCount += sprintf( pcBuffer, ",\"cID\":\"%s\"", connectData.clientID.cstring );
-
-			vGetCredentials( eConfigMqttUser, connectData.username.cstring );
-			if( connectData.username.cstring != NULL )
-				xCount += sprintf( pcBuffer, ",\"user\":\"%s\"", connectData.username.cstring );
-
-			vGetCredentials( eConfigMqttPassWD, connectData.password.cstring );
-			if( connectData.password.cstring != NULL )
-				xCount += sprintf( pcBuffer, ",\"pwd\":\"%s\"", connectData.password.cstring );
-
-			vGetCredentials( eConfigMqttWill, &(connectData.willFlag) );
-			if( connectData.willFlag )
-			{
-				vGetCredentials( eConfigMqttWillTopic, connectData.will.topicName.cstring );
-				vGetCredentials( eConfigMqttWillMsg, connectData.will.message.cstring );
-				xCount += sprintf( pcBuffer + (xCount -1), ",\"will\":1,\"wtp\":\"%s\",\"wms\":\"%s\"}", connectData.willFlag, connectData.will.message.cstring );
-			}
+			xQueueSendToBack( xMqttQueueHandle, &xManageJob, 0 );
 		}
+
+
+		char *pcBroker = netconfigMQTT_BROKER;
+		BaseType_t xPort = netconfigMQTT_PORT;
+		MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+
+		vGetCredentials( eConfigMqttBroker, pcBroker );
+		vGetCredentials( eConfigMqttPort, &xPort );
+		xCount += sprintf( pcBuffer, "{\"mqttUptime\":%d,\"mqttPubMsg\":%d,\"bad\":\"%s\",\"bpd\":%d", xManageUptime( eGet ), xManagePubCounter( eGet ), pcBroker, xPort );
+
+		vGetCredentials( eConfigMqttClientID, connectData.clientID.cstring );
+		if( connectData.clientID.cstring != NULL)
+			xCount += sprintf( pcBuffer + xCount, ",\"cID\":\"%s\"", connectData.clientID.cstring );
+
+		vGetCredentials( eConfigMqttUser, connectData.username.cstring );
+		if( connectData.username.cstring != NULL )
+			xCount += sprintf( pcBuffer + xCount, ",\"user\":\"%s\"", connectData.username.cstring );
+
+		vGetCredentials( eConfigMqttPassWD, connectData.password.cstring );
+		if( connectData.password.cstring != NULL )
+			xCount += sprintf( pcBuffer + xCount, ",\"pwd\":\"%s\"", connectData.password.cstring );
+
+		vGetCredentials( eConfigMqttWill, &(connectData.willFlag) );
+		if( connectData.willFlag )
+		{
+			vGetCredentials( eConfigMqttWillTopic, connectData.will.topicName.cstring );
+			vGetCredentials( eConfigMqttWillMsg, connectData.will.message.cstring );
+			xCount += sprintf( pcBuffer + (xCount -1), ",\"will\":1,\"wtp\":\"%s\",\"wms\":\"%s\"", connectData.willFlag, connectData.will.message.cstring );
+		}
+
+		xCount += sprintf( pcBuffer + xCount, "}");
 
 		return xCount;
 	}
@@ -434,23 +450,32 @@ void vDeinitMQTT( void )
 	BaseType_t xRet = pdFAIL;
 	MqttJob_t xKillJob;
 
-	/* Deinit-Step 1 of X: Send kill to MqttTask, set it to the top of the queue so no other Jobs will be done */
-	xKillJob.eJobType = eKill;
-	xKillJob.data = NULL;
-	/* sent kill to queue, 2s timeout. _CD_ Task normally needs max 1s to do a Job, so assume it is unresponsive when 2s are passed */
-	xRet = xQueueSendToBack( xMqttQueueHandle, &xKillJob, pdMS_TO_TICKS( 2000 ) );
-
-	/* Deinit-Step 2 of X: Check if kill command was send to queue otherwise kill task manually */
-	if( xRet == errQUEUE_FULL )
+	if(( xMqttQueueHandle != NULL ) || ( xMqttTaskHandle != NULL ))
 	{
-		DEBUGOUT("MQTT-Error 0x0020: Send 'kill' to task failed. Task seems to be unresponsive, will delete it.\n");
-		/* Task could not delete himself, so delete it */
+		/* Deinit-Step 1 of X: Send kill to MqttTask, set it to the top of the queue so no other Jobs will be done */
+		xKillJob.eJobType = eKill;
+		xKillJob.data = NULL;
+		/* sent kill to queue, 2s timeout. _CD_ Task normally needs max 1s to do a Job, so assume it is unresponsive when 2s are passed */
+		xRet = xQueueSendToBack( xMqttQueueHandle, &xKillJob, pdMS_TO_TICKS( 2000 ) );
+
+		/* Deinit-Step 2 of X: Check if kill command was send to queue otherwise kill task manually */
+		if( xRet == errQUEUE_FULL )
+		{
+			DEBUGOUT("MQTT-Error 0x0020: Send 'kill' to task failed. Task seems to be unresponsive, will delete it.\n");
+			/* Task could not delete himself, so delete it */
+			vTaskDelete( xMqttTaskHandle );
+			xMqttTaskHandle = NULL;
+
+			/* Clean up Queue */
+			vQueueDelete( xMqttQueueHandle );
+			xMqttQueueHandle = NULL;
+		}
+	}
+	else if( xMqttTaskHandle != NULL )
+	{
+		/* No Queue available for mqtt task, so kill it. */
 		vTaskDelete( xMqttTaskHandle );
 		xMqttTaskHandle = NULL;
-
-		/* Clean up Queue */
-		vQueueDelete( xMqttQueueHandle );
-		xMqttQueueHandle = NULL;
 	}
 
 	#if( includeHTTP_DEMO != 0 )

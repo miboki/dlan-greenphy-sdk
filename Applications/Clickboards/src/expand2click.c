@@ -151,6 +151,9 @@ char lastBits = get_expand2click();
 	MqttPublishMsg_t xPublish;
 
 	/* Set all connection details only once */
+	xJob.eJobType = ePublish;
+	xJob.data = (void *) &xPublish;
+
 	xPublish.pucTopic = pucExpTopic;
 	xPublish.xMessage.qos = 0;
 	xPublish.xMessage.retained = 0;
@@ -199,8 +202,6 @@ char lastBits = get_expand2click();
 					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 					xPublish.xMessage.payload = buffer;
 					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
-					xJob.eJobType = ePublish;
-					xJob.data = (void *) &xPublish;
 					xQueueSendToBack( xMqttQueue, &xJob, 0 );
 				}
 				else
