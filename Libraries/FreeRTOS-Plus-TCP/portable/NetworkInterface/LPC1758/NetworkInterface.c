@@ -173,6 +173,7 @@ static TaskHandle_t xEMACTaskHandle = NULL;
 a maximum count of ipconfigNUM_TX_DESCRIPTORS, which is the number of
 DMA TX descriptors. */
 static SemaphoreHandle_t xTXDescriptorSemaphore = NULL;
+static SemaphoreHandle_t xTXMutex = NULL;
 
 /* The EMAC DMA descriptors are stored in AHB SRAM for faster access */
 static __attribute__ ((section(".bss.$RAM2")))
@@ -467,6 +468,8 @@ NetworkEndPoint_t *pxEndPoint;
 			/* Create a semaphore which counts free TX descriptors. */
 			xTXDescriptorSemaphore = xSemaphoreCreateCounting( ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS, ( UBaseType_t ) ipconfigNUM_TX_DESCRIPTORS );
 			configASSERT( xTXDescriptorSemaphore );
+			xTXMutex = xSemaphoreCreateMutex();
+			configASSERT( xTXMutex );
 		}
 
 		/* Guard against the task being created more than once. */
@@ -515,14 +518,13 @@ BaseType_t xLPC1758_NetworkInterfaceOutput( NetworkInterface_t *pxInterface, Net
 BaseType_t xReturn = pdFAIL;
 const TickType_t xBlockTimeTicks = pdMS_TO_TICKS( 250 );
 UBaseType_t ulTxProduceIndex;
-static UBaseType_t ulTxProduceIndexTest = 0;
 
 	if( xLPC1758_GetPhyLinkStatus( pxInterface ) == pdPASS )
 	{
 
 		do
 		{
-			if( xTXDescriptorSemaphore == NULL )
+			if( ( xTXDescriptorSemaphore == NULL ) || ( xTXMutex == NULL ) )
 			{
 				break;
 			}
@@ -536,11 +538,16 @@ static UBaseType_t ulTxProduceIndexTest = 0;
 			available */
 			configASSERT( !Chip_ENET_IsTxFull( LPC_ETHERNET ) );
 
-			taskENTER_CRITICAL();
+			/* Ensure only one task is accessing critical section of
+			xLPC1758_NetworkInterfaceOutput at the same time. */
+			if( xSemaphoreTake( xTXMutex, xBlockTimeTicks ) != pdPASS )
+			{
+				/* Mutex access failed, release semaphore and exit. */
+				xSemaphoreGive( xTXDescriptorSemaphore );
+				break;
+			}
 
 			ulTxProduceIndex = Chip_ENET_GetTXProduceIndex( LPC_ETHERNET );
-			configASSERT( ulTxProduceIndexTest == ulTxProduceIndex );
-			ulTxProduceIndexTest = ( ( ulTxProduceIndexTest + 1 ) % ipconfigNUM_TX_DESCRIPTORS );
 
 			#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
 			{
@@ -568,13 +575,12 @@ static UBaseType_t ulTxProduceIndexTest = 0;
 			indicate it's the frame's last (and only) descriptor */
 			xDMATxDescriptors[ ulTxProduceIndex ].Control = ( uint32_t ) ENET_TCTRL_SIZE( pxDescriptor->xDataLength ) | ENET_TCTRL_INT | ENET_TCTRL_LAST;
 
-			iptraceNETWORK_INTERFACE_TRANSMIT();
-
 			/* Increase the current Tx Produce Descriptor Index to start transmission*/
-
 			Chip_ENET_IncTXProduceIndex(LPC_ETHERNET);
 
-			taskEXIT_CRITICAL();
+			xSemaphoreGive( xTXMutex );
+
+			iptraceNETWORK_INTERFACE_TRANSMIT();
 
 			/* The Tx has been initiated. */
 			xReturn = pdPASS;
@@ -601,7 +607,7 @@ TickType_t xPhyPollTime = pdMS_TO_TICKS( PHY_LS_HIGH_CHECK_TIME_MS );
 NetworkInterface_t *pxInterface = ( NetworkInterface_t *) pvParameters;
 uint32_t ulNotificationValue;
 eFrameProcessingResult_t eResult;
-UBaseType_t ulRxConsumeIndex, ulTxCleanupCount;
+UBaseType_t ulConsumeIndex;
 NetworkBufferDescriptor_t *pxDescriptor;
 #if( ipconfigZERO_COPY_RX_DRIVER != 0 )
 	NetworkBufferDescriptor_t *pxNewDescriptor;
@@ -650,9 +656,9 @@ IPStackEvent_t xIPStackEvent;
 				/* Check if a packet has been received. */
 				while( !Chip_ENET_IsRxEmpty(LPC_ETHERNET) )
 				{
-					ulRxConsumeIndex = Chip_ENET_GetRXConsumeIndex( LPC_ETHERNET );
+					ulConsumeIndex = Chip_ENET_GetRXConsumeIndex( LPC_ETHERNET );
 
-					eResult = ipCONSIDER_FRAME_FOR_PROCESSING( ( const uint8_t * const ) ( xDMARxDescriptors[ ulRxConsumeIndex ].Packet ) );
+					eResult = ipCONSIDER_FRAME_FOR_PROCESSING( ( const uint8_t * const ) ( xDMARxDescriptors[ ulConsumeIndex ].Packet ) );
 					if( eResult == eProcessBuffer )
 					{
 						/* A packet was received, set PHY status to connected. */
@@ -680,13 +686,13 @@ IPStackEvent_t xIPStackEvent;
 						{
 
 							/* Get the actual length. */
-							xDataLength = ( size_t ) ENET_RINFO_SIZE( xDMARxStatus[ ulRxConsumeIndex ].StatusInfo ) - 4; /* Remove FCS */
+							xDataLength = ( size_t ) ENET_RINFO_SIZE( xDMARxStatus[ ulConsumeIndex ].StatusInfo ) - 4; /* Remove FCS */
 
 							#if( ipconfigZERO_COPY_RX_DRIVER != 0 )
 							{
 								/* Obtain the associated network buffer to pass this
 								data into the stack. */
-								pxDescriptor = pxPacketBuffer_to_NetworkBuffer( ( uint8_t * ) xDMARxDescriptors[ ulRxConsumeIndex ].Packet );
+								pxDescriptor = pxPacketBuffer_to_NetworkBuffer( ( uint8_t * ) xDMARxDescriptors[ ulConsumeIndex ].Packet );
 								/* This zero-copy driver makes sure that every 'xDMARxDescriptors' contains
 								a reference to a Network Buffer at any time.
 								In case it runs out of Network Buffers, a DMA buffer won't be replaced,
@@ -694,7 +700,7 @@ IPStackEvent_t xIPStackEvent;
 								configASSERT( pxDescriptor != NULL );
 
 								/* Assign the new Network Buffer to the DMA descriptor. */
-								xDMARxDescriptors[ ulRxConsumeIndex ].Packet = ( uint32_t ) pxNewDescriptor->pucEthernetBuffer;
+								xDMARxDescriptors[ ulConsumeIndex ].Packet = ( uint32_t ) pxNewDescriptor->pucEthernetBuffer;
 							}
 							#else
 							{
@@ -712,7 +718,7 @@ IPStackEvent_t xIPStackEvent;
 								#if( ipconfigZERO_COPY_RX_DRIVER == 0 )
 								{
 									/* Copy the data into the allocated buffer. */
-									memcpy( ( void * ) pxDescriptor->pucEthernetBuffer, ( void * ) xDMARxDescriptors[ ulRxConsumeIndex ].Packet, usLength );
+									memcpy( ( void * ) pxDescriptor->pucEthernetBuffer, ( void * ) xDMARxDescriptors[ ulConsumeIndex ].Packet, usLength );
 								}
 								#endif /* ipconfigZERO_COPY_RX_DRIVER */
 
@@ -760,14 +766,14 @@ IPStackEvent_t xIPStackEvent;
 					}
 
 					/* Release the DMA descriptor. */
-					Chip_ENET_IncRXConsumeIndex(LPC_ETHERNET);
+					Chip_ENET_IncRXConsumeIndex( LPC_ETHERNET );
 				}
 			} /* ENET_INT_RXDONE */
 			if ( ( ulNotificationValue & ENET_INT_TXDONE ) != 0x00 )
 			{
-				/* Check if TX needs cleanup. */
-				ulTxCleanupCount = uxSemaphoreGetCount( xTXDescriptorSemaphore );
-				while( ulTxCleanupCount != ipconfigNUM_TX_DESCRIPTORS )
+				/* TX needs cleanup. */
+				ulConsumeIndex = Chip_ENET_GetTXConsumeIndex( LPC_ETHERNET );
+				while( ulTxCleanupIndex != ulConsumeIndex )
 				{
 					#if( ipconfigZERO_COPY_TX_DRIVER != 0 )
 					{
@@ -778,7 +784,6 @@ IPStackEvent_t xIPStackEvent;
 						In case it runs out of Network Buffers, a DMA buffer won't be replaced,
 						and the received messages is dropped. */
 						configASSERT( pxDescriptor != NULL );
-
 
 						vReleaseNetworkBufferAndDescriptor( pxDescriptor ) ;
 						xDMATxDescriptors[ ulTxCleanupIndex ].Packet = ( uint32_t )0u;
@@ -794,8 +799,6 @@ IPStackEvent_t xIPStackEvent;
 					{
 						ulTxCleanupIndex = 0;
 					}
-
-					++ulTxCleanupCount;
 				}
 			}
 		}
