@@ -214,7 +214,7 @@ templates['expand2'] = `
 `;
 templates['mqtt'] = `
 		<h3>MQTT Client Information</h3>
-		<div class="mstate">
+		<div class="mstate" id="mstate">
 			<ul>
 				<li>
 					<table>
@@ -398,14 +398,14 @@ function processJSON(page, json) {
 			break;
 		case 'mqtt':
 			if( json['mqttUptime'] > 0 ) {
-				$('#mqttOnlineStat').removeClass('mqttOffline');
-				$('#mqttOnlineStat').addClass('mqttOnline');
+				$('#mstate li').eq(0).removeClass('mqttOffline');
+				$('#mstate li').eq(0).addClass('mqttOnline');
 				json['mqttOnline'] = 'Online';
 				json['mqttButton'] = 'Disconnect';
 			}
 			else {
-				$('#mqttOnlineStat').removeClass('mqttOnline');
-				$('#mqttOnlineStat').addClass('mqttOffline');
+				$('#mstate li').eq(0).removeClass('mqttOnline');
+				$('#mstate li').eq(0).addClass('mqttOffline');
 				json['mqttOnline'] = 'Offline';
 				json['mqttButton'] = 'Connect';
 			}
@@ -483,13 +483,13 @@ $(document).on('click', 'a[href^="#"]', function(event) {
 
 function serialize(element) {
     var data = $(element).serialize();
-	alert(data);
     if( $(element).is(':checkbox') && !element.checked ) {
         data += element.name + '=off';
     }
 	if( $(element).is(':text') ) {
-        data += element.prop('vlaue');
+        data = element.prop('name') + ':' + element.prop('value');
     }
+	alert(data);
     return data;
 }
 

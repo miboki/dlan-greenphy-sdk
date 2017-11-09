@@ -141,6 +141,20 @@ void vGetCredentials( eConfigTag_t eConfigMqtt, void *pvBuffer )
 }
 
 
+/***********************************************************************************************************
+ *   function: vSetCredentials
+ *   Purpose: Set Parameter in Config. Will not write Config into the flash.
+ *   Parameter: eConfigTag_t eConfigMqtt - Tag specifies which parameter should be set (same name as in config)
+ *   			void *pvBuffer - Pointer to data which sould be written in config
+ ***********************************************************************************************************/
+void vSetCredentials( eConfigTag_t eConfigMqtt, void *pvBuffer, uint16_t usSize )
+{
+	if( pvBuffer != NULL )
+		pvSetConfig( eConfigMqtt, usSize, pvBuffer );
+	else
+		pvSetConfig( eConfigMqtt, 0, NULL);
+}
+
 
 /***********************************************************************************************************
  *   function: xConnect
@@ -161,7 +175,7 @@ BaseType_t xConnect( MQTTClient *pxClient, Network *pxNetwork )
 	/* Establish TCP connection to broker. No MQTT Connection at this point */
 	if( NetworkConnect( pxNetwork, pcBroker, xPort ) != 0 )
 	{
-		DEBUGOUT("MQTT-Error 0x0111: Error while NetworkConnect. %s, Port %d", pcBroker, xPort);
+		DEBUGOUT("MQTT-Error 0x0111: Error while NetworkConnect. %s, Port %d\n", pcBroker, xPort);
 		vCloseSocket( pxClient->ipstack->my_socket );
 		pxClient->ipstack->my_socket = NULL;
 		return pdFAIL;
@@ -325,6 +339,11 @@ void vMQTTTask( void *pvParameters )
 		QueryParam_t *pxParam;
 		MqttJob_t xManageJob;
 
+		unsigned char ucWill;
+		char *pcBroker = netconfigMQTT_BROKER;
+		BaseType_t xPort = netconfigMQTT_PORT;
+		MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+
 		pxParam = pxFindKeyInQueryParams( "toggle", pxParams, xParamCount );
 		if( pxParam != NULL )
 		{
@@ -336,10 +355,69 @@ void vMQTTTask( void *pvParameters )
 			xQueueSendToBack( xMqttQueueHandle, &xManageJob, 0 );
 		}
 
+		/* ------------------ Check for Broker Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "broker", pxParams, xParamCount );
+		if( pxParam != NULL )
+			vSetCredentials( eConfigMqttBroker, pxParam->pcValue, strlen(pxParam->pcValue) );
 
-		char *pcBroker = netconfigMQTT_BROKER;
-		BaseType_t xPort = netconfigMQTT_PORT;
-		MQTTPacket_connectData connectData = MQTTCREDENTIALS_INIT;
+		/* ------------------ Check for Port Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "port", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			xPort = strtol( pxParam->pcValue, NULL, 10 );
+			vSetCredentials( eConfigMqttPort, &xPort, sizeof(xPort) );
+		}
+
+		/* ------------------ Check for Client Name Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "client", pxParams, xParamCount );
+		if( pxParam != NULL )
+			vSetCredentials( eConfigMqttClientID, pxParam->pcValue, strlen(pxParam->pcValue) );
+
+		/* ------------------ Check for Username Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "user", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "") == 0 )
+				pxParam->pcValue = NULL;
+			vSetCredentials( eConfigMqttUser, pxParam->pcValue, strlen(pxParam->pcValue) );
+		}
+
+		/* ------------------ Check for Password Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "password", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "") == 0 )
+				pxParam->pcValue = NULL;
+			vSetCredentials( eConfigMqttPassWD, pxParam->pcValue, strlen(pxParam->pcValue) );
+		}
+
+		/* ------------------ Check for Will Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "will", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "on" ) == 0 )
+				ucWill = 1;
+			if( strcmp( pxParam->pcValue, "off" ) == 0 )
+				ucWill = 0;
+			vSetCredentials( eConfigMqttWill, &ucWill, 1 );
+		}
+		/* ------------------ Check for Will Topic Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "willtopic", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "") == 0 )
+				pxParam->pcValue = NULL;
+			vSetCredentials( eConfigMqttWillTopic, pxParam->pcValue, strlen(pxParam->pcValue) );
+		}
+
+		/* ------------------ Check for Will Message Parameter ------------------*/
+		pxParam = pxFindKeyInQueryParams( "willmessage", pxParams, xParamCount );
+		if( pxParam != NULL )
+		{
+			if( strcmp( pxParam->pcValue, "") == 0 )
+				pxParam->pcValue = NULL;
+			vSetCredentials( eConfigMqttWillMsg, pxParam->pcValue, strlen(pxParam->pcValue) );
+		}
 
 		vGetCredentials( eConfigMqttBroker, pcBroker );
 		vGetCredentials( eConfigMqttPort, &xPort );

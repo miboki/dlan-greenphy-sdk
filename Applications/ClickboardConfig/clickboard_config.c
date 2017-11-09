@@ -248,6 +248,7 @@ BaseType_t xSuccess = pdFALSE;
 			vEraseConfig();
 		}
 
+	#if( netconfigUSEMQTT != 0 )
 		pxParam = pxFindKeyInQueryParams( "mqttSwitch", pxParams, xParamCount );
 		if( pxParam != NULL )
 		{
@@ -260,6 +261,7 @@ BaseType_t xSuccess = pdFALSE;
 				vDeinitMQTT();
 			}
 		}
+	#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */

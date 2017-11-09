@@ -51,7 +51,7 @@
 #include "http_request.h"
 #include "clickboard_config.h"
 #include "expand2click.h"
-
+#include "save_config.h"
 
 /* MQTT includes */
 #include "mqtt.h"
@@ -202,6 +202,7 @@ char lastBits = get_expand2click();
 					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 					xPublish.xMessage.payload = buffer;
 					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
+					xPublish.xMessage.payloadlen = strlen(buffer);
 					xQueueSendToBack( xMqttQueue, &xJob, 0 );
 				}
 				else
@@ -232,17 +233,20 @@ char lastBits = get_expand2click();
 		if( pxParam != NULL ) {
 			toggleCount[0] = 0;
 			togglePins[0] = strtol( pxParam->pcValue, NULL, 10 );
+			pvSetConfig( eConfigExpandPin1, sizeof( togglePins[0] ), &( togglePins[0] ));
 		}
 
 		pxParam = pxFindKeyInQueryParams( "pin1", pxParams, xParamCount );
 		if( pxParam != NULL ) {
 			toggleCount[1] = 0;
 			togglePins[1] = strtol( pxParam->pcValue, NULL, 10 );
+			pvSetConfig( eConfigExpandPin2, sizeof( togglePins[1] ), &( togglePins[1] ));
 		}
 
 		pxParam = pxFindKeyInQueryParams( "multi", pxParams, xParamCount );
 		if( pxParam != NULL ) {
 			multiplicator = strtol( pxParam->pcValue, NULL, 10 );
+			pvSetConfig( eConfigExpandMult, sizeof( multiplicator ), &( multiplicator ));
 		}
 
 		xCount += sprintf( pcBuffer, "{"

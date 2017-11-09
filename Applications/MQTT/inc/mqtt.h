@@ -28,7 +28,8 @@
 			120, 1, 0, MQTTPacket_willOptions_initializer, \
 			{NULL, {0, NULL}}, \
 			{NULL, {0, NULL}} }
-#define netconfigMQTT_BROKER "broker.hivemq.com"
+#define netconfigMQTT_BROKER "test.mosquitto.org"
+//#define netconfigMQTT_BROKER "broker.hivemq.com"
 #define netconfigMQTT_PORT 1883
 
 #include "MQTTClient.h"

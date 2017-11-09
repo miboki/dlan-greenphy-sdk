@@ -126,6 +126,9 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 	MqttPublishMsg_t xPublish;
 
 	/* Set all connection details only once */
+	xJob.eJobType = ePublish;
+	xJob.data = (void *) &xPublish;
+
 	xPublish.pucTopic = pucTempTopic;
 	xPublish.xMessage.qos = 0;
 	xPublish.xMessage.retained = 0;
@@ -165,8 +168,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 						/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 						xPublish.xMessage.payload = buffer;
 						sprintf(buffer, "{\"meaning\":\"temperature\",\"value\":%d}", temp_cur);
-						xJob.eJobType = ePublish;
-						xJob.data = (void *) &xPublish;
+						xPublish.xMessage.payloadlen = strlen(buffer);
 						xQueueSendToBack( xMqttQueue, &xJob, 0 );
 					}
 					else
