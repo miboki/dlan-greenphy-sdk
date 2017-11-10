@@ -69,6 +69,14 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 }
 /*-----------------------------------------------------------*/
 
+void vAssertCalled( const char *pcFilename, int lLine )
+{
+	DEBUGOUT( "Assert failed: line %d in %s\r\n", lLine, pcFilename );
+	for( ;; )
+		;
+}
+/*-----------------------------------------------------------*/
+
 void vConfigureTimerForRunTimeStats(void) {
 	/* This function configures a timer that is used as the time base when
 	 collecting run time statistical information - basically the percentage

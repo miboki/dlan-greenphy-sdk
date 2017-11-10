@@ -32,6 +32,11 @@
  *
  */
 
+/* FreeRTOS includes. */
+#include <FreeRTOS.h>
+#include "task.h"
+
+/* GreenPHY SDK includes. */
 #include "lpc_gpio_interrupt.h"
 
 struct interruptHandlerGPIO {
@@ -61,7 +66,7 @@ Bool found = FALSE;
 
 	if(func && dispatcher.used < sizeof(dispatcher.handlers))
 	{
-		portENTER_CRITICAL();
+		taskENTER_CRITICAL();
 		for(i=0;i<dispatcher.used;i+=1)
 		{
 			if(dispatcher.handlers[i].port == port && dispatcher.handlers[i].pin == pin)
@@ -91,7 +96,7 @@ Bool found = FALSE;
 			dispatcher.used++;
 			rv = SUCCESS;
 		}
-		portEXIT_CRITICAL();
+		taskEXIT_CRITICAL();
 	}
 	return rv;
 }
@@ -99,10 +104,10 @@ Bool found = FALSE;
 Status unregisterInterruptHandlerGPIO(int port, int pin)
 {
 Status rv = ERROR;
-uint32_t pins;
+uint32_t pins, interrupts;
 int i;
 
-	portENTER_CRITICAL();
+	interrupts = taskENTER_CRITICAL_FROM_ISR();
 	for(i=0;i<dispatcher.used;i+=1)
 	{
 		if(dispatcher.handlers[i].port == port && dispatcher.handlers[i].pin == pin)
@@ -133,7 +138,7 @@ int i;
 			break;
 		}
 	}
-	portEXIT_CRITICAL();
+	taskEXIT_CRITICAL_FROM_ISR(interrupts);
 	return rv;
 }
 

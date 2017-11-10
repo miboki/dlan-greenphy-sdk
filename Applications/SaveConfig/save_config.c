@@ -291,7 +291,7 @@ BaseType_t xReturn = pdFAIL;
 
 	if( ( pxConfig != NULL ) )
 	{
-		configASSERT( prvConfigValid( pxConfig ) == pdTRUE );
+		configASSERT( prvVerifyConfig( pxConfig ) == pdPASS );
 
 		/* Clean cache before (re-)reading config. */
 		prvCleanCache();

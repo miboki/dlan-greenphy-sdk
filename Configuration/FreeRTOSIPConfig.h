@@ -80,6 +80,11 @@ messages. */
 	#define FreeRTOS_printf(X)                   printf X
 #endif
 
+#ifdef DEBUG
+	#define ipconfigCHECK_IP_QUEUE_SPACE             1
+	#define ipconfigTCP_IP_SANITY                    1
+#endif
+
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
 on).  Valid options are pdFREERTOS_BIG_ENDIAN and pdFREERTOS_LITTLE_ENDIAN. */
 #define ipconfigBYTE_ORDER                       pdFREERTOS_LITTLE_ENDIAN

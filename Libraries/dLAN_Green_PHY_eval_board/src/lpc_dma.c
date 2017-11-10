@@ -32,6 +32,11 @@
  *
  */
 
+/* FreeRTOS includes. */
+#include <FreeRTOS.h>
+#include "task.h"
+
+/* GreenPHY SDK includes. */
 #include "lpc_dma.h"
 
 struct interruptHandlerDMA {
@@ -51,9 +56,9 @@ static struct interruptDispatcherDMA dispatcher = {
 
 Status registerInterruptHandlerDMA( uint8_t ChannelNum, interruptHandlerFunc func )
 {
-	Status rv = ERROR;
+Status rv = ERROR;
 
-	portENTER_CRITICAL();
+	taskENTER_CRITICAL();
 	if( func && !dispatcher.handler[ChannelNum].func ) {
 		if(dispatcher.used == 0)
 		{
@@ -64,16 +69,17 @@ Status registerInterruptHandlerDMA( uint8_t ChannelNum, interruptHandlerFunc fun
 		dispatcher.used += 1;
 		rv = SUCCESS;
 	}
-	portEXIT_CRITICAL();
+	taskEXIT_CRITICAL();
 
 	return rv;
 }
 
 Status unregisterInterruptHandlerDMA( uint8_t ChannelNum )
 {
-	Status rv = ERROR;
+uint32_t interrupts;
+Status rv = ERROR;
 
-	portENTER_CRITICAL();
+	interrupts = taskENTER_CRITICAL_FROM_ISR();
 	if( dispatcher.handler[ChannelNum].func )
 	{
 		dispatcher.handler[ChannelNum].func = NULL;
@@ -84,7 +90,7 @@ Status unregisterInterruptHandlerDMA( uint8_t ChannelNum )
 		}
 		rv = SUCCESS;
 	}
-	portEXIT_CRITICAL();
+	taskEXIT_CRITICAL_FROM_ISR(interrupts);
 
 	return rv;
 }
