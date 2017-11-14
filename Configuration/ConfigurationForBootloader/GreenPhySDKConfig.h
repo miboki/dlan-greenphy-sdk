@@ -38,9 +38,12 @@
 #define BUILD_STRING VERSION_STRING " - " __DATE__ " " __TIME__
 
 /* Includes. */
-#define includeHTTP_DEMO       1
+#define includeHTTP_DEMO       0
 
 /* Clickboard defines. */
-#define includeCOLOR2_CLICK    1
-#define includeTHERMO3_CLICK   1
-#define includeEXPAND2_CLICK   1
+#define includeCOLOR2_CLICK    0
+#define includeTHERMO3_CLICK   0
+#define includeEXPAND2_CLICK   0
+
+/* Bootloader defines. */
+#define sdkconfigUSER_PROGRAM_START          0x010000 /* 64 kb. */

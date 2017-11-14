@@ -74,6 +74,9 @@
 /* FreeRTOS+FAT includes. */
 #include "ff_stdio.h"
 
+/* Just make sure the contents do not get compiled if HTTP is not enabled. */
+#if ipconfigUSE_HTTP == 1
+
 #ifndef HTTP_SERVER_BACKLOG
 	#define HTTP_SERVER_BACKLOG			( 12 )
 #endif
@@ -726,3 +729,5 @@ BaseType_t xLength = strlen( pcDir );
 	}
 }
 /*-----------------------------------------------------------*/
+
+#endif /* ipconfigUSE_HTTP */

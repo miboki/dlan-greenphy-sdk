@@ -46,6 +46,7 @@
 #define netconfigUSE_IP                1
 #define netconfigUSE_DHCP              1
 #define netconfigUSE_HTTP              1
+#define netconfigUSE_TFTP              0
 
 /* Hostname, used for DHCP */
 #define netconfigUSE_DYNAMIC_HOSTNAME  1  /* If defined hostname will be "devolo-MAC" with MAC being the last

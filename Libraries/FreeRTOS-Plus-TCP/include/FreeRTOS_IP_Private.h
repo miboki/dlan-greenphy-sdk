@@ -1002,12 +1002,15 @@ The socket is checked for its type: IPv4 or IPv6. */
 	/* prepare a string which describes a socket, just for logging. */
 	const char *prvSocketProps( FreeRTOS_Socket_t *pxSocket );
 #endif /* ipconfigHAS_DEBUG_PRINTF || ipconfigHAS_PRINTF */
-/*
- * Internal: Sets a new state for a TCP socket
- * and performs the necessary actions like calling a OnConnected handler
- * to notify the socket owner
- */
-void vTCPStateChange( FreeRTOS_Socket_t *pxSocket, enum eTCP_STATE eTCPState );
+
+#if( ipconfigUSE_TCP == 1 )
+	/*
+	 * Internal: Sets a new state for a TCP socket
+	 * and performs the necessary actions like calling a OnConnected handler
+	 * to notify the socket owner
+	 */
+	void vTCPStateChange( FreeRTOS_Socket_t *pxSocket, enum eTCP_STATE eTCPState );
+#endif /* ipconfigUSE_TCP */
 
 /*_RB_ Should this be part of the public API? */
 void FreeRTOS_netstat( void );

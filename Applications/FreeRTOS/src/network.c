@@ -160,6 +160,12 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 			}
 			#endif /* netconfigUSE_HTTP */
 
+			#if( netconfigUSE_TFTP != 0 )
+			{
+				vBootloaderInit();
+			}
+			#endif /* netconfigUSE_TFTP */
+
 			/* The network is up and configured.  Print out the configuration,
 			which may have been obtained from a DHCP server. */
 			FreeRTOS_GetAddressConfiguration( pxEndPoint,

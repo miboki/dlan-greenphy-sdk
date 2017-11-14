@@ -1,0 +1,2 @@
+void vBootloaderInit();
+void vStartApplication();
