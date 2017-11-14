@@ -96,7 +96,7 @@
 
 /*-----------------------------------------------------------*/
 
-#if( netconfigUSE_IP != 0 )
+#if( netconfigUSE_HTTP != 0 )
 	static void prvServerWorkTask( void *pvParameters )
 	{
 	const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 200UL );
@@ -123,14 +123,13 @@
 			FreeRTOS_HTTPServerWork( pxHTTPServer, xInitialBlockTime );
 		}
 	}
-#endif
+#endif /* netconfigUSE_HTTP */
 /*-----------------------------------------------------------*/
 
 void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEndPoint_t *pxEndPoint  ) {
 	#if( netconfigUSE_IP != 0 )
 	{
 	uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
-	static BaseType_t xTasksAlreadyCreated = pdFALSE;
 	int8_t cBuffer[ 16 ];
 
 		/* Check this was a network up event, as opposed to a network down event. */
@@ -138,21 +137,28 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 		if( eNetworkEvent == eNetworkUp )
 		{
 			DEBUGOUT("Network up\r\n");
-			/* Create the tasks that use the TCP/IP stack if they have not already been
-			created. */
-			if( xTasksAlreadyCreated == pdFALSE )
+
+			#if( netconfigUSE_HTTP != 0 )
 			{
-				/*
-				 * Create the tasks here.
-				 */
+			static BaseType_t xTasksAlreadyCreated = pdFALSE;
 
-				#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
+				/* Create the tasks that use the TCP/IP stack if they have not already been
+				created. */
+				if( xTasksAlreadyCreated == pdFALSE )
+				{
+					/*
+					 * Create the tasks here.
+					 */
 
-				xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
+					#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
+
+					xTaskCreate( prvServerWorkTask, "SvrWork", mainTCP_SERVER_STACK_SIZE, NULL, ipconfigIP_TASK_PRIORITY - 1, NULL );
 
 
-				xTasksAlreadyCreated = pdTRUE;
+					xTasksAlreadyCreated = pdTRUE;
+				}
 			}
+			#endif /* netconfigUSE_HTTP */
 
 			/* The network is up and configured.  Print out the configuration,
 			which may have been obtained from a DHCP server. */

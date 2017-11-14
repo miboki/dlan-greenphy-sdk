@@ -41,10 +41,11 @@
 #define netconfigBRIDGE_INTERFACE      3
 
 /* IP stack configuration. */
+#define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE /* Select one of the three defines above. */
+#define netconfigUSE_BRIDGE            1
 #define netconfigUSE_IP                1
 #define netconfigUSE_DHCP              1
-#define netconfigUSE_BRIDGE            1
-#define netconfigIP_INTERFACE          netconfigBRIDGE_INTERFACE /* Select one of the three defines above. */
+#define netconfigUSE_HTTP              1
 
 /* Hostname, used for DHCP */
 #define netconfigUSE_DYNAMIC_HOSTNAME  1  /* If defined hostname will be "devolo-MAC" with MAC being the last
