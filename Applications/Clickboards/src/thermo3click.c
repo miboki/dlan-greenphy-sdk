@@ -163,7 +163,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 				xMqttQueue = xGetMQTTQueueHandle();
 				if( xMqttQueue != NULL )
 				{
-					if(xPublish.xMessage.payload != NULL)
+					if(xPublish.xMessage.payload == NULL)
 					{
 						/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 						xPublish.xMessage.payload = buffer;

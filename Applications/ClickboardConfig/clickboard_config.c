@@ -255,10 +255,13 @@ BaseType_t xSuccess = pdFALSE;
 			if( strcmp( pxParam->pcValue, "on" ) == 0 )
 			{
 				xInitMQTT();
+				char on = 1;
+				pvSetConfig( eConfigNetworkMqttOnPwr, 1, &on );
 			}
 			if( strcmp( pxParam->pcValue, "off" ) == 0 )
 			{
 				vDeinitMQTT();
+				pvSetConfig( eConfigNetworkMqttOnPwr, 0, NULL );
 			}
 		}
 	#endif /* #if( netconfigUSEMQTT != 0 ) */

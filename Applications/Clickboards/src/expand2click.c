@@ -197,7 +197,7 @@ char lastBits = get_expand2click();
 			xMqttQueue = xGetMQTTQueueHandle();
 			if( xMqttQueue != NULL )
 			{
-				if(xPublish.xMessage.payload != NULL)
+				if(xPublish.xMessage.payload == NULL)
 				{
 					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 					xPublish.xMessage.payload = buffer;

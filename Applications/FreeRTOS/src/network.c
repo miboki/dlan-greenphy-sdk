@@ -149,6 +149,12 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				 */
 				vStartEthTasks();
 
+			#if( netconfigUSEMQTT != 0 )
+				char *cMqttActive = NULL;
+				cMqttActive = (char *) pvGetConfig( eConfigNetworkMqttOnPwr, NULL );
+				if( cMqttActive != NULL )
+					xInitMQTT();
+			#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 				#define	mainTCP_SERVER_STACK_SIZE						240 /* Not used in the Win32 simulator. */
 
