@@ -214,7 +214,7 @@ templates['expand2'] = `
 `;
 templates['mqtt'] = `
 		<h3>MQTT Client Information</h3>
-		<div class="mstate" id="mstate">
+		<div class="mstate">
 			<ul>
 				<li>
 					<table>
@@ -222,7 +222,7 @@ templates['mqtt'] = `
 							<th>Status</th>
 						</tr>
 						<tr>
-							<th><span id="mqttOnlineStat" name="mqttOnlineStat" class="txtcontroll">{{mqttOnline}}</span></th>
+							<th><span class="txtcontroll {{mqttVisual}}">{{mqttOnline}}</span></th>
 						</tr>
 					</table>
 				</li>
@@ -256,7 +256,7 @@ templates['mqtt'] = `
 			<table class="table table-striped">
 				<tr>
 					<td>Broker Address</td>
-					<td><input type="text" id="broker" value="{{bad}}"></td>
+					<td><input type="text" name="broker" value="{{bad}}"></td>
 				</tr>
 				<tr>
 					<td>Broker Port</td>
@@ -398,14 +398,12 @@ function processJSON(page, json) {
 			break;
 		case 'mqtt':
 			if( json['mqttUptime'] > 0 ) {
-				$('#mstate li').eq(0).removeClass('mqttOffline');
-				$('#mstate li').eq(0).addClass('mqttOnline');
+				json['mqttVisual'] = 'mqttOnline';
 				json['mqttOnline'] = 'Online';
 				json['mqttButton'] = 'Disconnect';
 			}
 			else {
-				$('#mstate li').eq(0).removeClass('mqttOnline');
-				$('#mstate li').eq(0).addClass('mqttOffline');
+				json['mqttVisual'] = 'mqttOffline';
 				json['mqttOnline'] = 'Offline';
 				json['mqttButton'] = 'Connect';
 			}
@@ -487,9 +485,8 @@ function serialize(element) {
         data += element.name + '=off';
     }
 	if( $(element).is(':text') ) {
-        data = element.prop('name') + ':' + element.prop('value');
+        data = $(element).prop('name') + '=' + $(element).prop('value');
     }
-	alert(data);
     return data;
 }
 
