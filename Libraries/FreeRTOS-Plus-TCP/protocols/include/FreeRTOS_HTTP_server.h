@@ -132,6 +132,7 @@ struct xSERVER_CONFIG
 #endif /* ipconfigHTTP_HAS_HANDLE_REQUEST_HOOK */
 
 HTTPServer_t *FreeRTOS_CreateHTTPServer( const struct xSERVER_CONFIG *pxConfig );
+void FreeRTOS_HTTPServerWork( HTTPServer_t *pxServer, TickType_t xBlockingTime );
 
 #ifdef __cplusplus
 } /* extern "C" */

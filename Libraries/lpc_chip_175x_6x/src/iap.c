@@ -47,6 +47,19 @@
  * Public functions
  ****************************************************************************/
 
+/* Calculate the flash sector from it's memory address */
+uint32_t Chip_IAP_GetSectorNumber (uint32_t adr)
+{
+    uint32_t n;
+
+    n = adr >> 12;                               //  4kB Sector
+    if (n >= 0x10) {
+      n = 0x0E + (n >> 3);                       // 32kB Sector
+    }
+
+    return (n);                                  // Sector Number
+}
+
 /* Prepare sector for write operation */
 uint8_t Chip_IAP_PreSectorForReadWrite(uint32_t strSector, uint32_t endSector)
 {

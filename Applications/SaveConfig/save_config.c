@@ -50,27 +50,6 @@
 
 #define member_size(type, member) sizeof(((type *)0)->member)
 
-/*********************************************************************//**
- * @brief		Get Sector Number
- *
- * @param[in] adr	           Sector Address
- *
- * @return 	Sector Number.
- *
- **********************************************************************/
- uint32_t GetSecNum (uint32_t adr)
-{
-    uint32_t n;
-
-    n = adr >> 12;                               //  4kB Sector
-    if (n >= 0x10) {
-      n = 0x0E + (n >> 3);                       // 32kB Sector
-    }
-
-    return (n);                                  // Sector Number
-}
- /*-----------------------------------------------------------*/
-
 typedef enum eCONFIG_VERSIONS
 {
 	eConfigVersion1 = 1,
@@ -324,7 +303,7 @@ BaseType_t xReturn = pdFAIL;
 
 static void prvWriteToFlash( ConfigWriteHandle_t *pxWriteHandle )
 {
-const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
+const uint32_t ulSector = Chip_IAP_GetSectorNumber( CONFIG_FLASH_AREA_START );
 
 	if( pxWriteHandle->bits.bEraseConfig == pdTRUE )
 	{
@@ -464,7 +443,7 @@ void *pvReturn = NULL;
 
 void vEraseConfig( void )
 {
-const uint32_t ulSector = GetSecNum( CONFIG_FLASH_AREA_START );
+const uint32_t ulSector = Chip_IAP_GetSectorNumber( CONFIG_FLASH_AREA_START );
 
 	DEBUGOUT( "Erase config\r\n" );
 	/* Reset config. */
@@ -576,7 +555,8 @@ BaseType_t x, xConfigChanged = pdFALSE, xReturn = pdFAIL;
 			xWriteHandle.ucCount = 0;
 		}
 
-		xWriteHandle.pucBuffer = pvPortMalloc( xWriteHandle.usBufferSize );
+		xWriteHandle.pucBuffer = pvPortMalloc( xWriteHandle.usBufferSize );        /* pvPortMalloc guarantees alignment. */
+		configASSERT( ( ( ( uint32_t ) xWriteHandle.pucBuffer ) & 0x0001 ) == 0 ); /* Word alignment required. */
 		if( xWriteHandle.pucBuffer != NULL ) {
 
 			prvWriteConfig( &xWriteHandle );

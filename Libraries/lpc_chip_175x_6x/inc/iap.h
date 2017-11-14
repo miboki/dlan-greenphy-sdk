@@ -81,6 +81,13 @@ extern "C" {
 typedef void (*IAP_ENTRY_T)(unsigned int[5], unsigned int[4]);
 
 /**
+ * @brief	Calculate the flash sector from it's memory address
+ * @param	adr			: Flash Address
+ * @return	Flash Sector Number.
+ */
+uint32_t Chip_IAP_GetSectorNumber (uint32_t adr);
+
+/**
  * @brief	Prepare sector for write operation
  * @param	strSector	: Start sector number
  * @param	endSector	: End sector number

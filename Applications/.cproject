@@ -46,6 +46,7 @@
 								<option id="gnu.c.compiler.option.optimization.flags.1356079321" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-common" valueType="string"/>
 								<option id="gnu.c.compiler.option.include.paths.1756118822" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
@@ -69,6 +70,7 @@
 								<option id="gnu.both.asm.option.flags.crt.325228274" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" useByScannerDiscovery="false" value="-c -x assembler-with-cpp -D__REDLIB__ -DDEBUG -D__CODE_RED" valueType="string"/>
 								<option id="gnu.both.asm.option.include.paths.1475968868" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
@@ -115,10 +117,13 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration/ConfigurationForBootloader"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Bootloader"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>
@@ -163,6 +168,7 @@
 								<option id="gnu.c.compiler.option.optimization.flags.2108310957" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" value="-fno-common" valueType="string"/>
 								<option id="gnu.c.compiler.option.include.paths.18170643" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
@@ -186,6 +192,7 @@
 								<option id="gnu.both.asm.option.flags.crt.1895755960" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -D__REDLIB__ -DNDEBUG -D__CODE_RED" valueType="string"/>
 								<option id="gnu.both.asm.option.include.paths.285496512" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
@@ -232,10 +239,13 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041.2051660535" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration/ConfigurationForBootloader"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Bootloader"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>

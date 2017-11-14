@@ -37,13 +37,14 @@
 								<option id="com.crt.advproject.gcc.hdrlib.833871506" name="Library headers" superClass="com.crt.advproject.gcc.hdrlib" value="Redlib" valueType="enumerated"/>
 								<option id="com.crt.advproject.gcc.specs.725702220" name="Specs" superClass="com.crt.advproject.gcc.specs" value="com.crt.advproject.gcc.specs.codered" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1759311294" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/HTTP/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
@@ -64,13 +65,14 @@
 								<option id="com.crt.advproject.gas.hdrlib.85563374" name="Library headers" superClass="com.crt.advproject.gas.hdrlib" value="Redlib" valueType="enumerated"/>
 								<option id="com.crt.advproject.gas.specs.1796073003" name="Specs" superClass="com.crt.advproject.gas.specs" value="com.crt.advproject.gas.specs.codered" valueType="enumerated"/>
 								<option id="gnu.both.asm.option.include.paths.1876555817" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/ClickboardConfig}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Clickboards/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/HTTP/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/FreeRTOS/inc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/SaveConfig}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/FileSystem/httpd-fs}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/protocols/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
@@ -101,10 +103,12 @@
 								</option>
 								<option id="com.crt.advproject.link.gcc.hdrlib.409746944" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" useByScannerDiscovery="false" value="com.crt.advproject.gcc.link.hdrlib.codered.nohost" valueType="enumerated"/>
 								<option id="gnu.c.link.option.libs.87587076" name="Libraries (-l)" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Applications"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
 								</option>
 								<option id="gnu.c.link.option.paths.1528216783" name="Library search path (-L)" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Bootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Debug}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Debug}&quot;"/>
 								</option>
@@ -145,12 +149,6 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
-					</externalSetting>
-				</externalSettings>
 				<externalSettings containerId="Applications;com.crt.advproject.config.lib.debug.1946804125" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Applications"/>
@@ -161,6 +159,15 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Applications/SaveConfig"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Applications/Debug"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="Applications" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration/ConfigurationForBootloader"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Bootloader"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 			</storageModule>
@@ -189,12 +196,12 @@
 								<option id="com.crt.advproject.gcc.thumb.404059818" name="Thumb mode" superClass="com.crt.advproject.gcc.thumb" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.gcc.arch.140610248" name="Architecture" superClass="com.crt.advproject.gcc.arch" useByScannerDiscovery="false" value="com.crt.advproject.gcc.target.cm3" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1936792006" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="NDEBUG"/>
-									<listOptionValue builtIn="false" value="__CODE_RED"/>
 									<listOptionValue builtIn="false" value="CORE_M3"/>
 									<listOptionValue builtIn="false" value="__USE_LPCOPEN"/>
-									<listOptionValue builtIn="false" value="__LPC17XX__"/>
 									<listOptionValue builtIn="false" value="__REDLIB__"/>
+									<listOptionValue builtIn="false" value="__CODE_RED"/>
+									<listOptionValue builtIn="false" value="NDEBUG"/>
+									<listOptionValue builtIn="false" value="__LPC17XX__"/>
 								</option>
 								<option id="gnu.c.compiler.option.misc.other.36812940" name="Other flags" superClass="gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
 								<option id="gnu.c.compiler.option.optimization.flags.1969101014" name="Other optimization flags" superClass="gnu.c.compiler.option.optimization.flags" useByScannerDiscovery="false" value="-fno-common" valueType="string"/>
@@ -203,6 +210,7 @@
 								<option id="gnu.c.compiler.option.include.paths.198082133" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
@@ -225,6 +233,7 @@
 								<option id="gnu.both.asm.option.include.paths.1720015280" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/ConfigurationForBootloader}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/portable/Compiler/GCC}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/FreeRTOS-Plus-TCP/include}&quot;"/>
@@ -255,12 +264,14 @@
 								</option>
 								<option id="com.crt.advproject.link.gcc.hdrlib.1423698571" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" useByScannerDiscovery="false" value="com.crt.advproject.gcc.link.hdrlib.codered.nohost" valueType="enumerated"/>
 								<option id="gnu.c.link.option.libs.2043159657" name="Libraries (-l)" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
-									<listOptionValue builtIn="false" value="Libraries"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Applications"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Configuration"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Libraries"/>
 								</option>
 								<option id="gnu.c.link.option.paths.906743089" name="Library search path (-L)" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Applications/Release}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Configuration/Bootloader}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Libraries/Release}&quot;"/>
 								</option>
 								<option id="com.crt.advproject.link.crpenable.1389920022" name="Enable automatic placement of Code Read Protection field in image" superClass="com.crt.advproject.link.crpenable" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.1971249988" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave" useByScannerDiscovery="false"/>
@@ -298,10 +309,13 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="Libraries" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
-				<externalSettings containerId="Configuration;com.crt.advproject.config.lib.debug.1897047041.2051660535" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="Configuration;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/Configuration"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="includePath" name="/Configuration/ConfigurationForBootloader"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/Configuration/Bootloader"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="Configuration" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<externalSettings containerId="Applications;com.crt.advproject.config.lib.release.1607794306" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">

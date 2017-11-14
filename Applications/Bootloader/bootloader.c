@@ -55,8 +55,8 @@ TFTPCallbackHandle_t *pxCallbackHandle = pvCallbackHandle;
 			Chip_IAP_EraseSector( ulSector, ulSector );
 		}
 
-		configASSERT( ( ulDestination & 0xFF ) == 0 ); /* 256 byte alignment required. */
-		configASSERT( ( pucBuffer     & 0x01 ) == 0 ); /* Word alignment required. */
+		configASSERT( ( ulDestination & 0xFF ) == 0 );           /* 256 byte alignment required. */
+		configASSERT( ( ( ( uint32_t ) pcData ) & 0x01 ) == 0 ); /* Word alignment required. */
 
 		/* Copy data to flash. */
 		__disable_irq();

@@ -3,9 +3,9 @@
 	<name>FirmwareStandalone</name>
 	<comment></comment>
 	<projects>
-		<project>Libraries</project>
-		<project>Configuration</project>
 		<project>Applications</project>
+		<project>Configuration</project>
+		<project>Libraries</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
