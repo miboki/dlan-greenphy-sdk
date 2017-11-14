@@ -66,7 +66,7 @@ extern int printf( const char *pcFormatString, ... );
 /* Set to 1 to print out debug messages.  If ipconfigHAS_DEBUG_PRINTF is set to
 1 then FreeRTOS_debug_printf should be defined to the function used to print
 out the debugging messages. */
-#define ipconfigHAS_DEBUG_PRINTF                 0
+#define ipconfigHAS_DEBUG_PRINTF                 1
 #if( ipconfigHAS_DEBUG_PRINTF == 1 )
 	#define FreeRTOS_debug_printf(X)             printf X
 #endif
@@ -310,11 +310,13 @@ real program memory (RAM or flash) or just has a random non-zero value. */
 /* Include support for TCP hang protection.  All sockets in a connecting or
 disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigTCP_HANG_PROTECTION              ( 1 )
-#define ipconfigTCP_HANG_PROTECTION_TIME         ( 30 )
+#define ipconfigTCP_HANG_PROTECTION_TIME         ( 3 )
 
 /* Include support for TCP keep-alive messages. */
 #define ipconfigTCP_KEEP_ALIVE                   ( 0 )
 #define ipconfigTCP_KEEP_ALIVE_INTERVAL          ( 20 ) /* in seconds */
+
+#define tcpMAXIMUM_TCP_WAKEUP_TIME_MS			 ( 5000 )
 
 #define ipconfigHAS_INLINE_FUNCTIONS             1
 #define ipconfigDHCP_REGISTER_HOSTNAME           1
