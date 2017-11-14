@@ -272,7 +272,7 @@ BaseType_t xSuccess = pdFALSE;
 #endif /* includeHTTP_DEMO */
 /*-----------------------------------------------------------*/
 
-void xClickboardsInit()
+void vClickboardsInit()
 {
 BaseType_t x;
 eClickboardId_t *pxIdPort1, *pxIdPort2;

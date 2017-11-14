@@ -51,6 +51,7 @@
 #include "clickboard_config.h"
 
 /*-----------------------------------------------------------*/
+
 static void prvTestTask( void *pvParameters )
 {
 
@@ -61,6 +62,7 @@ static void prvTestTask( void *pvParameters )
 	vTaskDelete( NULL );
 
 }
+/*-----------------------------------------------------------*/
 
 int main(void) {
 	SystemCoreClockUpdate();
@@ -90,9 +92,9 @@ int main(void) {
 
 	vNetworkInit();
 
-	xClickboardsInit();
+	vClickboardsInit();
 
-	xTaskCreate( prvTestTask, "Test", 240, NULL,  1, NULL );
+	xTaskCreate( prvTestTask, "Test", 240, NULL,  ( tskIDLE_PRIORITY + 1 ), NULL );
 
 	vTaskStartScheduler();
 

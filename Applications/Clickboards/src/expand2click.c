@@ -116,8 +116,6 @@ static char togglePins[2] = { 0, 0 };
 /* Count how often the input bits were toggled. */
 static int toggleCount[2] = { 0, 0 };
 
-static int multiplicator = 250;
-
 /*-----------------------------------------------------------*/
 
 static char get_expand2click(void){
@@ -177,6 +175,7 @@ char lastBits = get_expand2click();
 #if( includeHTTP_DEMO != 0 )
 	static BaseType_t xClickHTTPRequestHandler( char *pcBuffer, size_t uxBufferLength, QueryParam_t *pxParams, BaseType_t xParamCount )
 	{
+		static int multiplicator = 250;
 		BaseType_t xCount = 0;
 		QueryParam_t *pxParam;
 

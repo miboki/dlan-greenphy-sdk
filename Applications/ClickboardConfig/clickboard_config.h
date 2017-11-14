@@ -77,7 +77,7 @@ typedef struct xCLICKBOARD
  * Initializer for the clickboard config interface. It activates any
  * preconfigured clickboard and adds a request handler to the HTTP server.
  */
-void xClickboardsInit();
+void vClickboardsInit();
 
 /*
  * Returns a clickboard with given name if found, otherwise NULL.

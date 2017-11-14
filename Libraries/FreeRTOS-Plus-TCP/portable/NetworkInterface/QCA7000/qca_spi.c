@@ -559,7 +559,7 @@ qcaspi_qca7k_sync(struct qcaspi *qca, int event)
 			/* reset is normally active low, so reset ... */
 			Chip_GPIO_SetPinOutLow(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 			/*  ... for 100 ms ... */
-			vTaskDelay( 100 * portTICK_RATE_MS);
+			vTaskDelay( 100 * portTICK_PERIOD_MS);
 			/* ... and release QCA7k from reset */
 			Chip_GPIO_SetPinOutHigh(LPC_GPIO, GREENPHY_RESET_GPIO_PORT, GREENPHY_RESET_GPIO_PIN);
 
