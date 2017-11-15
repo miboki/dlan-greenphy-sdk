@@ -71,6 +71,10 @@
  * Implementation of functions defined in portable.h for the ARM CM3 port.
  *----------------------------------------------------------*/
 
+/* JBlackArty's (Bernardo Marques) patch from
+ * http://www.freertos.org/FreeRTOS_Support_Forum_Archive/January_2010/freertos_vTaskEndScheduler_not_working_as_stated_3509410.html
+ * added, thank you! */
+
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -268,10 +272,6 @@ void vPortSVCHandler( void )
 static void prvPortStartFirstTask( void )
 {
 	__asm volatile(
-					" ldr r0, =0xE000ED08 	\n" /* Use the NVIC offset register to locate the stack. */
-					" ldr r0, [r0] 			\n"
-					" ldr r0, [r0] 			\n"
-					" msr msp, r0			\n" /* Set the msp back to the start of the stack. */
 					" cpsie i				\n" /* Globally enable interrupts. */
 					" cpsie f				\n"
 					" dsb					\n"
@@ -282,89 +282,123 @@ static void prvPortStartFirstTask( void )
 }
 /*-----------------------------------------------------------*/
 
+static volatile char sh_stop_request = 0; // indicates whether xPortStartScheduler() called from vPortEndScheduler() to stop sheduler
+static volatile unsigned long sh_context[4]; // stores context of vTaskEndScheduler() call to restore it when sheduler being requested to stop
+
 /*
  * See header file for description.
  */
 BaseType_t xPortStartScheduler( void )
 {
-	/* configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to 0.
-	See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
-	configASSERT( configMAX_SYSCALL_INTERRUPT_PRIORITY );
+	if (!sh_stop_request) {
 
-	#if( configASSERT_DEFINED == 1 )
-	{
-		volatile uint32_t ulOriginalPriority;
-		volatile uint8_t * const pucFirstUserPriorityRegister = ( volatile uint8_t * const ) ( portNVIC_IP_REGISTERS_OFFSET_16 + portFIRST_USER_INTERRUPT_NUMBER );
-		volatile uint8_t ucMaxPriorityValue;
+		/* Save context to return from vTaskEndScheduler() */
+		__asm volatile	(
+				"push {r0-r12,lr}\n"
+				"mrs %[basepri_val], basepri\n"
+				"mrs %[control_val], control\n"
+				"mrs %[psp_val], psp\n"
+				"mrs %[msp_val], msp\n"
+				: [basepri_val]"=r" (sh_context[0]), [psp_val]"=r" (sh_context[1]), [msp_val]"=r" (sh_context[2]), [control_val]"=r" (sh_context[3])
+		);
 
-		/* Determine the maximum priority from which ISR safe FreeRTOS API
-		functions can be called.  ISR safe functions are those that end in
-		"FromISR".  FreeRTOS maintains separate thread and ISR API functions to
-		ensure interrupt entry is as fast and simple as possible.
+		/* configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to 0.
+		See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
+		configASSERT( configMAX_SYSCALL_INTERRUPT_PRIORITY );
 
-		Save the interrupt priority value that is about to be clobbered. */
-		ulOriginalPriority = *pucFirstUserPriorityRegister;
-
-		/* Determine the number of priority bits available.  First write to all
-		possible bits. */
-		*pucFirstUserPriorityRegister = portMAX_8_BIT_VALUE;
-
-		/* Read the value back to see how many bits stuck. */
-		ucMaxPriorityValue = *pucFirstUserPriorityRegister;
-
-		/* Use the same mask on the maximum system call priority. */
-		ucMaxSysCallPriority = configMAX_SYSCALL_INTERRUPT_PRIORITY & ucMaxPriorityValue;
-
-		/* Calculate the maximum acceptable priority group value for the number
-		of bits read back. */
-		ulMaxPRIGROUPValue = portMAX_PRIGROUP_BITS;
-		while( ( ucMaxPriorityValue & portTOP_BIT_OF_BYTE ) == portTOP_BIT_OF_BYTE )
+		#if( configASSERT_DEFINED == 1 )
 		{
-			ulMaxPRIGROUPValue--;
-			ucMaxPriorityValue <<= ( uint8_t ) 0x01;
+			volatile uint32_t ulOriginalPriority;
+			volatile uint8_t * const pucFirstUserPriorityRegister = ( volatile uint8_t * const ) ( portNVIC_IP_REGISTERS_OFFSET_16 + portFIRST_USER_INTERRUPT_NUMBER );
+			volatile uint8_t ucMaxPriorityValue;
+
+			/* Determine the maximum priority from which ISR safe FreeRTOS API
+			functions can be called.  ISR safe functions are those that end in
+			"FromISR".  FreeRTOS maintains separate thread and ISR API functions to
+			ensure interrupt entry is as fast and simple as possible.
+
+			Save the interrupt priority value that is about to be clobbered. */
+			ulOriginalPriority = *pucFirstUserPriorityRegister;
+
+			/* Determine the number of priority bits available.  First write to all
+			possible bits. */
+			*pucFirstUserPriorityRegister = portMAX_8_BIT_VALUE;
+
+			/* Read the value back to see how many bits stuck. */
+			ucMaxPriorityValue = *pucFirstUserPriorityRegister;
+
+			/* Use the same mask on the maximum system call priority. */
+			ucMaxSysCallPriority = configMAX_SYSCALL_INTERRUPT_PRIORITY & ucMaxPriorityValue;
+
+			/* Calculate the maximum acceptable priority group value for the number
+			of bits read back. */
+			ulMaxPRIGROUPValue = portMAX_PRIGROUP_BITS;
+			while( ( ucMaxPriorityValue & portTOP_BIT_OF_BYTE ) == portTOP_BIT_OF_BYTE )
+			{
+				ulMaxPRIGROUPValue--;
+				ucMaxPriorityValue <<= ( uint8_t ) 0x01;
+			}
+
+			/* Shift the priority group value back to its position within the AIRCR
+			register. */
+			ulMaxPRIGROUPValue <<= portPRIGROUP_SHIFT;
+			ulMaxPRIGROUPValue &= portPRIORITY_GROUP_MASK;
+
+			/* Restore the clobbered interrupt priority register to its original
+			value. */
+			*pucFirstUserPriorityRegister = ulOriginalPriority;
 		}
+		#endif /* conifgASSERT_DEFINED */
 
-		/* Shift the priority group value back to its position within the AIRCR
-		register. */
-		ulMaxPRIGROUPValue <<= portPRIGROUP_SHIFT;
-		ulMaxPRIGROUPValue &= portPRIORITY_GROUP_MASK;
+		/* Make PendSV and SysTick the lowest priority interrupts. */
+		portNVIC_SYSPRI2_REG |= portNVIC_PENDSV_PRI;
+		portNVIC_SYSPRI2_REG |= portNVIC_SYSTICK_PRI;
 
-		/* Restore the clobbered interrupt priority register to its original
-		value. */
-		*pucFirstUserPriorityRegister = ulOriginalPriority;
+		/* Start the timer that generates the tick ISR.  Interrupts are disabled
+		here already. */
+		vPortSetupTimerInterrupt();
+
+		/* Initialise the critical nesting count ready for the first task. */
+		uxCriticalNesting = 0;
+
+		/* Start the first task. */
+		prvPortStartFirstTask();
+
+		/* Should never get here as the tasks will now be executing!  Call the task
+		exit error function to prevent compiler warnings about a static function
+		not being called in the case that the application writer overrides this
+		functionality by defining configTASK_RETURN_ADDRESS. */
+		prvTaskExitError();
+
+		/* Should not get here! */
+		return 0;
+
+	} else {
+		sh_stop_request = 0;
+		/* Cancel most important system changes made when sheduler started */
+		portNVIC_SYSPRI2_REG &= ~(portNVIC_PENDSV_PRI | portNVIC_SYSTICK_PRI);
+		portNVIC_SYSTICK_CTRL_REG &= ~(portNVIC_SYSTICK_CLK_BIT | portNVIC_SYSTICK_INT_BIT | portNVIC_SYSTICK_ENABLE_BIT);
+		/* Restore context to return back to vTaskStartScheduler() */
+		__asm volatile	(
+				"msr basepri, %[basepri_val]\n"
+				"msr control, %[control_val]\n"
+				"msr psp, %[psp_val]\n"
+				"msr msp, %[msp_val]\n"
+				"isb\n"
+				"pop {r0-r12,lr}\n"
+				:: [basepri_val]"r" (sh_context[0]), [psp_val]"r" (sh_context[1]), [msp_val]"r" (sh_context[2]), [control_val]"r" (sh_context[3])
+				 : "sp"
+		);
 	}
-	#endif /* conifgASSERT_DEFINED */
-
-	/* Make PendSV and SysTick the lowest priority interrupts. */
-	portNVIC_SYSPRI2_REG |= portNVIC_PENDSV_PRI;
-	portNVIC_SYSPRI2_REG |= portNVIC_SYSTICK_PRI;
-
-	/* Start the timer that generates the tick ISR.  Interrupts are disabled
-	here already. */
-	vPortSetupTimerInterrupt();
-
-	/* Initialise the critical nesting count ready for the first task. */
-	uxCriticalNesting = 0;
-
-	/* Start the first task. */
-	prvPortStartFirstTask();
-
-	/* Should never get here as the tasks will now be executing!  Call the task
-	exit error function to prevent compiler warnings about a static function
-	not being called in the case that the application writer overrides this
-	functionality by defining configTASK_RETURN_ADDRESS. */
-	prvTaskExitError();
-
-	/* Should not get here! */
-	return 0;
+	return pdFALSE;
 }
 /*-----------------------------------------------------------*/
 
 void vPortEndScheduler( void )
 {
-	/* Not implemented in ports where there is nothing to return to.
-	Artificially force an assert. */
-	configASSERT( uxCriticalNesting == 1000UL );
+	/* Restore point where sheduler started with tricky change of control flow */
+	sh_stop_request = 1;
+	xPortStartScheduler();
 }
 /*-----------------------------------------------------------*/
 
