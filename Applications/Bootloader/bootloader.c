@@ -147,6 +147,7 @@ BaseType_t xReturn;
 
 	do {
 
+		/* _ML_ TODO: read TFTP server address from configuration. */
 		xAddress.sin_addr = FreeRTOS_inet_addr_quick( 172, 16, 200, 40 );
 		xAddress.sin_port = FreeRTOS_htons( 69 );
 		xCallbackHandle.ulBytesWritten = 0;
@@ -165,8 +166,6 @@ BaseType_t xReturn;
 		{
 			/* We have a valid application, end the scheduler to start the application. */
 			vTaskEndScheduler();
-			taskENTER_CRITICAL();
-			__disable_irq();
 			break;
 		}
 
@@ -174,8 +173,6 @@ BaseType_t xReturn;
 		vTaskDelay( xDelay );
 	} while( 1 );
 
-	vStartApplication();
-	vTaskDelete( NULL );
 }
 
 void vBootloaderInit()

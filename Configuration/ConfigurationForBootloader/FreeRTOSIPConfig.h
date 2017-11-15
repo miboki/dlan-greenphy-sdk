@@ -118,7 +118,7 @@ and also DNS may use small timeouts.  If a DNS reply comes in after the DNS
 socket has been destroyed, the result will be stored into the cache.  The next
 call to FreeRTOS_gethostbyname() will return immediately, without even creating
 a socket. */
-#define ipconfigUSE_DNS_CACHE                    ( 1 )
+#define ipconfigUSE_DNS_CACHE                    ( 0 )
 #define ipconfigDNS_CACHE_NAME_LENGTH            ( 16 )
 #define ipconfigDNS_CACHE_ENTRIES                ( 4 )
 #define ipconfigDNS_REQUEST_ATTEMPTS             ( 2 )
@@ -222,7 +222,7 @@ FreeRTOS_inet_addr_quick() takes an IP address as four separate numerical octets
 ipconfigINCLUDE_FULL_INET_ADDR is set to 1 then both FreeRTOS_inet_addr() and
 FreeRTOS_indet_addr_quick() are available.  If ipconfigINCLUDE_FULL_INET_ADDR is
 not set to 1 then only FreeRTOS_indet_addr_quick() is available. */
-#define ipconfigINCLUDE_FULL_INET_ADDR           1
+#define ipconfigINCLUDE_FULL_INET_ADDR           0
 
 /* ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS defines the total number of network buffer that
 are available to the IP stack.  The total number of network buffers is limited
@@ -251,7 +251,7 @@ socketAUTO_PORT_ALLOCATION_START_NUMBER to 0xffff.  If
 ipconfigALLOW_SOCKET_SEND_WITHOUT_BIND is set to 0 then calling FreeRTOS_sendto()
 on a socket that has not yet been bound will result in the send operation being
 aborted. */
-#define ipconfigALLOW_SOCKET_SEND_WITHOUT_BIND   1
+#define ipconfigALLOW_SOCKET_SEND_WITHOUT_BIND   0
 
 /* Defines the Time To Live (TTL) values used in outgoing UDP packets. */
 #define ipconfigUDP_TIME_TO_LIVE                 128
@@ -278,7 +278,7 @@ FreeRTOS_SendPingRequest() API function is available. */
 
 /* If ipconfigSUPPORT_SELECT_FUNCTION is set to 1 then the FreeRTOS_select()
 (and associated) API function is available. */
-#define ipconfigSUPPORT_SELECT_FUNCTION          1
+#define ipconfigSUPPORT_SELECT_FUNCTION          0
 
 /* If ipconfigFILTER_OUT_NON_ETHERNET_II_FRAMES is set to 1 then Ethernet frames
 that are not in Ethernet II format will be dropped.  This option is included for
@@ -313,7 +313,7 @@ real program memory (RAM or flash) or just has a random non-zero value. */
 
 /* Include support for TCP hang protection.  All sockets in a connecting or
 disconnecting stage will timeout after a period of non-activity. */
-#define ipconfigTCP_HANG_PROTECTION              ( 1 )
+#define ipconfigTCP_HANG_PROTECTION              ( 0 )
 #define ipconfigTCP_HANG_PROTECTION_TIME         ( 3 )
 
 /* Include support for TCP keep-alive messages. */

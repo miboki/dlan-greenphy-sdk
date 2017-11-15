@@ -1,0 +1,1 @@
+/* Just a dummy file to generate libConfiguration.a and suppress MCUXpresso errors. */

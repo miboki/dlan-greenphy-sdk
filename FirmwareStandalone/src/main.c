@@ -49,6 +49,7 @@
 #include "network.h"
 #include "save_config.h"
 #include "clickboard_config.h"
+#include "bootloader.h"
 
 /*-----------------------------------------------------------*/
 
@@ -97,6 +98,8 @@ int main(void) {
 	xTaskCreate( prvTestTask, "Test", 240, NULL,  ( tskIDLE_PRIORITY + 1 ), NULL );
 
 	vTaskStartScheduler();
+
+	vStartApplication();
 
 	return 0;
 }
