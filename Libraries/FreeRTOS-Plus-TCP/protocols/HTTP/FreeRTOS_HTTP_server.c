@@ -599,7 +599,7 @@ BaseType_t xRc;
 BaseType_t xSize;
 TickType_t xTicksToWait = pdMS_TO_TICKS( 5000 );
 
-	FreeRTOS_printf( ( "HTTPServerWork: called\n" ) );
+	//FreeRTOS_printf( ( "HTTPServerWork: called\n" ) );
 
 	/* Let the server do one working cycle. */
 	xRc = FreeRTOS_select( pxServer->xSocketSet, xBlockingTime );
