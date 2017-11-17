@@ -53,26 +53,14 @@
 
 /*-----------------------------------------------------------*/
 
-static void prvTestTask( void *pvParameters )
-{
-
-	DEBUGOUT( "Test task running.\r\n" );
-
-	/* Add endless loop here to prevent task deletion. */
-
-	vTaskDelete( NULL );
-
-}
-/*-----------------------------------------------------------*/
-
 int main(void) {
 	SystemCoreClockUpdate();
 	Board_Init();
 
-	DEBUGSTR("\r\n\r\nSTANDALONE ");
+	DEBUGSTR("\r\n\r\ndLAN GreenPHY " BUILD_STRING "\r\n");
 	{
 		uint32_t reset_reason = LPC_SYSCTL->RSID;
-		DEBUGOUT("RSID:0x%x", reset_reason);
+		DEBUGOUT("Reset ID:0x%x", reset_reason);
 		if (!reset_reason)
 			DEBUGSTR("->Bootloader");
 		if (reset_reason & 0x1)
@@ -93,9 +81,9 @@ int main(void) {
 
 	vNetworkInit();
 
-	vClickboardsInit();
-
-	xTaskCreate( prvTestTask, "Test", 240, NULL,  ( tskIDLE_PRIORITY + 1 ), NULL );
+	#if( includeCLICKBOARDS != 0 )
+		vClickboardsInit();
+	#endif /* includeCLICKBOARDS */
 
 	vTaskStartScheduler();
 

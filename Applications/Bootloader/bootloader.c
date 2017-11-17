@@ -27,8 +27,6 @@ BaseType_t x, xReturn = pdFAIL;
 uint32_t ulChecksum = 0, *pulChecksum, ulDestination, ulSector, ulReturn;
 TFTPCallbackHandle_t *pxCallbackHandle = pvCallbackHandle;
 
-	DEBUGOUT( "Received data packet %d B, total %d B\r\n", xDataLength, pxCallbackHandle->ulBytesWritten );
-
 	/* Verify checksum in first block. */
 	if( pxCallbackHandle->ulBytesWritten == 0 )
 	{
@@ -38,11 +36,13 @@ TFTPCallbackHandle_t *pxCallbackHandle = pvCallbackHandle;
 		for (x = 0; x < 8; x++) {
 			ulChecksum += *pulChecksum++;
 		}
-
+		DEBUGOUT("Bootloader: receiving ");
 	}
 
 	if( ulChecksum == 0 )
 	{
+		DEBUGOUT(".");
+
 		/* Calculate current address and sector in flash. */
 		ulDestination = sdkconfigUSER_PROGRAM_START + pxCallbackHandle->ulBytesWritten;
 		ulSector = Chip_IAP_GetSectorNumber( ulDestination );
@@ -116,7 +116,7 @@ void vStartApplication()
 void (*user_code_entry)(void);
 uint32_t *pul;	/* Used to load address of reset handler from user flash. */
 
-	DEBUGOUT("Bootloader: Starting user application now.\r\n");
+	DEBUGOUT("Bootloader: starting user application now.\r\n");
 
 	/* Load contents of second word of user flash - the reset handler address
 	in the applications vector table. */
@@ -131,9 +131,10 @@ uint32_t *pul;	/* Used to load address of reset handler from user flash. */
 
 	SCB->VTOR = ( sdkconfigUSER_PROGRAM_START & 0x1FFFFF80 );
 
-	// Jump to user application
+	/* Jump to user application. */
     user_code_entry();
 
+    /* Should not get here. */
     for( ;; );
 }
 
@@ -146,25 +147,34 @@ TFTPCallbackHandle_t xCallbackHandle = { 0 };
 BaseType_t xReturn;
 
 	do {
-
 		/* _ML_ TODO: read TFTP server address from configuration. */
 		xAddress.sin_addr = FreeRTOS_inet_addr_quick( 172, 16, 200, 40 );
 		xAddress.sin_port = FreeRTOS_htons( 69 );
 		xCallbackHandle.ulBytesWritten = 0;
 
+		DEBUGOUT( "Bootloader: looking for new firmware.\r\n" );
 		xReturn = xTFTPReceiveFile( &xAddress, pcFilename, prvTFTPReceiveCallback, &xCallbackHandle );
 		if( xReturn != pdPASS )
 		{
+			DEBUGOUT( "Bootloader: an error occurred.\r\n" );
+
 			if( xCallbackHandle.ulBytesWritten != 0 )
 			{
 				/* An error occurred, but old firmware was overwritten. */
 				prvInvalidateCode();
 			}
 		}
+		else
+		{
+			DEBUGOUT( "\nBootloader: successfully received new firmware.\r\n" );
+		}
 
 		if( prvVerifyCode() == pdPASS )
 		{
-			/* We have a valid application, end the scheduler to start the application. */
+			/* We have a valid application, disable interrupts, deinitialize EMAC
+			and end the scheduler to switch into the user application. */
+			__disable_irq();
+			Chip_ENET_DeInit( LPC_ETHERNET );
 			vTaskEndScheduler();
 			break;
 		}

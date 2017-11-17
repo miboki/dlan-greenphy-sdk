@@ -42,6 +42,7 @@
 #define includeHTTP_DEMO       0
 
 /* Clickboard defines. */
+#define includeCLICKBOARDS     0
 #define includeCOLOR2_CLICK    0
 #define includeTHERMO3_CLICK   0
 #define includeEXPAND2_CLICK   0
