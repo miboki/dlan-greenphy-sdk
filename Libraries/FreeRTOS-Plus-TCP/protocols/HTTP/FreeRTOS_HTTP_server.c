@@ -612,7 +612,7 @@ TickType_t xTicksToWait = pdMS_TO_TICKS( 5000 );
 		xNexSocket = FreeRTOS_accept( pxServer->xSocket, &xAddress, &xSocketLength);
 		if( ( xNexSocket != FREERTOS_NO_SOCKET ) && ( xNexSocket != FREERTOS_INVALID_SOCKET ) )
 		{
-			FreeRTOS_printf( ( "HTTPServerWork: add new client\n" ) );
+			//FreeRTOS_printf( ( "HTTPServerWork: add new client\n" ) );
 
 			/* Add new client connection in front of list. */
 			xSize = sizeof( HTTPClient_t );
@@ -646,7 +646,7 @@ TickType_t xTicksToWait = pdMS_TO_TICKS( 5000 );
 		pxThis = pxClient;
 		pxClient = pxThis->pxNextClient;
 
-		FreeRTOS_printf( ( "HTTPServerWork: do client work\n" ) );
+		//FreeRTOS_printf( ( "HTTPServerWork: do client work\n" ) );
 
 		xRc = xHTTPClientWork( pxThis );
 

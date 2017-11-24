@@ -120,7 +120,7 @@ const TickType_t xDelay = pdMS_TO_TICKS( TASKWAIT_THERMO3 );
 BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 #if( netconfigUSEMQTT != 0 )
 	char buffer[40];
-	unsigned char pucTempTopic[30] = netconfigMQTT_TOPIC;
+	unsigned char pucTempTopic[50] = netconfigMQTT_TOPIC;
 	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 	MqttJob_t xJob;
 	MqttPublishMsg_t xPublish;

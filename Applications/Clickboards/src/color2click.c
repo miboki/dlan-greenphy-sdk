@@ -277,7 +277,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 
 #if( netconfigUSEMQTT != 0 )
 	char buffer[60];
-	unsigned char pucColorTopic[30] = netconfigMQTT_TOPIC;
+	unsigned char pucColorTopic[50] = netconfigMQTT_TOPIC;
 	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 	MqttJob_t xJob;
 	MqttPublishMsg_t xPublish;

@@ -145,7 +145,7 @@ char lastBits = get_expand2click();
 //char count = 0;
 #if( netconfigUSEMQTT != 0 )
 	char buffer[80];
-	unsigned char pucExpTopic[30] = netconfigMQTT_TOPIC;
+	unsigned char pucExpTopic[50] = netconfigMQTT_TOPIC;
 	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 	MqttJob_t xJob;
 	MqttPublishMsg_t xPublish;
@@ -157,6 +157,7 @@ char lastBits = get_expand2click();
 	xPublish.pucTopic = pucExpTopic;
 	xPublish.xMessage.qos = 0;
 	xPublish.xMessage.retained = 0;
+	xPublish.xMessage.payload = NULL;
 #endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	for(;;)
@@ -190,7 +191,7 @@ char lastBits = get_expand2click();
 		lastBits = iBits;
 
 		/* Print a debug message once every 10 s. */
-		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 10 )
+		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 5 ) /* _CD_ Set time to 5 secondes, beacause relayr close connection after 10s timeout */
 		{
 			DEBUGOUT("Expand2Click - Meter 1: %d, Meter 2: %d\n", toggleCount[0], toggleCount[1] );
 		#if( netconfigUSEMQTT != 0 )
@@ -201,7 +202,7 @@ char lastBits = get_expand2click();
 				{
 					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
 					xPublish.xMessage.payload = buffer;
-					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d,\"meaning\":\"wmeter2\",\"value\":%d}", toggleCount[0], toggleCount[1] );
+					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d}", toggleCount[0] );
 					xPublish.xMessage.payloadlen = strlen(buffer);
 					xQueueSendToBack( xMqttQueue, &xJob, 0 );
 				}
@@ -274,6 +275,8 @@ char lastBits = get_expand2click();
 BaseType_t xExpand2Click_Init ( const char *pcName, BaseType_t xPort )
 {
 BaseType_t xReturn = pdFALSE;
+char *toggle;
+int *mult;
 
 	/* Use the task handle to guard against multiple initialization. */
 	if( xClickTaskHandle == NULL )
@@ -332,9 +335,13 @@ BaseType_t xReturn = pdFALSE;
 			xReturn = pdTRUE;
 		}
 
-		/* _CD_ Initialize Config for debugging */
-		togglePins[0] = 0x01; //PA0
-		togglePins[1] = 0x10; //PA4
+		/* Initialize with values from Config */
+		if(( toggle = pvGetConfig( eConfigExpandPin1, NULL)) != NULL)
+			togglePins[0] = *toggle;
+		if(( toggle = pvGetConfig( eConfigExpandPin2, NULL)) != NULL)
+					togglePins[1] = *toggle;
+		if(( mult = pvGetConfig( eConfigExpandMult, NULL)) != NULL)
+			multiplicator = *mult;
 	}
 
 	return xReturn;
