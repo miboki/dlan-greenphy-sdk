@@ -49,6 +49,7 @@
 	X(   2, eConfigNetworkGateway )   \
 	X(   3, eConfigNetworkHostname )  \
 	X(   4, eConfigNetworkMqttOnPwr ) \
+	X(   5, eConfigNetworkMqttAuto  ) \
 	X(  10, eConfigClickConfPort1 )   \
 	X(  11, eConfigClickConfPort2 )   \
 	X(  20, eConfigMqttBroker )       \

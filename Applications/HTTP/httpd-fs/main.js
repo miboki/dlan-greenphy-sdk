@@ -91,10 +91,14 @@ templates['config'] = `
           {{/clickboards}}
         </table>
 		<h3>MQTT Client</h3>
-		<table class="table table-striped">
+		<table class="mui-table mui-table--bordered">
 			<tr>
 				<td>Global Task Status</td>
 				<td><input type="checkbox" name="mqttSwitch" {{#mqttSwitch}}checked{{/mqttSwitch}}></td>
+			</tr>
+			<tr>
+				<td>Auto Connect to Broker on PowerOn</td>
+				<td><input type="checkbox" name="mqttAutoOn" {{#mqttAutoOn}}checked{{/mqttAutoOn}}></td>
 			</tr>
 		</table>
 `;
