@@ -502,22 +502,18 @@ void vMQTTTask( void *pvParameters )
 		{
 			ucWill = *pucWillBuf;
 			if( ucWill > 0 )
-			{
 				xCount += sprintf( pcBuffer + xCount, ",\"will\":1" );
-				//vGetCredentials( eConfigMqttWillTopic, (connectData.will.topicName.cstring) );
-				pcCredBuffer = (char *)pvGetConfig( eConfigMqttWillTopic, NULL );
-				if( pcCredBuffer != NULL )
-					xCount += sprintf( pcBuffer + xCount, ",\"wtp\":\"%s\"", pcCredBuffer );
-				//vGetCredentials( eConfigMqttWillMsg, (connectData.will.message.cstring) );
-				pcCredBuffer = (char *)pvGetConfig( eConfigMqttWillMsg, NULL );
-				if( pcCredBuffer != NULL )
-					xCount += sprintf( pcBuffer + xCount, ",\"wms\":\"%s\"", pcCredBuffer );
-			}
-			else
-			{
-				xCount += sprintf( pcBuffer + xCount, ",\"wtp\":\"\",\"wms\":\"\"" );
-			}
 		}
+
+		//vGetCredentials( eConfigMqttWillTopic, (connectData.will.topicName.cstring) );
+		pcCredBuffer = (char *)pvGetConfig( eConfigMqttWillTopic, NULL );
+		if( pcCredBuffer != NULL )
+			xCount += sprintf( pcBuffer + xCount, ",\"wtp\":\"%s\"", pcCredBuffer );
+
+		//vGetCredentials( eConfigMqttWillMsg, (connectData.will.message.cstring) );
+		pcCredBuffer = (char *)pvGetConfig( eConfigMqttWillMsg, NULL );
+		if( pcCredBuffer != NULL )
+			xCount += sprintf( pcBuffer + xCount, ",\"wms\":\"%s\"", pcCredBuffer );
 
 		xCount += sprintf( pcBuffer + xCount, "}");
 

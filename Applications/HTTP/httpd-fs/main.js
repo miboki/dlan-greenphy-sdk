@@ -214,80 +214,60 @@ templates['expand2'] = `
 `;
 templates['mqtt'] = `
 		<h3>MQTT Client Information</h3>
-		<div class="mstate">
-			<ul>
-				<li>
-					<table>
-						<tr>
-							<th>Status</th>
-						</tr>
-						<tr>
-							<th><span class="txtcontroll {{mqttVisual}}">{{mqttOnline}}</span></th>
-						</tr>
-					</table>
-				</li>
-				<li>
-					<table>
-						<tr>
-							<th>Uptime</th>
-						</tr>
-						<tr>
-							<th><span class="txtcontroll">{{mqttUptime}}</span></th>
-						</tr>
-					</table>
-				</li>
-				<li>
-					<table>
-						<tr>
-							<th>Published Messages</th>
-						</tr>
-						<tr>
-							<th><span class="txtcontroll">{{mqttPubMsg}}</span></th>
-						</tr>
-					</table>
-				</li>
-				<li><input type="button" id="mqttboot" value="{{mqttButton}}" onclick="rebootMqttClient();"></li>
-			</ul>
-		</div>
-		<div class="hider">
-			Configure Credentials
-		</div>
-		<div id="mqttcred">
-			<table class="table table-striped">
-				<tr>
-					<td>Broker Address</td>
-					<td><input type="text" name="broker" value="{{bad}}"></td>
-				</tr>
-				<tr>
-					<td>Broker Port</td>
-					<td><input type="number" name="port" min="1" max="65535" step="1"  value="{{bpd}}"></td>
-				</tr>
-				<tr>
-					<td>Client ID</td>
-					<td><input type="text" name="client" value="{{cID}}"></td>
-				</tr>
-				<tr>
-					<td>Username</td>
-					<td><input type="text" name="user" value="{{user}}"></td>
-				</tr>
-				<tr>
-					<td>Password</td>
-					<td><input type="password" name="password" id="pw1" value="{{pwd}}"></td>
-				</tr>
-				<tr>
-					<td>Last Will Active</td>
-					<td><input type="checkbox" name="will" id="will" {{#will}}checked{{/will}}></td>
-				</tr>
-				<tr>
-					<td>Will Topic</td>
-					<td><input type="text" name="willtopic" id="wtopic" value="{{wtp}}"></td>
-				</tr>
-				<tr>
-					<td>Will Message</td>
-					<td><input type="text" name="willmessage" id="wmessage" value="{{wms}}"></td>
-				</tr>
-			</table>
-		</div>
+		<table class="mui-table mui-table--bordered">
+			<tr>
+				<td>Status</td>
+				<td>{{mqttOnline}}</td>
+			</tr>
+			<tr>
+				<td>Uptime</td>
+				<td>{{mqttUptime}}</td>
+			</tr>
+			<tr>
+				<td>Published Messages</td>
+				<td>{{mqttPubMsg}}</td>
+			</tr>
+			<tr>
+				<td><input type="button" id="mqttboot" value="{{mqttButton}}" onclick="rebootMqttClient();"></td>
+				<td> </td>
+			</tr>
+		</table>
+		
+		<h3>Configure Credentials</h3>
+		<table class="mui-table mui-table--bordered">
+			<tr>
+				<td>Broker Address</td>
+				<td><input type="text" name="broker" value="{{bad}}"></td>
+			</tr>
+			<tr>
+				<td>Broker Port</td>
+				<td><input type="number" name="port" min="1" max="65535" step="1"  value="{{bpd}}"></td>
+			</tr>
+			<tr>
+				<td>Client ID</td>
+				<td><input type="text" name="client" value="{{cID}}"></td>
+			</tr>
+			<tr>
+				<td>Username</td>
+				<td><input type="text" name="user" value="{{user}}"></td>
+			</tr>
+			<tr>
+				<td>Password</td>
+				<td><input type="password" name="password" value="{{pwd}}"></td>
+			</tr>
+			<tr>
+				<td>Last Will Active</td>
+				<td><input type="checkbox" name="will" {{#will}}checked{{/will}}></td>
+			</tr>
+			<tr>
+				<td>Will Topic</td>
+				<td><input type="text" name="willtopic" value="{{wtp}}"></td>
+			</tr>
+			<tr>
+				<td>Will Message</td>
+				<td><input type="text" name="willmessage" value="{{wms}}"></td>
+			</tr>
+		</table>
 `;
 
 
@@ -398,12 +378,10 @@ function processJSON(page, json) {
 			break;
 		case 'mqtt':
 			if( json['mqttUptime'] > 0 ) {
-				json['mqttVisual'] = 'mqttOnline';
 				json['mqttOnline'] = 'Online';
 				json['mqttButton'] = 'Disconnect';
 			}
 			else {
-				json['mqttVisual'] = 'mqttOffline';
 				json['mqttOnline'] = 'Offline';
 				json['mqttButton'] = 'Connect';
 			}
