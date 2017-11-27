@@ -1,18 +1,87 @@
-var templates = {};
-templates['status'] = `
+var template = {
+    page: '',
+    template: ``, // html template with mustache variables
+    templateData: {}, // data passed to mustache
+    cache: null, // last received json response
+    view: null,  // detached view
+    defaultRender: function( key, value ) {
+        var el = this.view.find('#'+this.page+'-'+key).first();
+        if( el != null ) {
+            if( el.is('input') ) {
+                if( el.is('[type="checkbox"]') ) {
+                    el.prop('checked', value);
+                }
+                else {
+                    el.val(value);
+                }
+            } else {
+                el.text(value);
+            }
+        }
+    },
+    init: function() {
+        this.view = $(Mustache.render(this.template, this.templateData));
+    },
+    filter: function( data ) {
+        // Store response in cache
+        if( this.cache == null ) {
+            this.cache = $.extend(true, {}, data); // deep copy
+        } else {
+            for( key in data ) {
+                if( equals(this.cache[key], data[key] )) {
+                    // Filter out unchanged values
+                    delete data[key];
+                } else {
+                    // Update changes in cache
+                    if( data[key] instanceof Object ) {
+                        this.cache[key] = $.extend(true, {}, data[key]); // deep copy    
+                    } else {
+                        this.cache[key] = data[key] // primitive type
+                    }
+                }
+            }
+        }
+    },
+    parse: function( cache, data ) {
+    },
+    render: function( data) {
+        for( key in data ) {
+            this.defaultRender( key, data[key] );
+        }
+    },
+    update: function( data ) {
+        this.filter( data ); // modifies data to only contain values that changed and updates the cache
+        this.parse( data );
+        this.render( data );
+    },
+    show: function() {
+        if( this.view == null ) {
+            this.init();
+        }
+        $('#content').append(this.view);
+    },
+    hide: function() {
+        if( this.view != null ) this.view.detach();
+    }
+}
+
+templates = {};
+templates['status'] = Object.assign(Object.create(template), {
+    page: 'status',
+    template: `
         <h3>System</h3>
         <table class="mui-table mui-table--bordered">
           <tr>
-            <td><b>Uptime</b></td>
-            <td>{{uptime}}</td>
+            <td>Uptime</td>
+            <td id="status-uptime">{{uptime}}</td>
           </tr>
           <tr>
-            <td><b>Free heap</b></td>
-            <td>{{free_heap}}</td>
+            <td>Free heap</td>
+            <td id="status-free_heap">{{free_heap}}</td>
           </tr>
           <tr>
-            <td><b>Build</b></td>
-            <td>{{build}}</td>
+            <td>Build</td>
+            <td id="status-build">{{build}}</td>
           </tr>
         </table>
         <h3>EvalBoard</h3>
@@ -21,8 +90,8 @@ templates['status'] = `
             <td><b>USR LED</b></td>
             <td>
               <div class="onoffswitch">
-                <input type="checkbox" name="led" class="onoffswitch-checkbox" id="led-switch" {{#led}}checked{{/led}}>
-                <label class="onoffswitch-label" for="led-switch">
+                <input type="checkbox" name="led" class="onoffswitch-checkbox" id="status-led" {{#led}}checked{{/led}}>
+                <label class="onoffswitch-label" for="status-led">
                   <span class="onoffswitch-inner"></span>
                   <span class="onoffswitch-switch"></span>
                 </label>
@@ -33,8 +102,8 @@ templates['status'] = `
             <td><b>MINT Button</b></td>
             <td>
               <div class="onoffswitch">
-                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="button-switch" disabled="disabled" {{#button}}checked{{/button}}>
-                <label class="onoffswitch-label" for="button-switch">
+                <input type="checkbox" name="button" class="onoffswitch-checkbox" id="status-button" disabled="disabled" {{#button}}checked{{/button}}>
+                <label class="onoffswitch-label" for="status-button">
                   <span class="onoffswitch-inner"></span>
                   <span class="onoffswitch-switch"></span>
                 </label>
@@ -46,52 +115,115 @@ templates['status'] = `
         <table class="mui-table mui-table--bordered">
           <tr>
             <td><b>Hostname</b></td>
-            <td>{{hostname}}</td>
+            <td id="status-hostname">{{hostname}}</td>
           </tr>
           <tr>
             <td><b>MAC</b></td>
-            <td>{{mac}}</td>
+            <td id="status-mac">{{mac}}</td>
           </tr>
           <tr>
             <td><b>IP</b></td>
-            <td>{{ip}}</td>
+            <td id="status-ip">{{ip}}</td>
           </tr>
           <tr>
             <td><b>Netmask</b></td>
-            <td>{{netmask}}</td>
+            <td id="status-netmask">{{netmask}}</td>
           </tr>
           <tr>
             <td><b>Gateway</b></td>
-            <td>{{gateway}}</td>
+            <td id="status-gateway">{{gateway}}</td>
           </tr>
           <tr>
             <td><b>DNS</b></td>
-            <td>{{dns}}</td>
+            <td id="status-dns">{{dns}}</td>
           </tr>
         </table>
-`;
-templates['config'] = `
+`,
+    parse: function( data ) {
+        if( 'uptime'    in data ) data['uptime']    += ' s';
+        if( 'free_heap' in data ) data['free_heap'] += ' B';
+    },
+    render: function( data ) {
+        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        if( 'hostname' in data ) this.updateHostname( data['hostname']);
+    },
+    updateHostname: function( hostname ) {
+        $('#hostname').text( hostname );
+    }
+});
+
+templates['config'] = Object.assign(Object.create(template), {
+    page: 'config',
+    template: `
         <h3>Clickboards</h3>
-        <table class="mui-table mui-table--bordered">
-          <tr>
-            <th>Clickboard</td>
-            <th>Port 1</td>
-            <th>Port 2</td>
-          </tr>
-          <tr>
-              <td>None</td>
-              <td><input type="radio" name="port1" value="none" checked="checked"></td>
-              <td><input type="radio" name="port2" value="none" checked="checked"></td>
-          {{#clickboards}}
-          <tr>
-            <td>{{name_format}}</td>
-            <td><input type="radio" name="port1" value="{{name}}" {{#port1_active}}checked="checked"{{/port1_active}} {{^port1_available}}disabled="disabled"{{/port1_available}}></td>
-            <td><input type="radio" name="port2" value="{{name}}" {{#port2_active}}checked="checked"{{/port2_active}} {{^port2_available}}disabled="disabled"{{/port2_available}}></td>
-          </tr>
-          {{/clickboards}}
-        </table>
-`;
-templates['color2'] = `
+        <form id="config-clickboards-form">
+          <table class="mui-table mui-table--bordered" id="config-clickboards">
+            <tr>
+              <th>Clickboard</th>
+              <th>Port 1</th>
+              <th>Port 2</th>
+            </tr>
+            <tr>
+                <td>None</td>
+                <td><input type="radio" name="port1" value="none" checked="checked"></td>
+                <td><input type="radio" name="port2" value="none" checked="checked"></td>
+            </tr>
+          </table>
+          <input type="submit">
+        </form>
+`,
+    parse: function( data ) {
+        if( 'clickboards' in data ) {
+            for( i in data.clickboards ) {
+                var clickboard = data.clickboards[i];
+                clickboard.name_format = capitalize(clickboard.name) + 'Click';
+            }
+        }
+    },
+    render: function( data )  {
+        for( key in data ) {
+            if( key == 'clickboards' ) {
+                this.updateMenu(data.clickboards);
+
+                // remove outdated clickboard config rows
+                this.view.find('.config-clickboard').remove();
+                for( i in data.clickboards ) {
+                    var clickboard = data.clickboards[i];
+
+                    // add row to clickboard config
+                    var tr = $('<tr/>', {id: 'config-clickboard-' + clickboard.name, 'class': 'config-clickboard'} );
+                    tr.append( '<td>' + clickboard.name_format + '</td>' );
+                    for( var port = 0; port < 2; ++port ) {
+                        var checked  = ( ( clickboard.active    & (1 << port) ) != 0 ) ? 'checked="checked" '   : '';
+                        var disabled = ( ( clickboard.available & (1 << port) ) == 0 ) ? 'disabled="disabled" ' : '';
+                        tr.append( '<td><input type="radio" name="port' + (port+1) + '" value="'+ clickboard.name + '"' + checked + disabled + '></td>' );
+                    }
+                    this.view.find('#config-clickboards').append(tr);
+                }
+            } else {
+                this.defaultRender( key, data[key] );
+            }
+        }
+    },
+    updateMenu: function( clickboards ) {
+        // hide menu entries
+        $('#nav .clickboard').addClass('hidden');
+        for( i in clickboards ) {
+            var clickboard = clickboards[i];
+            clickboard.name_format = capitalize(clickboard.name) + 'Click';
+            for( var port = 0; port < 2; ++port ) {
+                // update and show menu
+                if( ( clickboard['active'] & (1 << port) ) != 0 ) {
+                    $('#nav li.clickboard').eq(port).removeClass('hidden').find('a').attr('href', '#'+clickboard.name).find('span').text(clickboard.name_format);
+                }
+            }
+        }
+    }
+});
+
+templates['color2'] = Object.assign(Object.create(template), {
+    page: 'color2',
+    template: `
         <h3>Sensor</h3>
         <table class="mui-table mui-table--bordered">
           <tr>
@@ -101,18 +233,18 @@ templates['color2'] = `
           </tr>
           <tr>
             <td>Red</td>
-            <td>{{r}}</td>
-            <td>{{r_norm}}</td>
+            <td id="color2-r">{{r}}</td>
+            <td id="color2-r_norm">{{r_norm}}</td>
           </tr>
           <tr>
             <td>Green</td>
-            <td>{{g}}</td>
-            <td>{{g_norm}}</td>
+            <td id="color2-g">{{g}}</td>
+            <td id="color2-g_norm">{{g_norm}}</td>
           </tr>
           <tr>
             <td>Blue</td>
-            <td>{{b}}</td>
-            <td>{{b_norm}}</td>
+            <td id="color2-b">{{b}}</td>
+            <td id="color2-b_norm">{{b_norm}}</td>
           </tr>
         </table>
 
@@ -120,39 +252,80 @@ templates['color2'] = `
         <table class="mui-table mui-table--bordered">
             <tr>
                 <td><b>Hex</b></td>
-                <td>#{{r_hex}}{{g_hex}}{{b_hex}}</td>
+                <td id="color2-rgb_hex">#{{r_hex}}{{g_hex}}{{b_hex}}</td>
             </tr>
         </table>
-        <div style="width:200px; height:100px; margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
-`;
-templates['thermo3'] = `
+        <div id="color2-color-box" style="width:200px; height:100px; margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
+`,
+    parse: function( data ) {
+        if( ('r' in data) || ('g' in data) || ('b' in data) ) {
+            var rNorm = 1.0;
+            var gNorm = 2.12;
+            var bNorm = 2.0;
+            data['r_norm'] = Math.round(this.cache['r'] / rNorm);
+            data['g_norm'] = Math.round(this.cache['g'] / gNorm);
+            data['b_norm'] = Math.round(this.cache['b'] / bNorm);
+            var colorMax = Math.max(data['r_norm'], data['g_norm'], data['b_norm']);
+            data['rgb_hex'] = '#' + Math.round(data['r_norm'] * 255 / colorMax).toString(16)
+                            + Math.round(data['g_norm'] * 255 / colorMax).toString(16)
+                            + Math.round(data['b_norm'] * 255 / colorMax).toString(16);
+        }
+    },
+    render: function( data ) {
+        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        if( 'rgb_hex' in data ) $('#'+this.page+'-color-box').css('background',data['rgb_hex']);
+    }
+});
+
+templates['thermo3'] = Object.assign(Object.create(template), {
+    page: 'thermo3',
+    template: `
         <h3>Temperature</h3>
         <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Current temperature</td>
-                <td>{{cur}}&deg;C</td>
+                <td><span id="thermo3-temp_cur"></span> &deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature&nbsp;{{temp_high_time}}&nbsp;seconds ago</td>
-                <td>{{high}}&deg;C</td>
+                <td>Highest temperature <span id="thermo3-temp_high_time">{{temp_high_time}}</span> seconds ago</td>
+                <td><span id="thermo3-temp_high"></span> &deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature&nbsp;{{temp_low_time}}&nbsp;seconds ago</td>
-                <td>{{low}}&deg;C</td>
+                <td>Lowest temperature <span id="thermo3-temp_low_time">{{temp_low_time}}</span> seconds ago</td>
+                <td><span id="thermo3-temp_low"></span> &deg;C</td>
             </tr>
         </table>
         <h3>History</h3>
-        <table class="mui-table mui-table--bordered">
-            {{#history}}
-            <tr>
-                <td>{{date}}</td>
-                <td>{{val}}&deg;C</td>
-            </tr>
-            {{/history}}
+        <table class="mui-table mui-table--bordered" id="thermo3-log">
+            <tbody>
+            </tbody>
         </table>
     <input type="button" id="resetTemp" value="Reset" onclick="resetTempHist()">
-`;
-templates['expand2'] = `
+`,
+    parse: function( data ) {
+        for( key in data ) {
+            switch( key ) {
+            case 'temp_cur':
+            case 'temp_high':
+            case 'temp_low':
+                data[key] /= 100;
+                break;
+            }            
+        }
+
+        data['log'] = { 'date' : new Date().toLocaleString('de-DE'), 'val' : (this.cache['temp_cur'] / 100) };
+    },
+    render: function( data ) {
+        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        if( 'log' in data ) {
+            $('#'+this.page+'-log tbody').prepend('<tr><td>'+data.log.date+'</td><td>'+data.log.val+' °C</td></tr>');
+        }
+    }
+});
+
+templates['expand2'] = Object.assign(Object.create(template), {
+    page: 'expand2',
+    template: `
         <h3>Water Meter</h3>
         <table class="mui-table mui-table--bordered">
             {{#watermeter}}
@@ -160,7 +333,7 @@ templates['expand2'] = `
                 <td>Water Meter {{name}}</td>
                 <td>{{quantity}}&nbsp;Liter</td>
                 <td>
-                    <select name="pin{{index}}">
+                    <select id="expand2-pin{{index}}" name="pin{{index}}">
                         {{#options}}
                         <option value="{{val}}" {{#sel}}selected{{/sel}}>{{name}}</option>
                         {{/options}}
@@ -178,13 +351,13 @@ templates['expand2'] = `
         <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
-                <td>{{input}}</td>
+                <td><input id="expand2-input" type="number" name="input" min="0" max="255" step="1" disabled></td>
             </tr>
             <tr>
                 <td>Bits</td>
                 <td class="bits">
                     {{#inputs}}
-                    <label><input type="checkbox" disabled name="{{name}}" {{#val}}checked{{/val}}>{{number}}</label>
+                    <label><input id="expand2-input{{number}}" type="checkbox" name="input[]" disabled>{{number}}</label>
                     {{/inputs}}
                 </td>
             </tr>
@@ -193,148 +366,224 @@ templates['expand2'] = `
         <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Value</td>
-                <td><input type="number" name="output" min="0" max="255" step="1" value="{{output}}"></td>
+                <td><input id="expand2-output" type="number" name="output" min="0" max="255" step="1"></td>
             </tr>
             <tr>
                 <td>Bits</td>
                 <td class="bits">
                     {{#outputs}}
-                    <label><input type="checkbox" name="output[]" onchange="toggleBit(this, event)" {{#val}}checked{{/val}}>{{number}}</label>
+                    <label><input id="expand2-output{{number}}" type="checkbox" name="output[]" onchange="templates['expand2'].toggleBit();event.stopPropagation();">{{number}}</label>
                     {{/outputs}}
                 </td>
             </tr>
         </table>
-`;
+`,
+    templateData: (function() {
+        data = {};
+        data['watermeter'] = [];
+        for( var x = 0; x < 2; x++ ) {
+            var options = [{ 'val': 0, 'sel': true, 'name': 'Off' }];
+            for( var i = 0; i < 8; i++) {
+                options.push({ 'val': 1<<i, 'sel': false, 'name': 'PA'+i});
+            }
+            data['watermeter'].push({
+                'index': x,
+                'name': x+1,
+                'quantity': 0,//(json['count'+x] * json['multi'] / 1000).toFixed(3),
+                'options': options
+            });
+        }
+        data['inputs'] = [];
+        data['outputs'] = [];
+        for( var i = 0; i < 8; i++ ) {
+            data['inputs'].unshift({'number': i, 'val': false });
+            data['outputs'].unshift({'number':i, 'val': false });
+        }
+        return data;
+    })(),
+    parse: function( data ) {
+        for( var x = 0; x < 2; x++ ) {
+            if( ('count'+x) in data )
+                data['count'+x] = (data['count'+x] * this.cache['multi'] / 1000).toFixed(3);
+        }
+    },
+    render: function( data ) {
+        for( key in data ) {
+            switch( key ) {
+            case 'pin0':
+            case 'pin1':
+                this.view.find('#'+this.page+'-'+key+' option').attr('selected', false);
+                this.view.find('#'+this.page+'-'+key+' option[value='+data[key]+']').attr('selected', true);
+                break;
+            case 'input':
+            case 'output':
+                this.view.find('#'+this.page+'-'+key).val(data[key]);
+                for( var i = 0; i < 8; i++) {
+                    this.view.find('#'+this.page+'-'+key+i).prop('checked', (data[key] & ( 1 << i )) != 0);
+                }
+                break;
+            }
+        }
+    },
+    toggleBit: function() {
+        var x = 0;
+        $(this.view.find('input[name="output[]"]').get().reverse()).each(function(i, v) {
+            $(v).prop('checked') && ( x += 1<<i );
+        });
+        this.view.find('input[name="output"]').val(x).change();
+    }
+});
 
-// Used by the Expand2Click output bits
-function toggleBit( element, event ) {
-    var x = 0;
-    $($('input[name="'+element.name+'"').get().reverse()).each(function(i, v) {
-        $(v).prop('checked') && ( x += 2**i );
-    });
-    // Change the numeric input field, which triggers the request to the GreenPHY module.
-    $('input[name="'+element.name.substring(0, element.name.lastIndexOf('['))+'"]').val(x).change();
-    // Prevent triggering the request twice.
-    event.stopPropagation();
+var site = {
+    domain: 'http://172.16.200.127/',
+    maxRetries: 3,
+    xhr: null,
+    timeout: null,
+    currentPage: null,
+    request: function( page = this.currentPage, success = $.noop,
+                       data = { action: 'get' }, tries = 0 ) {
+        var xhr = $.getJSON(this.domain + page + '.json', data)
+          .done( function(json) {
+            templates[page].update( json );
+            success( page, json );
+          })
+          .fail( function(xhr, text_status, error_thrown) {
+            if (text_status != "abort") {
+                if( tries < this.maxRetries ) {
+                    this.request( page, success, undefined, tries+1 );
+                } else {
+                    this.disconnected();
+                }
+            }
+          });
+        return xhr;
+    },
+    cancelUpdate: function() {
+        if( this.xhr != null ) {
+            this.xhr.abort();
+            this.xhr = null;
+        }
+        if( this.timeout != null ) {
+            clearTimeout( this.timeout );
+            this.timeout = null;
+        }
+    },
+    update: function( page = this.currentPage, update = 0 ) {
+        this.cancelUpdate();
+        var that = this;
+        this.xhr = this.request( page, function( page, json ) {
+            that.timeout = setTimeout( function(){ that.update( undefined, update+1 ); }, 3000 );
+        });
+    },
+    disconnected: function() {
+        console.log("Got disconnected");
+    },
+    switch: function( page ) {
+        if( !page ) {
+            page = window.location.hash.substr(1);
+        }
+        if( !( page in templates ) ) {
+            page = 'status';
+        }
+        if( page != this.currentPage ) {
+            window.location.hash = '#' + page;
+            if( this.currentPage in templates ) {
+                templates[this.currentPage].hide();
+            }
+            this.currentPage = page;
+            templates[ page ].show();
+
+            // Mark navigation link as active
+            $( '#nav a.active' ).removeClass( 'active' );
+            $( '#nav a[href^="#' + page + '"]' ).addClass( 'active' );
+
+            // Change title
+            $( '#page-title' ).html( $( '#nav a.active' ).html() );
+        }
+
+        this.update();        
+    },
+    init: function() {
+        for( page in templates ) {
+          templates[page].init();
+        }
+        this.request( 'config' );
+        this.request( 'status', function( page, json) {
+            site.switch();
+        })
+    }
+}
+
+site.init();
+
+/**
+ * Deep compare of two objects.
+ *
+ * Note that this does not detect cyclical objects as it should.
+ * Need to implement that when this is used in a more general case. It's currently only used
+ * in a place that guarantees no cyclical structures.
+ *
+ * @param {*} x
+ * @param {*} y
+ * @return {Boolean} Whether the two objects are equivalent, that is,
+ *         every property in x is equal to every property in y recursively. Primitives
+ *         must be strictly equal, that is "1" and 1, null an undefined and similar objects
+ *         are considered different
+ *         y can be a subset of x.
+ */
+function equals ( x, y ) {
+    // If both x and y are null or undefined and exactly the same
+    if ( x === y ) {
+        return true;
+    }
+
+    // If they are not strictly equal, they both need to be Objects
+    if ( ! ( x instanceof Object ) || ! ( y instanceof Object ) ) {
+        return false;
+    }
+
+    // They must have the exact same prototype chain, the closest we can do is
+    // test the constructor.
+    if ( x.constructor !== y.constructor ) {
+        return false;
+    }
+
+    for ( var p in x ) {
+        // Inherited properties were tested using x.constructor === y.constructor
+        if ( x.hasOwnProperty( p ) ) {
+            // Allows comparing x[ p ] and y[ p ] when set to undefined
+            if ( ! y.hasOwnProperty( p ) ) {
+                continue; // continue if y is subset of x
+            }
+
+            // If they have the same strict value or identity then they are equal
+            if ( x[ p ] === y[ p ] ) {
+                continue;
+            }
+
+            // Numbers, Strings, Functions, Booleans must be strictly equal
+            if ( typeof( x[ p ] ) !== "object" ) {
+                return false;
+            }
+
+            // Objects and Arrays must be tested recursively
+            if ( !equals( x[ p ],  y[ p ] ) ) {
+                return false;
+            }
+        }
+    }
+
+    for ( p in y ) {
+        // allows x[ p ] to be set to undefined
+        if ( y.hasOwnProperty( p ) && ! x.hasOwnProperty( p ) ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function capitalize(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-// thermo3click variables
-var tempHistory = [];
-// expand2click variables
-var wmeterPin = [0,0];
-var wmeterMultiplicator = 0.25;
-
-function processJSON(page, json) {
-    switch(page) {
-        case 'status':
-            $('#hostname').text(json['hostname']);
-            json['uptime'] += ' s';
-            json['free_heap'] += ' B';
-            break;
-        case 'config':
-            $('#nav .clickboard').addClass('hidden');
-            $.each(json['clickboards'], function(i, clickboard) {
-                clickboard['name_format'] = capitalize(clickboard['name']) + 'Click';
-                clickboard['port1_available'] = clickboard['available'] & (1 << 0) ? true : false;
-                clickboard['port2_available'] = clickboard['available'] & (1 << 1) ? true : false;
-                clickboard['port1_active'] = clickboard['active'] & (1 << 0) ? true : false;
-                clickboard['port2_active'] = clickboard['active'] & (1 << 1) ? true : false;
-
-                // If the clickboard is active, add an entry to the menu.
-                if(clickboard['port1_active']) {
-                    $('#nav li.clickboard').eq(0).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
-                }
-                if(clickboard['port2_active']) {
-                    $('#nav li.clickboard').eq(1).removeClass('hidden').find('a').attr('href', '#'+clickboard['name']).find('span').text(clickboard['name_format']);
-                }
-            });
-            break;
-        case 'color2':
-            var rNorm = 1.0;
-            var gNorm = 2.12;
-            var bNorm = 2.0;
-            json['r_norm'] = Math.round(json['r'] / rNorm);
-            json['g_norm'] = Math.round(json['g'] / gNorm);
-            json['b_norm'] = Math.round(json['b'] / bNorm);
-            var colorMax = Math.max(json['r_norm'], json['g_norm'], json['b_norm']);
-            json['r_dec'] = Math.round(json['r_norm'] * 255 / colorMax);
-            json['g_dec'] = Math.round(json['g_norm'] * 255 / colorMax);
-            json['b_dec'] = Math.round(json['b_norm'] * 255 / colorMax);
-            json['r_hex'] = json['r_dec'].toString(16);
-            json['g_hex'] = json['g_dec'].toString(16);
-            json['b_hex'] = json['b_dec'].toString(16);
-            break;
-        case 'thermo3':
-            json['cur'] = json['temp_cur'] / 100;
-            json['high'] = json['temp_high'] / 100;
-            json['low'] = json['temp_low'] / 100;
-            // Store temp value in the global history
-            tempHistory.unshift({ 'date' : new Date().toLocaleString('de-DE'), 'val' : json['cur'] });
-            json['history'] = tempHistory;
-            break;
-        case 'expand2':
-            json['inputs'] = [];
-            json['outputs'] = [];
-            for( var i = 0; i < 8; i++ ) {
-                json['inputs'].unshift({'number': i, 'val': (json['input'] & ( 1 << i )) });
-                json['outputs'].unshift({'number':i, 'val': (json['output'] & ( 1 << i )) });
-            }
-            // Convert toggle count to water quantity
-            json['watermeter'] = [];
-            for( var x = 0; x < 2; x++ ) {
-                var options = [{ 'val': 0, 'sel': (!json['pin'+x] ? 1 : 0), 'name': 'Off' }];
-                for( var i = 0; i < 8; i++) {
-                    options.push({ 'val': Math.pow(2, i) , 'sel': (json['pin'+x] & ( 1 << i )), 'name': 'PA'+i});
-                }
-                json['watermeter'].push({
-                    'index': x,
-                    'name': x+1,
-                    'quantity': (json['count'+x] * json['multi'] / 1000).toFixed(3),
-                    'options': options
-                });
-            }
-        default:
-            break;
-    }
-    return json;
-}
-
-function sendRequest(page, data, success) {
-    // Set domain for testing purposes to GreenPHY module URL like 'http://172.16.201.3/'
-    var domain = '';
-    if( !data ) data = { action: 'get' };
-    $.getJSON(domain + page + '.json', data, success)
-            .fail(function(xhr, text_status, error_thrown) {
-                    // Retry after 3s, unless request was explicitly aborted
-                    console.log(text_status);
-                    console.log(error_thrown);
-                    if( text_status != "abort" ) {
-                        setTimeout( function() { sendRequest(page, data, success) }, 3000 );
-                    }
-            });
-}
-
-// Store the currently visible page
-var currentPage;
-function renderPage(page, json) {
-    var html = Mustache.render(templates[page], processJSON(page, json));
-
-    if( currentPage == page ) {
-        $('#content').html(html);
-    } else {
-        currentPage = page;
-        $('#content').html(html);
-        // Mark navigation link as active
-        $('#nav a.active').removeClass('active');
-        $('#nav a[href^="#' + page + '"]').addClass('active');
-
-        // Change title
-        $('#page-title').html($('#nav a.active').html());
-    }
 }
 
 function setRefreshRate( rate ) {
@@ -346,32 +595,6 @@ function getRefreshRate() {
     return rates[$('input[name="refresh"]').val()];
 }
 
-var timeout;
-function updatePage(page, data) {
-    if( timeout ) clearTimeout(timeout);
-
-    if( !page ) {
-      page = window.location.hash.substr(1);
-    } else {
-        window.location.hash = '#' + page;
-    }
-    if( !(page in templates) ) {
-        page = 'status';
-    }
-
-    sendRequest(page, data, function(json) {
-        renderPage(page, json);
-        if(getRefreshRate() != 0)
-            timeout = setTimeout(updatePage, getRefreshRate()*1000);
-    });
-}
-
-// Handle internal links by JQuery
-$(document).on('click', 'a[href^="#"]', function(event) {
-    event.preventDefault();
-    updatePage(this.hash.substr(1));
-});
-
 function serialize(element) {
     var data = $(element).serialize();
     if( $(element).is(':checkbox') && !element.checked ) {
@@ -380,28 +603,17 @@ function serialize(element) {
     return data;
 }
 
+// Handle internal links by JQuery
+$(document).on('click', 'a[href^="#"]', function(event) {
+    event.preventDefault();
+    site.switch(this.hash.substr(1));
+});
+
 // Submit input fields on change
 $(document).on('change', 'input, select', function() {
-    updatePage(undefined, serialize(this));
+    site.cancelUpdate();
+    site.request(undefined, function() { site.update() }, serialize(this));
 });
-
-// Stop auto refresh when focusing input fields
-$(document).on('focus', 'input, select', function() {
-    if( timeout ) clearTimeout(timeout);
-});
-
-// Refresh page when leaving input fields
-$(document).on('focusout', 'input, select', function() {
-    updatePage();
-});
-
-// Load config once to add current clickboards to menu
-sendRequest('config', undefined, function(json) {
-    processJSON('config', json);
-});
-
-// Initialize current page
-updatePage();
 
 // Button to open/close top right menu
 $("#menu button").click(function(e) {

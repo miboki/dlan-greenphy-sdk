@@ -64,6 +64,7 @@ int8_t cBuffer[ 16 ];
 	pxParam = pxFindKeyInQueryParams( "reset", pxParams, xParamCount );
 	if( pxParam != NULL )
 	{
+		/* _ML_ TODO: use a timeout, as otherwise no response will be generated. */
 		NVIC_SystemReset();
 	}
 
