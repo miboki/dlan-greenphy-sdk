@@ -153,14 +153,15 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent, NetworkEn
 				char *cMqtt = NULL;
 				cMqtt = (char *)pvGetConfig( eConfigNetworkMqttOnPwr, NULL );
 				if( (*cMqtt) > 0 )
-					xInitMQTT();
-
-				cMqtt = (char *)pvGetConfig( eConfigNetworkMqttAuto, NULL );
-				if( (*cMqtt) > 0 )
 				{
+					// Start MQTT Task
+					xInitMQTT();
+					// Wait for Task to initialize
+					vTaskDelay( pdMS_TO_TICKS( 500 ) );
+					// Connect MQTT Broker
 					MqttJob_t xJob;
-					QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 					xJob.eJobType = eConnect;
+					QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 					if( xMqttQueue != NULL )
 						xQueueSendToBack( xMqttQueue, &xJob, 0 );
 				}

@@ -48,6 +48,23 @@ static TaskHandle_t xMqttTaskHandle = NULL;
  * |          Functions         |
  * ------------------------------ */
 /***********************************************************************************************************
+ *   function: vCleanTopic
+ *   Purpose: Search for '/' and replace with '?'
+ *   Parameter: xAction - specify what the function will do
+ *   Returns: pdPASS - Initializing / Setting done
+ *   		  -44 - xAction has unsupported value
+ *   		  xPubCounter (xAction = eGet)
+ ***********************************************************************************************************/
+void vCleanTopic( char *pcTopic )
+{
+	int i;
+	for(i = 0; i < strlen( pcTopic ); i++)
+	{
+		if( pcTopic[i] == 47 )
+			pcTopic[i] = 63;
+	}
+}
+/***********************************************************************************************************
  *   function: xManagePubCounter
  *   Purpose: Handle the pubcounter Variable, allow initialzising to 0, set to counter +1 and getting the counter
  *   Parameter: xAction - specify what the function will do
@@ -313,7 +330,7 @@ void vMQTTTask( void *pvParameters )
 			case eConnect:
 				if( xClient.isconnected == 0 )
 				{
-					DEBUGOUT(" ** Info ** MQTT Connect\n");
+					MQTT_INFO(" ** Info ** MQTT Connect\n");
 					if( xConnect( &xClient, &xNetwork ) != pdPASS )
 						DEBUGOUT("MQTT-Error 0x0110: Unable to connect to MQTT Broker.\n");
 				}
@@ -322,7 +339,7 @@ void vMQTTTask( void *pvParameters )
 			case eDisconnect:
 				if( xClient.isconnected )
 				{
-					DEBUGOUT(" ** Info ** MQTT Disconnect\n");
+					MQTT_INFO(" ** Info ** MQTT Disconnect\n");
 					MQTTDisconnect( &xClient );
 				}
 				/* Clean up the tcp socket save */
@@ -335,7 +352,7 @@ void vMQTTTask( void *pvParameters )
 				pxPubMsg = (MqttPublishMsg_t *) xJob.data;
 				if( xClient.isconnected )
 				{
-					DEBUGOUT(" ** Info ** MQTT Publish\n");
+					MQTT_INFO(" ** Info ** MQTT Publish\n");
 					if( MQTTPublish( &xClient, (pxPubMsg->pucTopic), &( pxPubMsg->xMessage ) ) != SUCCESS_MQTT)
 					{
 						DEBUGOUT("MQTT-Error 0x0130: Could not publish Message.\n");
@@ -343,7 +360,7 @@ void vMQTTTask( void *pvParameters )
 					xManagePubCounter( eSet );
 				}
 				else
-					DEBUGOUT("MQTT-Error: 0x0131: No connection established. Publish will be discarded.\n");
+					MQTT_INFO("MQTT-Error: 0x0131: No connection established. Publish will be discarded.\n");
 				pxPubMsg->xMessage.payload = NULL;
 				break;
 
@@ -353,14 +370,14 @@ void vMQTTTask( void *pvParameters )
 			case eRecieve:
 				if( xClient.isconnected )
 				{
-					DEBUGOUT(" ** Info ** MQTT Yield\n");
+					MQTT_INFO(" ** Info ** MQTT Yield\n");
 					if ( MQTTYield( &xClient, MQTTRECEIVE_TIMEOUT ) != SUCCESS_MQTT )
 						DEBUGOUT("MQTT-Error 0x0140: MQTTYield failed.\n");
 				}
 				break;
 
 			case eKill:
-				DEBUGOUT(" ** Info ** MQTT Kill\n");
+				MQTT_INFO(" ** Info ** MQTT Kill\n");
 				/* Clean up Queue */
 				vQueueDelete( xMqttQueueHandle );
 				xMqttQueueHandle = NULL;
@@ -550,7 +567,7 @@ QueueHandle_t xInitMQTT(void)
 	/* Bevore doing anything check if mqtt is already initialized */
 	if(( xMqttQueueHandle != NULL ) || (xMqttTaskHandle != NULL) )
 	{
-		DEBUGOUT("MQTT-Error 0x0010: Initialization failed. Already initialized.\n");
+		MQTT_INFO("MQTT-Error 0x0010: Initialization failed. Already initialized.\n");
 		return NULL;
 	}
 
@@ -582,7 +599,7 @@ QueueHandle_t xInitMQTT(void)
 		/* Init-Step 3 of 3: Start HTTP Request Handler */
 		xRet = xAddRequestHandler( "mqtt", xMQTTRequestHandler );
 		if( xRet != pdPASS )
-			DEBUGOUT("MQTT-Warning: Failed to add HTTP-Request-Handler. Task will run with saved config.\n");
+			MQTT_INFO("MQTT-Warning: Failed to add HTTP-Request-Handler. Task will run with saved config.\n");
 	#endif
 
 	return xMqttQueueHandle;
@@ -611,7 +628,7 @@ void vDeinitMQTT( void )
 		/* Deinit-Step 2 of X: Check if kill command was send to queue otherwise kill task manually */
 		if( xRet == errQUEUE_FULL )
 		{
-			DEBUGOUT("MQTT-Error 0x0020: Send 'kill' to task failed. Task seems to be unresponsive, will delete it.\n");
+			MQTT_INFO("MQTT-Error 0x0020: Send 'kill' to task failed. Task seems to be unresponsive, will delete it.\n");
 			/* Task could not delete himself, so delete it */
 			vTaskDelete( xMqttTaskHandle );
 			xMqttTaskHandle = NULL;
@@ -632,7 +649,7 @@ void vDeinitMQTT( void )
 		/* Deinit-Step 3 of X: Remove HTTP request handler */
 		xRet = xRemoveRequestHandler( "mqtt" );
 		if( xRet != pdTRUE )
-			DEBUGOUT("MQTT-Warning: Could not remove HTTP request handler from list.\n");
+			MQTT_INFO("MQTT-Warning: Could not remove HTTP request handler from list.\n");
 	#endif /* #if( includeHTTP_DEMO != 0 ) */
 
 }

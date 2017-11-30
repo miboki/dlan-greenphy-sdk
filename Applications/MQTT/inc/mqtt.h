@@ -19,6 +19,13 @@
 #define MQTTCLIENT_TIMEOUT 2000 /* Timeout of the client in ms */
 #define MQTTRECEIVE_TIMEOUT 1000 /* Timeout for MQTTYield, will wait full time, if to low will cause errors */
 
+//#define DEBUG_MQTT
+#ifdef DEBUG_MQTT
+	#define MQTT_INFO( X ) DEBUGOUT( X )
+#else
+	#define MQTT_INFO( X )
+#endif
+
 //#define netconfigMQTT_BROKER "test.mosquitto.org"
 //#define netconfigMQTT_BROKER "broker.hivemq.com"
 /*#define mqttconfigBROKER "mqtt.relayr.io"
@@ -58,7 +65,7 @@ typedef struct {
 	MQTTMessage xMessage;
 } MqttPublishMsg_t;
 
-
+void vCleanTopic( char *pcTopic );
 QueueHandle_t xGetMQTTQueueHandle( void );
 QueueHandle_t xInitMQTT(void);
 void vDeinitMQTT( void );

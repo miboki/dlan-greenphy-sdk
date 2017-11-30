@@ -144,20 +144,23 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 char lastBits = get_expand2click();
 //char count = 0;
 #if( netconfigUSEMQTT != 0 )
-	char buffer[80];
-	unsigned char pucExpTopic[50] = netconfigMQTT_TOPIC;
+	char buffer1[40];
+	char buffer2[40];
 	QueueHandle_t xMqttQueue = xGetMQTTQueueHandle();
 	MqttJob_t xJob;
-	MqttPublishMsg_t xPublish;
+	MqttPublishMsg_t xPublish1;
+	MqttPublishMsg_t xPublish2;
 
 	/* Set all connection details only once */
 	xJob.eJobType = ePublish;
-	xJob.data = (void *) &xPublish;
 
-	xPublish.pucTopic = pucExpTopic;
-	xPublish.xMessage.qos = 0;
-	xPublish.xMessage.retained = 0;
-	xPublish.xMessage.payload = NULL;
+	xPublish1.xMessage.qos = 0;
+	xPublish1.xMessage.retained = 0;
+	xPublish1.xMessage.payload = NULL;
+
+	xPublish2.xMessage.qos = 0;
+	xPublish2.xMessage.retained = 0;
+	xPublish2.xMessage.payload = NULL;
 #endif /* #if( netconfigUSEMQTT != 0 ) */
 
 	for(;;)
@@ -198,16 +201,27 @@ char lastBits = get_expand2click();
 			xMqttQueue = xGetMQTTQueueHandle();
 			if( xMqttQueue != NULL )
 			{
-				if(xPublish.xMessage.payload == NULL)
+				if((xPublish1.xMessage.payload == NULL) && ( togglePins[0] > 0 ))
 				{
 					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
-					xPublish.xMessage.payload = buffer;
-					sprintf(buffer, "{\"meaning\":\"wmeter1\",\"value\":%d}", toggleCount[0] );
-					xPublish.xMessage.payloadlen = strlen(buffer);
+					xJob.data = (void *) &xPublish1;
+					xPublish1.pucTopic = (char *)pvGetConfig( eConfigExpandTopic1, NULL );
+					xPublish1.xMessage.payload = buffer1;
+					sprintf(buffer1, "{\"meaning\":\"wmeter1\",\"value\":%8.2f}", ( toggleCount[0] * ((float)multiplicator / 1000 )) );
+					xPublish1.xMessage.payloadlen = strlen(buffer1);
 					xQueueSendToBack( xMqttQueue, &xJob, 0 );
 				}
-				else
-					DEBUGOUT("Expand2 Warning: Could not publish Packet, last message is waiting.\n");
+
+				if((xPublish2.xMessage.payload == NULL) && ( togglePins[1] > 0 ))
+				{
+					/* _CD_ set payload each time, because mqtt task set payload to NULL, so calling task knows package is sent.*/
+					xJob.data = (void *) &xPublish2;
+					xPublish2.pucTopic = (char *)pvGetConfig( eConfigExpandTopic2, NULL );
+					xPublish2.xMessage.payload = buffer2;
+					sprintf(buffer2, "{\"meaning\":\"wmeter2\",\"value\":%8.2f}", ( toggleCount[1] * ((float)multiplicator / 1000 )) );
+					xPublish2.xMessage.payloadlen = strlen(buffer2);
+					xQueueSendToBack( xMqttQueue, &xJob, 0 );
+				}
 			}
 		#endif /* #if( netconfigUSEMQTT != 0 ) */
 			xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
@@ -250,6 +264,14 @@ char lastBits = get_expand2click();
 			pvSetConfig( eConfigExpandMult, sizeof( multiplicator ), &( multiplicator ));
 		}
 
+		pxParam = pxFindKeyInQueryParams( "etopic1", pxParams, xParamCount );
+		if( pxParam != NULL )
+			pvSetConfig( eConfigExpandTopic1, strlen(pxParam->pcValue) + 1, pxParam->pcValue );
+
+		pxParam = pxFindKeyInQueryParams( "etopic2", pxParams, xParamCount );
+		if( pxParam != NULL )
+			pvSetConfig( eConfigExpandTopic2, strlen(pxParam->pcValue) + 1, pxParam->pcValue );
+
 		xCount += sprintf( pcBuffer, "{"
 				"\"input\":"  "%d,"
 				"\"output\":" "%d,"
@@ -258,7 +280,7 @@ char lastBits = get_expand2click();
 				"\"pin0\":"   "%d,"
 				"\"pin1\":"   "%d,"
 				"\"multi\":"  "%d"
-			"}",
+			"",
 			iBits,
 			oBits,
 			toggleCount[0],
@@ -267,6 +289,27 @@ char lastBits = get_expand2click();
 			togglePins[1],
 			multiplicator
 		);
+
+	#if( netconfigUSEMQTT != 0 )
+		char buffer[50];
+		char *pcTopic = (char *)pvGetConfig( eConfigExpandTopic1, NULL );
+		if( ( pcTopic != NULL ) )
+		{
+			strcpy( buffer, pcTopic );
+			vCleanTopic( buffer );
+			xCount += sprintf( pcBuffer + xCount , ",\"etopic1\":\"%s\"", buffer );
+		}
+
+		pcTopic = (char *)pvGetConfig( eConfigExpandTopic2, NULL );
+		if( ( pcTopic != NULL ) )
+		{
+			strcpy( buffer, pcTopic );
+			vCleanTopic( buffer );
+			xCount += sprintf( pcBuffer + xCount, ",\"etopic2\":\"%s\"", buffer );
+		}
+	#endif /* #if( netconfigUSEMQTT != 0 ) */
+
+		xCount += sprintf( pcBuffer + xCount, "}");
 		return xCount;
 	}
 #endif

@@ -266,27 +266,12 @@ BaseType_t xSuccess = pdFALSE;
 				pvSetConfig( eConfigNetworkMqttOnPwr, sizeof(on), &on );
 			}
 		}
-
-		pxParam = pxFindKeyInQueryParams( "mqttAutoOn", pxParams, xParamCount );
-		if( pxParam != NULL )
-		{
-			if( strcmp( pxParam->pcValue, "on" ) == 0 )
-			{
-				on = 1;
-				pvSetConfig( eConfigNetworkMqttAuto, sizeof(on), &on );
-			}
-			if( strcmp( pxParam->pcValue, "off" ) == 0 )
-			{
-				on = 0;
-				pvSetConfig( eConfigNetworkMqttAuto, sizeof(on), &on );
-			}
-		}
 	#endif /* #if( netconfigUSEMQTT != 0 ) */
 
 		/* Generate response containing all registered clickboards,
 		their names and on which ports they are available and active. */
-		on = *((char *)pvGetConfig( eConfigNetworkMqttAuto, NULL ));
-		xCount += sprintf( pcBuffer, "{\"mqttSwitch\":%d,\"mqttAutoOn\":%d,\"clickboards\":[", (xGetMQTTQueueHandle() == NULL)?0:1, on);
+		on = *((char *)pvGetConfig( eConfigNetworkMqttOnPwr, NULL ));
+		xCount += sprintf( pcBuffer, "{\"mqttSwitch\":%d,\"mqttAutoOn\":%d,\"clickboards\":[", on);
 
 		for( x = 0; x < ARRAY_SIZE( pxClickboards ); x++ )
 		{

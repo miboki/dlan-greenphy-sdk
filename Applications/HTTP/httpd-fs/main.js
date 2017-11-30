@@ -93,12 +93,8 @@ templates['config'] = `
 		<h3>MQTT Client</h3>
 		<table class="mui-table mui-table--bordered">
 			<tr>
-				<td>Global Task Status</td>
+				<td>Use MQTT</td>
 				<td><input type="checkbox" name="mqttSwitch" {{#mqttSwitch}}checked{{/mqttSwitch}}></td>
-			</tr>
-			<tr>
-				<td>Auto Connect to Broker on PowerOn</td>
-				<td><input type="checkbox" name="mqttAutoOn" {{#mqttAutoOn}}checked{{/mqttAutoOn}}></td>
 			</tr>
 		</table>
 `;
@@ -135,6 +131,13 @@ templates['color2'] = `
             </tr>
         </table>
         <div style="width:200px; height:100px; margin:auto; background:rgb({{r_dec}},{{g_dec}},{{b_dec}});"></div>
+		<h3>MQTT Topics</h3>
+		<table class="mui-table mui-table--bordered">
+			<tr>
+				<td>Topic Color</td>
+				<td><input type="text" name="ctopic" size="50" value="{{ctopic}}"></td>
+			</tr>
+		</table>
 `;
 templates['thermo3'] = `
         <h3>Temperature</h3>
@@ -152,6 +155,13 @@ templates['thermo3'] = `
                 <td>{{low}}&deg;C</td>
             </tr>
         </table>
+		<h3>MQTT Topics</h3>
+		<table class="mui-table mui-table--bordered">
+			<tr>
+				<td>Topic Temperature</td>
+				<td><input type="text" name="ttopic" size="50" value="{{ttopic}}"></td>
+			</tr>
+		</table>
         <h3>History</h3>
         <table class="mui-table mui-table--bordered">
             {{#history}}
@@ -215,6 +225,17 @@ templates['expand2'] = `
                 </td>
             </tr>
         </table>
+		<h3>MQTT Topics</h3>
+		<table class="mui-table mui-table--bordered">
+			<tr>
+				<td>Topic Water-Meter 1</td>
+				<td><input type="text" name="etopic1" size="50" value="{{etopic1}}"></td>
+			</tr>
+			<tr>
+				<td>Topic Water-Meter 2</td>
+				<td><input type="text" name="etopic2" size="50" value="{{etopic2}}"></td>
+			</tr>
+		</table>
 `;
 templates['mqtt'] = `
 		<h3>MQTT Client Information</h3>
@@ -241,7 +262,7 @@ templates['mqtt'] = `
 		<table class="mui-table mui-table--bordered">
 			<tr>
 				<td>Broker Address</td>
-				<td><input type="text" name="broker" value="{{bad}}"></td>
+				<td><input type="text" name="broker" size="50" value="{{bad}}"></td>
 			</tr>
 			<tr>
 				<td>Broker Port</td>
@@ -249,15 +270,15 @@ templates['mqtt'] = `
 			</tr>
 			<tr>
 				<td>Client ID</td>
-				<td><input type="text" name="client" value="{{cID}}"></td>
+				<td><input type="text" name="client" size="50" value="{{cID}}"></td>
 			</tr>
 			<tr>
 				<td>Username</td>
-				<td><input type="text" name="user" value="{{user}}"></td>
+				<td><input type="text" name="user" size="50" value="{{user}}"></td>
 			</tr>
 			<tr>
 				<td>Password</td>
-				<td><input type="password" name="password" value="{{pwd}}"></td>
+				<td><input type="password" name="password" size="50" value="{{pwd}}"></td>
 			</tr>
 			<tr>
 				<td>Last Will Active</td>
@@ -265,11 +286,11 @@ templates['mqtt'] = `
 			</tr>
 			<tr>
 				<td>Will Topic</td>
-				<td><input type="text" name="willtopic" value="{{wtp}}"></td>
+				<td><input type="text" name="willtopic" size="50" value="{{wtp}}"></td>
 			</tr>
 			<tr>
 				<td>Will Message</td>
-				<td><input type="text" name="willmessage" value="{{wms}}"></td>
+				<td><input type="text" name="willmessage" size="50" value="{{wms}}"></td>
 			</tr>
 		</table>
 `;
