@@ -407,4 +407,6 @@ shorted in the Windows simulator as simulated time is not real time. */
 #define ipconfigHTTP_REQUEST_CHARACTER           '?'
 #define ipconfigHTTP_REQUEST_DELIMITER           '&'
 #define ipconfigHTTP_DIRECTORY_INDEX             "/index.html"
+#define ipconfigHTTP_USE_KEEP_ALIVE              1
+#define ipconfigHTTP_KEEP_ALIVE_TIMEOUT          5000
 #endif /* FREERTOS_IP_CONFIG_H */

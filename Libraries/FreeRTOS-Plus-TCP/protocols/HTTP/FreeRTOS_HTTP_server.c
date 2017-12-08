@@ -195,7 +195,11 @@ BaseType_t xSockOptValue;
 		xSockOptValue = pdTRUE_UNSIGNED;
 		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
 
-		strncpy( pxClient->pxParent->pcConnection, "keep-alive", sizeof( pxClient->pxParent->pcConnection ) );
+		#if( ipconfigHTTP_USE_KEEP_ALIVE != 0 )
+		{
+			strncpy( pxClient->pxParent->pcConnection, "keep-alive", sizeof( pxClient->pxParent->pcConnection ) );
+		}
+		#endif
 		strncpy( pxClient->pxParent->pcContentsType, pcGetContentsType( pxClient->pcCurrentFilename ), sizeof( pxClient->pxParent->pcContentsType ) );
 		snprintf( pxClient->pxParent->pcExtraContents, sizeof( pxClient->pxParent->pcExtraContents ),
 			"Content-Encoding: gzip\r\n"
@@ -225,11 +229,15 @@ BaseType_t xSockOptValue;
 			ff_fread( pcBuffer, 1, uxCount, pxClient->pxFileHandle );
 			pxClient->uxBytesLeft -= uxCount;
 
-			if( pxClient->uxBytesLeft == 0u )
+			#if( netconfigHTTP_USE_KEEP_ALIVE == 0 )
 			{
-				xSockOptValue = pdTRUE_UNSIGNED;
-//				FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+				if( pxClient->uxBytesLeft == 0u )
+				{
+					xSockOptValue = pdTRUE_UNSIGNED;
+					FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+				}
 			}
+			#endif
 
 			xRc = FreeRTOS_send( pxClient->xSocket, NULL, uxCount, 0 );
 
@@ -275,7 +283,11 @@ char pcChunkSize[8];
 		xSockOptValue = pdTRUE_UNSIGNED;
 		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_SET_FULL_SIZE, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
 
-		strncpy( pxClient->pxParent->pcConnection, "keep-alive", sizeof( pxClient->pxParent->pcConnection ) );
+		#if( ipconfigHTTP_USE_KEEP_ALIVE != 0 )
+		{
+			strncpy( pxClient->pxParent->pcConnection, "keep-alive", sizeof( pxClient->pxParent->pcConnection ) );
+		}
+		#endif
 		strncpy( pxClient->pxParent->pcContentsType, "application/json", sizeof( pxClient->pxParent->pcContentsType ) );
 		strncpy( pxClient->pxParent->pcExtraContents, "Transfer-Encoding: chunked\r\n", sizeof( pxClient->pxParent->pcExtraContents ) );
 
@@ -297,8 +309,12 @@ char pcChunkSize[8];
 			if( ( xRc = FreeRTOS_send( pxClient->xSocket, pxClient->pxParent->pcFileBuffer, uxCount, 0 ) ) < 0 ) break;
 		}
 
-		xSockOptValue = pdTRUE_UNSIGNED;
-//		FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+		#if( ipconfigHTTP_USE_KEEP_ALIVE == 0 )
+		{
+			xSockOptValue = pdTRUE_UNSIGNED;
+			FreeRTOS_setsockopt( pxClient->xSocket, 0, FREERTOS_SO_CLOSE_AFTER_SEND, ( void * ) &xSockOptValue, sizeof( xSockOptValue ) );
+		}
+		#endif
 
 		/* At last send end of chunk and finishing 0 byte chunk at once. */
 		if( ( xRc = FreeRTOS_send( pxClient->xSocket, "\r\n0\r\n\r\n", sizeof( "\r\n0\r\n\r\n" ) - 1, 0 ) ) < 0 ) break;
@@ -509,7 +525,10 @@ void vHTTPClientDelete( HTTPClient_t *pxClient )
 	{
 
 		/* Check if socket is a reused listen socket and let it listen again. */
-		if( FreeRTOS_listen( pxClient->xSocket, 0 ) != 0 )
+		if( pxClient->pxParent->xSocket == pxClient->xSocket ) {
+			FreeRTOS_listen( pxClient->xSocket, 0 );
+		}
+		else
 		{
 			/* Otherwise it must be a child socket which will be closed now. */
 			FreeRTOS_FD_CLR( pxClient->xSocket, pxClient->pxParent->xSocketSet, eSELECT_ALL );
@@ -597,7 +616,7 @@ Socket_t xNexSocket;
 socklen_t xSocketLength;
 BaseType_t xRc;
 BaseType_t xSize;
-TickType_t xTicksToWait = pdMS_TO_TICKS( 5000 );
+TickType_t xTicksToWait = pdMS_TO_TICKS( ipconfigHTTP_KEEP_ALIVE_TIMEOUT );
 
 	/* Let the server do one working cycle. */
 	xRc = FreeRTOS_select( pxServer->xSocketSet, xBlockingTime );
