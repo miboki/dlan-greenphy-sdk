@@ -1,9 +1,9 @@
 var template = {
     page: '',
-    template: ``, // html template with mustache variables
-    templateData: {}, // data passed to mustache
-    cache: null, // last received json response
-    view: null,  // detached view
+    template: ``,     /* html template with mustache variables */
+    templateData: {}, /* data passed to mustache */
+    cache: null,      /* last received json response */
+    view: null,       /* detached view */
     defaultRender: function( key, value ) {
         var el = this.view.find('#'+this.page+'-'+key).first();
         if( el != null ) {
@@ -25,7 +25,7 @@ var template = {
     filter: function( data ) {
         // Store response in cache
         if( this.cache == null ) {
-            this.cache = $.extend(true, {}, data); // deep copy
+            this.cache = $.extend(true, {}, data); /* deep copy */
         } else {
             for( key in data ) {
                 if( equals(this.cache[key], data[key] )) {
@@ -34,9 +34,9 @@ var template = {
                 } else {
                     // Update changes in cache
                     if( data[key] instanceof Object ) {
-                        this.cache[key] = $.extend(true, {}, data[key]); // deep copy    
+                        this.cache[key] = $.extend(true, {}, data[key]); /* deep copy */
                     } else {
-                        this.cache[key] = data[key] // primitive type
+                        this.cache[key] = data[key] /* primitive type */
                     }
                 }
             }
@@ -50,7 +50,7 @@ var template = {
         }
     },
     update: function( data ) {
-        this.filter( data ); // modifies data to only contain values that changed and updates the cache
+        this.filter( data ); /* modifies data to only contain values that changed and updates the cache */
         this.parse( data );
         this.render( data );
     },
@@ -63,9 +63,9 @@ var template = {
     hide: function() {
         if( this.view != null ) this.view.detach();
     }
-}
+};
 
-templates = {};
+var templates = {};
 templates['status'] = Object.assign(Object.create(template), {
     page: 'status',
     template: `
@@ -73,15 +73,15 @@ templates['status'] = Object.assign(Object.create(template), {
         <table class="mui-table mui-table--bordered">
           <tr>
             <td>Uptime</td>
-            <td id="status-uptime">{{uptime}}</td>
+            <td><span id="status-uptime"></span>&nbsp;s</td>
           </tr>
           <tr>
             <td>Free heap</td>
-            <td id="status-free_heap">{{free_heap}}</td>
+            <td><span id="status-free_heap"></span>&nbsp;B</td>
           </tr>
           <tr>
             <td>Build</td>
-            <td id="status-build">{{build}}</td>
+            <td id="status-build"></td>
           </tr>
         </table>
         <h3>EvalBoard</h3>
@@ -139,12 +139,8 @@ templates['status'] = Object.assign(Object.create(template), {
           </tr>
         </table>
 `,
-    parse: function( data ) {
-        if( 'uptime'    in data ) data['uptime']    += ' s';
-        if( 'free_heap' in data ) data['free_heap'] += ' B';
-    },
     render: function( data ) {
-        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        Object.getPrototypeOf( this ).render.call( this, data ); /* call parent */
         if( 'hostname' in data ) this.updateHostname( data['hostname']);
     },
     updateHostname: function( hostname ) {
@@ -163,7 +159,7 @@ templates['config'] = Object.assign(Object.create(template), {
               <th>Port 1</th>
               <th>Port 2</th>
             </tr>
-            <tr>
+            <tr id="config-clickboard-none">
                 <td>None</td>
                 <td><input type="radio" name="port1" value="none" checked="checked"></td>
                 <td><input type="radio" name="port2" value="none" checked="checked"></td>
@@ -187,18 +183,25 @@ templates['config'] = Object.assign(Object.create(template), {
 
                 // remove outdated clickboard config rows
                 this.view.find('.config-clickboard').remove();
+                var active = 0;
                 for( i in data.clickboards ) {
                     var clickboard = data.clickboards[i];
+                    active += clickboard.active;
 
                     // add row to clickboard config
                     var tr = $('<tr/>', {id: 'config-clickboard-' + clickboard.name, 'class': 'config-clickboard'} );
                     tr.append( '<td>' + clickboard.name_format + '</td>' );
+
                     for( var port = 0; port < 2; ++port ) {
                         var checked  = ( ( clickboard.active    & (1 << port) ) != 0 ) ? 'checked="checked" '   : '';
                         var disabled = ( ( clickboard.available & (1 << port) ) == 0 ) ? 'disabled="disabled" ' : '';
                         tr.append( '<td><input type="radio" name="port' + (port+1) + '" value="'+ clickboard.name + '"' + checked + disabled + '></td>' );
                     }
+
                     this.view.find('#config-clickboards').append(tr);
+                }
+                for( var port = 0; port < 2; ++port ) {
+                    $('#config-clickboard-none [name=port'+(port+1)+']').prop('checked', (active & (1 << port)) == 0);
                 }
             } else {
                 this.defaultRender( key, data[key] );
@@ -272,7 +275,7 @@ templates['color2'] = Object.assign(Object.create(template), {
         }
     },
     render: function( data ) {
-        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        Object.getPrototypeOf( this ).render.call( this, data ); /* call parent */
         if( 'rgb_hex' in data ) $('#'+this.page+'-color-box').css('background',data['rgb_hex']);
     }
 });
@@ -284,15 +287,15 @@ templates['thermo3'] = Object.assign(Object.create(template), {
         <table class="mui-table mui-table--bordered">
             <tr>
                 <td>Current temperature</td>
-                <td><span id="thermo3-temp_cur"></span> &deg;C</td>
+                <td><span id="thermo3-temp_cur"></span>&nbsp;&deg;C</td>
             </tr>
             <tr>
-                <td>Highest temperature <span id="thermo3-temp_high_time">{{temp_high_time}}</span> seconds ago</td>
-                <td><span id="thermo3-temp_high"></span> &deg;C</td>
+                <td>Highest temperature&thinsp;<span id="thermo3-temp_high_time">0</span>&nbsp;s ago</td>
+                <td><span id="thermo3-temp_high"></span>&nbsp;&deg;C</td>
             </tr>
             <tr>
-                <td>Lowest temperature <span id="thermo3-temp_low_time">{{temp_low_time}}</span> seconds ago</td>
-                <td><span id="thermo3-temp_low"></span> &deg;C</td>
+                <td>Lowest temperature&thinsp;<span id="thermo3-temp_low_time">0</span>&nbsp;s ago</td>
+                <td><span id="thermo3-temp_low"></span>&nbsp;&deg;C</td>
             </tr>
         </table>
         <h3>History</h3>
@@ -300,7 +303,7 @@ templates['thermo3'] = Object.assign(Object.create(template), {
             <tbody>
             </tbody>
         </table>
-    <input type="button" id="resetTemp" value="Reset" onclick="resetTempHist()">
+    <input type="button" id="thermo3-resetLog" value="Reset" onclick="templates['thermo3'].resetLog()">
 `,
     parse: function( data ) {
         for( key in data ) {
@@ -308,7 +311,7 @@ templates['thermo3'] = Object.assign(Object.create(template), {
             case 'temp_cur':
             case 'temp_high':
             case 'temp_low':
-                data[key] /= 100;
+                data[key] = (data[key]/100).toFixed(2);
                 break;
             }            
         }
@@ -316,10 +319,13 @@ templates['thermo3'] = Object.assign(Object.create(template), {
         data['log'] = { 'date' : new Date().toLocaleString('de-DE'), 'val' : (this.cache['temp_cur'] / 100) };
     },
     render: function( data ) {
-        Object.getPrototypeOf( this ).render.call( this, data ); // call parent
+        Object.getPrototypeOf( this ).render.call( this, data ); /* call parent */
         if( 'log' in data ) {
             $('#'+this.page+'-log tbody').prepend('<tr><td>'+data.log.date+'</td><td>'+data.log.val+' °C</td></tr>');
         }
+    },
+    resetLog: function() {
+      $('#'+this.page+'-log tbody').empty();
     }
 });
 
@@ -389,7 +395,7 @@ templates['expand2'] = Object.assign(Object.create(template), {
             data['watermeter'].push({
                 'index': x,
                 'name': x+1,
-                'quantity': 0,//(json['count'+x] * json['multi'] / 1000).toFixed(3),
+                'quantity': 0,
                 'options': options
             });
         }
@@ -435,13 +441,14 @@ templates['expand2'] = Object.assign(Object.create(template), {
 });
 
 var site = {
-    domain: 'http://172.16.200.127/',
-    maxRetries: 3,
+    domain: '', /* 'http://172.16.200.127/' */
+    maxRetries: 1,
     xhr: null,
     timeout: null,
     currentPage: null,
     request: function( page = this.currentPage, success = $.noop,
-                       data = { action: 'get' }, tries = 0 ) {
+                       data = { action: 'get' }, tries = this.maxRetries ) {
+        var that = this;
         var xhr = $.getJSON(this.domain + page + '.json', data)
           .done( function(json) {
             templates[page].update( json );
@@ -449,10 +456,10 @@ var site = {
           })
           .fail( function(xhr, text_status, error_thrown) {
             if (text_status != "abort") {
-                if( tries < this.maxRetries ) {
-                    this.request( page, success, undefined, tries+1 );
+                if( tries > 0 ) {
+                    that.request( page, success, undefined, tries-1 );
                 } else {
-                    this.disconnected();
+                    that.disconnected();
                 }
             }
           });
@@ -468,15 +475,21 @@ var site = {
             this.timeout = null;
         }
     },
-    update: function( page = this.currentPage, update = 0 ) {
-        this.cancelUpdate();
+    update: function( page = this.currentPage, delay = (getRefreshRate() * 1000), update = 0 ) {
         var that = this;
-        this.xhr = this.request( page, function( page, json ) {
-            that.timeout = setTimeout( function(){ that.update( undefined, update+1 ); }, 3000 );
-        });
+        this.cancelUpdate();
+        this.timeout = setTimeout( function(){
+            var updateFunction = undefined;
+            if( !isNaN(delay) ) {
+                updateFunction = function( page, json ) {
+                    that.update( undefined, undefined, update+1 );
+                };
+            }
+            that.xhr = that.request( page, updateFunction );
+        }, delay );
     },
     disconnected: function() {
-        console.log("Got disconnected");
+        $('#warning').addClass('active');
     },
     switch: function( page ) {
         if( !page ) {
@@ -501,18 +514,20 @@ var site = {
             $( '#page-title' ).html( $( '#nav a.active' ).html() );
         }
 
-        this.update();        
+        // immediately update
+        this.update( undefined, 0 );        
     },
     init: function() {
+        var that = this;
         for( page in templates ) {
           templates[page].init();
         }
         this.request( 'config' );
         this.request( 'status', function( page, json) {
-            site.switch();
+            that.switch();
         })
     }
-}
+};
 
 site.init();
 
@@ -553,7 +568,7 @@ function equals ( x, y ) {
         if ( x.hasOwnProperty( p ) ) {
             // Allows comparing x[ p ] and y[ p ] when set to undefined
             if ( ! y.hasOwnProperty( p ) ) {
-                continue; // continue if y is subset of x
+                continue; /* continue if y is subset of x */
             }
 
             // If they have the same strict value or identity then they are equal
@@ -591,7 +606,7 @@ function setRefreshRate( rate ) {
 }
 
 function getRefreshRate() {
-    var rates = [0,0.5, 1, 3, 5, 10, 20, 30, 60];
+    var rates = [0.5, 1, 3, 5, 10, 20, 30, 60];
     return rates[$('input[name="refresh"]').val()];
 }
 
@@ -628,15 +643,21 @@ $(document).click(function(){
 
 // Send request to write config to flash
 $('#write-config').click(function() {
-    sendRequest('config', 'write', $.noop );
+    site.request('config', undefined, 'write' );
 });
 
 // Send request to erase config from flash
 $('#erase-config').click(function() {
-    sendRequest('config', 'erase', $.noop );
+    site.request( 'config', undefined, 'erase' );
 });
 
 // Send request to reset system
 $('#reset-system').click(function() {
-    $.getJSON('status.json', 'reset');
+    site.request('status.json', undefined, 'reset', site.maxRetries ).abort();
+    site.disconnected();
+});
+
+$('#warning button').click(function() {
+    site.switch();
+    $('#warning').removeClass('active');
 });

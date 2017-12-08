@@ -344,3 +344,40 @@ main {
 #menu .mui-textfield {
   margin: 0;
 }
+
+#warning {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  margin-left: -240px;
+  width: 480px;
+  background: #323232;
+  border-radius: 2px;
+  padding: 0 24px;
+  height: 0px;
+  color: white;
+  transition: all 0.5s ease-in;
+  overflow: hidden;
+}
+
+#warning.active {
+  height: 48px;
+  transition: all 0.5s ease-out;
+}
+
+#warning-message {
+  margin: 6px 0;
+  display:inline-block;
+  line-height: 36px;
+}
+
+#warning button {
+  color: #2196F3;
+  position: absolute;
+  right: 12px;
+  padding: 0 12px;
+}
+
+#warning button:hover, #warning button:focus {
+  background: transparent;
+}

@@ -62,7 +62,7 @@
             <li>
               <div class="mui-textfield">
                 <div class="slider">
-                  <input type="range" name="refresh" min="0" max="8" step="1" value="3" oninput="rangevalue.value=(value==0)?'disabled':'every '+[0,0.5,1,3,5,10,20,30,60][value]+' s'">
+                  <input type="range" name="refresh" min="0" max="8" step="1" value="2" onchange="site.update();event.stopPropagation()" oninput="rangevalue.value=(value==max)?'disabled':'every '+getRefreshRate()+' s'">
                 </div>
                 <label>Auto-Refresh <output id="rangevalue" style="right:0;position: absolute;">every 3 s</output></label>
               </div>
@@ -75,6 +75,11 @@
 
         <article id="content">
         </article>
+
+        <section id="warning"  class="">
+          <span id="warning-message">Connection to Green PHY module lost.</span>
+          <button class="mui-btn mui-btn--flat">Reconnect</button>
+        </section>
       </section>
 
     </main>
