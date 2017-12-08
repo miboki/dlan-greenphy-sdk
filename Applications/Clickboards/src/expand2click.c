@@ -176,9 +176,9 @@ char lastBits = get_expand2click();
 		{
 			/* I2C is now usable for this Task. Set new Output on Port */
 			set_expand2click(oBits);
+
 			/* Get iBits from board */
 			iBits = get_expand2click();
-
 			/* Give Mutex back, so other Tasks can use I2C */
 			xSemaphoreGive( xI2C1_Mutex );
 		}
@@ -196,6 +196,10 @@ char lastBits = get_expand2click();
 		/* Print a debug message once every 10 s. */
 		if( ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL ) > xTime + 5 ) /* _CD_ Set time to 5 secondes, beacause relayr close connection after 10s timeout */
 		{
+		#ifdef EXPAND_TEST
+			toggleCount[0] = ( toggleCount[0] + 1 ) % 100000;
+			toggleCount[1] = ( toggleCount[1] + 1 ) % 100000;
+		#endif
 			DEBUGOUT("Expand2Click - Meter 1: %d, Meter 2: %d\n", toggleCount[0], toggleCount[1] );
 		#if( netconfigUSEMQTT != 0 )
 			xMqttQueue = xGetMQTTQueueHandle();

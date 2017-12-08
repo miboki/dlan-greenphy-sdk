@@ -210,7 +210,7 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 			pvSetConfig( eConfigThermoTopic, strlen(pxParam->pcValue) + 1, pxParam->pcValue );
 
 		xCount += snprintf( pcBuffer, uxBufferLength,
-				"{\"temp_cur\":%d,\"temp_high\":%d,\"temp_low\":%d,\"temp_high_time\":%d,\"temp_low_time\":%d}",
+				"{\"temp_cur\":%d,\"temp_high\":%d,\"temp_low\":%d,\"temp_high_time\":%d,\"temp_low_time\":%d",
 				temp_cur, temp_high, temp_low, ( time - temp_high_time ), ( time - temp_low_time ) );
 
 	#if( netconfigUSEMQTT != 0 )
@@ -220,10 +220,11 @@ BaseType_t xTime = ( portGET_RUN_TIME_COUNTER_VALUE() / 10000UL );
 		{
 			strcpy( buffer, pcTopic );
 			vCleanTopic( buffer );
-			xCount += sprintf( pcBuffer + ( xCount -1 ), ",\"ttopic\":\"%s\"}", buffer );
+			xCount += sprintf( pcBuffer + xCount , ",\"ttopic\":\"%s\"", buffer );
 		}
 	#endif /* #if( netconfigUSEMQTT != 0 ) */
 
+		xCount += sprintf( pcBuffer + xCount, "}");
 		return xCount;
 	}
 #endif

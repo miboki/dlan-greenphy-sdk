@@ -262,7 +262,7 @@ templates['mqtt'] = `
 		<table class="mui-table mui-table--bordered">
 			<tr>
 				<td>Broker Address</td>
-				<td><input type="text" name="broker" size="50" value="{{bad}}"></td>
+				<td><input type="text" name="broker" size="40" value="{{bad}}"></td>
 			</tr>
 			<tr>
 				<td>Broker Port</td>
@@ -270,15 +270,15 @@ templates['mqtt'] = `
 			</tr>
 			<tr>
 				<td>Client ID</td>
-				<td><input type="text" name="client" size="50" value="{{cID}}"></td>
+				<td><input type="text" name="client" size="40" value="{{cID}}"></td>
 			</tr>
 			<tr>
 				<td>Username</td>
-				<td><input type="text" name="user" size="50" value="{{user}}"></td>
+				<td><input type="text" name="user" size="40" value="{{user}}"></td>
 			</tr>
 			<tr>
 				<td>Password</td>
-				<td><input type="password" name="password" size="50" value="{{pwd}}"></td>
+				<td><input type="password" name="password" size="40" value="{{pwd}}"></td>
 			</tr>
 			<tr>
 				<td>Last Will Active</td>
@@ -286,11 +286,11 @@ templates['mqtt'] = `
 			</tr>
 			<tr>
 				<td>Will Topic</td>
-				<td><input type="text" name="willtopic" size="50" value="{{wtp}}"></td>
+				<td><input type="text" name="willtopic" size="40" value="{{wtp}}"></td>
 			</tr>
 			<tr>
 				<td>Will Message</td>
-				<td><input type="text" name="willmessage" size="50" value="{{wms}}"></td>
+				<td><input type="text" name="willmessage" size="40" value="{{wms}}"></td>
 			</tr>
 		</table>
 `;
