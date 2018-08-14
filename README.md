@@ -7,6 +7,8 @@ integration into the networked home. The open standard makes smart energy applic
 use. Another advantage: The dLAN® Green PHY module is particularly energy-saving and - compared to conventional HomePlug solutions - has reduced energy 
 consumption.
 
+The module contains a QCA7000 greenPHY processor and a LPC1758 MCU. This project mainly covers the SDK for the MCU, while all the drivers for the greenPHY chip itself can be found here: https://github.com/devolo/dlan-greenphy-sdk/blob/master/QCA%20greenPHY%20Software%201_2_4%20Windows%20Linux.zip
+
 The SDK is based on [LPCOpen 
 v2.10](https://www.nxp.com/products/developer-resources/software-development-tools/developer-resources-/lpcopen-libraries-and-examples/lpcopen-software-development-platform-lpc17xx:LPCOPEN-SOFTWARE-FOR-LPC17XX) 
 and [FreeRTOS v9.0.0](http://www.freertos.org/).
