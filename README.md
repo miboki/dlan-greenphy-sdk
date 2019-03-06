@@ -1,6 +1,6 @@
 # devolo dLAN® Green PHY Module SDK
 
-This project contains the SDK for the devolo [dLAN® Green PHY module](http://www.devolo.com/en/Business-Solutions/Powerline-Pro/dLAN-Green-PHY-Module).
+This project contains the SDK for the devolo [dLAN® Green PHY module](https://www.codico.com/shop/de/powerline-modules/broad-band-plc/homeplug-green-phy/hersteller/devolo.html).
 
 It is ideal for installation in all electrical devices of a smart home. From the heating system to the refrigerator - Green PHY enables seamless 
 integration into the networked home. The open standard makes smart energy applications, sensor solutions and automation systems efficient to set up and 
@@ -15,7 +15,7 @@ and [FreeRTOS v9.0.0](http://www.freertos.org/).
 
 
 ![devolo dLAN® Green PHY 
-module](http://www.devolo.com/products/Business-Solutions-Powerline-Pro/dLAN-Green-PHY-Module/pictures/product/dLAN-Green-PHY-Module-productpicture-Single-Adapter-l-737.jpg)
+module](https://www.codico.com/shop/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/d/l/dlan_green_phy_eval_board_eu_ii_bild_1_10.jpg)
 
 *The dLAN® Green PHY module*
 
