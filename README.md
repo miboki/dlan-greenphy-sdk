@@ -27,8 +27,8 @@ module](https://www.codico.com/shop/media/catalog/product/cache/1/image/9df78eab
 * Compatible to [microBUS™ socket](https://www.mikroe.com/mikrobus/) and MikroElektronika [Click Boards](https://shop.mikroe.com/click)
 
 ## Requirements
-* [dLAN® Green PHY module](http://www.devolo.com/en/Business-Solutions/Powerline-Pro/dLAN-Green-PHY-Module) with a development board, e.g. the [dLAN® 
-Green PHY eval board II](http://www.devolo.com/en/Business-Solutions/Powerline-Pro/dLAN-Green-PHY-eval-board-II), or your own design
+* [dLAN® Green PHY module](https://www.codico.com/shop/de/powerline-modules/broad-band-plc/homeplug-green-phy/dlan-green-phy-module.html) with a development board, e.g. the [dLAN® 
+Green PHY eval board II](https://www.codico.com/shop/de/powerline-modules/broad-band-plc/homeplug-green-phy/dlan-green-phy-eval-board-eu-ii.html), or your own design
 * [MCUXpresso 
 IDE](https://www.nxp.com/products/developer-resources/run-time-software/mcuxpresso-software-and-tools/mcuxpresso-integrated-development-environment-ide-v10.0.2:MCUXpresso-IDE)
 * JTAG-Debugger, recommended [LPC-Link 
